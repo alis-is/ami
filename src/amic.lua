@@ -1,4 +1,5 @@
 #!/usr/sbin/eli
+
 -- extensions
 require "ami.exit_codes"
 require "ami.cli"
@@ -10,14 +11,12 @@ require "ami.tpl"
 require "ami.sub"
 -- extensions
 
-require "eli.extensions.string":globalize()
-
 load_app_details()
 
 local _cmdImplementationStatus = "(not installed)"
 local _cmdImplementationError = EXIT_NOT_INSTALLED
 
-if eliFs.exists("ami.lua") or eliFs.exists("ami.hjson") or eliFs.exists("ami.json") then
+if fs.exists("ami.lua") or fs.exists("ami.hjson") or fs.exists("ami.json") then
     _cmdImplementationStatus = "(not implemented)"
     _cmdImplementationError = EXIT_NOT_IMPLEMENTED
 end
@@ -65,7 +64,7 @@ AMI = {
             },
             -- (options, command, args, cli)
             action = function(_options)
-                local _noOptions = #eliUtil.keys(_options) == 0
+                local _noOptions = #util.keys(_options) == 0
 
                 local _subAmiLoaded = false
                 if _noOptions or _options.environment then

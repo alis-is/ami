@@ -5,48 +5,37 @@ APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"}
 APP_CONFIGURATION_PATH = nil
 AMI_CACHE_TIMEOUT = 86400
 
-eliPath = require "eli.path"
-eliFs = require "eli.fs"
-eliProc = require "eli.proc"
-eliCli = require "eli.cli"
-eliNet = require "eli.net"
-eliZip = require "eli.zip"
-eliUtil = require "eli.util"
-eliEnv = require "eli.env"
-eliVer = require "eli.ver"
-exString = require "eli.extensions.string"
+elify() -- globalize eli libs
+hjson = util.generate_safe_functions(require "hjson")
 
-local _hjson = require "hjson"
-local _logger = require "eli.Logger":new()
-GLOBAL_LOGGER = _logger
-log_success, log_trace, log_debug, log_info, log_warn, log_error =
-    require "eli.util".global_log_factory("ami", "success", "trace", "debug", "info", "warn", "error")
+GLOBAL_LOGGER = Logger:new()
+log_success, log_trace, log_debug, log_info, log_warn, log_error = util.global_log_factory("ami", "success", "trace", "debug", "info", "warn", "error")
 
-function set_cache_dir(path)
-    if path == "false" then
+function set_cache_dir(_path)
+    if _path == "false" then
         CACHE_DISABLED = true
-        path = ""
+        _path = ""
     end
-    if not eliPath.isabs(path) then
-        path = eliPath.combine(eliProc.EPROC and eliProc.cwd() or ".", path)
+    if not path.isabs(_path) then
+        _path = path.combine(os.EOS and os.cwd() or ".", _path)
     end
 
-    CACHE_DIR = path
-    CACHE_DIR_DEFS = eliPath.combine(CACHE_DIR, "definition")
-    CACHE_DIR_ARCHIVES = eliPath.combine(CACHE_DIR, "archive")
+    CACHE_DIR = _path
+    CACHE_DIR_DEFS = path.combine(CACHE_DIR, "definition")
+    CACHE_DIR_ARCHIVES = path.combine(CACHE_DIR, "archive")
 
-    eliFs.mkdirp(CACHE_DIR_DEFS)
-    eliFs.mkdirp(CACHE_DIR_ARCHIVES)
+    fs.mkdirp(CACHE_DIR_DEFS)
+    fs.mkdirp(CACHE_DIR_ARCHIVES)
 
-    CACHE_PLUGIN_DIR = eliPath.combine(CACHE_DIR, "plugin")
-    CACHE_PLUGIN_DIR_DEFS = eliPath.combine(CACHE_PLUGIN_DIR, "definition")
-    CACHE_PLUGIN_DIR_ARCHIVES = eliPath.combine(CACHE_PLUGIN_DIR, "archive")
+    CACHE_PLUGIN_DIR = path.combine(CACHE_DIR, "plugin")
+    CACHE_PLUGIN_DIR_DEFS = path.combine(CACHE_PLUGIN_DIR, "definition")
+    CACHE_PLUGIN_DIR_ARCHIVES = path.combine(CACHE_PLUGIN_DIR, "archive")
 
-    eliFs.mkdirp(CACHE_PLUGIN_DIR_ARCHIVES)
-    eliFs.mkdirp(CACHE_PLUGIN_DIR_DEFS)
+    fs.mkdirp(CACHE_PLUGIN_DIR_ARCHIVES)
+    fs.mkdirp(CACHE_PLUGIN_DIR_DEFS)
 end
 
-function ami_error(msg, exitCode)
+ami_error = ami_error or function (msg, exitCode)
     log_error(msg)
     os.exit(exitCode)
 end
@@ -124,17 +113,17 @@ basicCliOptions = {
 local _parasedOptions = parse_args(arg, {options = basicCliOptions}, {strict = false, stopOnCommand = true})
 
 if _parasedOptions["local-sources"] then
-    local _ok, _localPkgsFile = eliFs.safe_read_file(_parasedOptions["local-sources"])
+    local _ok, _localPkgsFile = fs.safe_read_file(_parasedOptions["local-sources"])
     ami_assert(_ok, "Failed to read local sources file " .. _parasedOptions["local-sources"], EXIT_INVALID_SOURCES_FILE)
-    local _ok, _sources = pcall(_hjson.parse, _localPkgsFile)
+    local _ok, _sources = pcall(hjson.parse, _localPkgsFile)
     ami_assert(_ok, "Failed to parse local sources file " .. _parasedOptions["local-sources"], EXIT_INVALID_SOURCES_FILE)
     SOURCES = _sources
 end
 
 if _parasedOptions.path then
-    if eliProc.EPROC then
-        package.path = package.path .. ";" .. eliProc.cwd() .. "/?.lua"
-        local _ok, _err = eliProc.safe_chdir(_parasedOptions.path)
+    if os.EPROC then
+        package.path = package.path .. ";" .. os.cwd() .. "/?.lua"
+        local _ok, _err = os.safe_chdir(_parasedOptions.path)
         assert(_ok, _err)
     else
         log_error("Option 'path' provided, but chdir not supported.")
@@ -144,7 +133,7 @@ if _parasedOptions.path then
 end
 
 for _, configCandidate in ipairs(APP_CONFIGURATION_CANDIDATES) do
-    if eliFs.exists(configCandidate) then
+    if fs.exists(configCandidate) then
         APP_CONFIGURATION_PATH = configCandidate
         break
     end

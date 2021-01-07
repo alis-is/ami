@@ -1,5 +1,7 @@
 local _test = TEST or require "tests.vendor.u-test"
 
+require"tests.test_init"
+
 require "src.ami.exit_codes"
 require "src.ami.cli"
 eliProc = require "eli.proc"
@@ -177,25 +179,21 @@ _test["process cli (external)"] = function()
     }
 
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 0)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 179)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 179)
 
     eliProc.EPROC = false
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 0)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 179)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 179)
     eliProc.EPROC = true
 
     _cli = {
@@ -218,25 +216,21 @@ _test["process cli (external)"] = function()
     }
 
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 0)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 179)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 179)
 
     eliProc.EPROC = false
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 0)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _exitCode = pcall(process_cli, _cli, _argList)
-    _test.assert(_ok)
-    _test.assert(_exitCode == 179)
+    local _ok, _result = pcall(process_cli, _cli, _argList)
+    _test.assert(_ok and _result == 179)
     eliProc.EPROC = true
 end
 

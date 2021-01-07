@@ -1,8 +1,6 @@
 local _test = TEST or require "tests.vendor.u-test"
 
-local _eliUtil = require"eli.util"
-local _eliFs = require"eli.fs"
-local _eliPath = require"eli.path"
+require"tests.test_init"
 
 require "src.ami.exit_codes"
 require "src.ami.cli"
@@ -11,7 +9,7 @@ require "src.ami.init"
 require "src.ami.plugin"
 
 local function _unload_package(name, version)
-    if type(version) ~= "string" then 
+    if type(version) ~= "string" then
         version = "latest"
     end 
     local _pluginId = name .. '@' .. version

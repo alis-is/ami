@@ -1,6 +1,4 @@
-local _eliUtil = require "eli.util"
-local keys = _eliUtil.keys
-local _newLine = require "eli.path".platform == "unix" and "\n" or "\r\n"
+local _newLine = path.platform == "unix" and "\n" or "\r\n"
 
 local HELP_OPTION = {
     index = 100,
@@ -78,17 +76,16 @@ local function exec_external_action(exec, args, injectArgs)
     for _, v in ipairs(args) do
         table.insert(_args, v.arg)
     end
-    if not eliProc.EPROC then
+    if not proc.EPROC then
         local execArgs = ""
         for _, v in ipairs(args) do
             execArgs = execArgs .. ' "' .. v.arg:gsub("\\", "\\\\"):gsub('"', '\\"') .. '"' -- add qouted string
         end
-
-        local _, _, _exitcode = eliProc.os_execute(exec .. " " .. execArgs)
-        return _exitcode
+        local _result = proc.exec(exec .. " " .. execArgs)
+        return _result.exitcode
     end
-
-    return eliProc.execute(exec, _args, {wait = true, stdio = false})
+    local _result = proc.spawn(exec, _args, {wait = true, stdio = "ignore"})
+    return _result.exitcode
 end
 
 --[[
@@ -118,7 +115,7 @@ local function exec_native_action(action, ...)
 end
 
 local function _is_array_of_tables(args)
-    if not _eliUtil.is_array(args) then
+    if not util.is_array(args) then
         return false
     else
         for _, v in ipairs(args) do
@@ -138,7 +135,7 @@ end
 ]]
 function parse_args(args, scheme, options)
     if not _is_array_of_tables(args) then
-        args = eliCli.parse_args(args)
+        args = cli.parse_args(args)
     end
 
     if type(options) ~= "table" then
@@ -156,7 +153,7 @@ function parse_args(args, scheme, options)
     local _to_map = function(t)
         local _result = {}
         for k, v in pairs(t) do
-            local _def = _eliUtil.merge_tables({id = k}, v)
+            local _def = util.merge_tables({id = k}, v)
             if type(v.aliases) == "table" then
                 for _, a in ipairs(v.aliases) do
                     _result[a] = _def
@@ -223,36 +220,36 @@ end
     @param {table} cli
     @param {string{}} args
 ]]
-function process_cli(cli, args)
-    ami_assert(type(cli) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
+function process_cli(_cli, args)
+    ami_assert(type(_cli) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
 
-    args = eliCli.parse_args(args)
+    args = cli.parse_args(args)
 
-    local validate = type(cli.validate) == "function" and cli.validate or default_validate_args
+    local validate = type(_cli.validate) == "function" and _cli.validate or default_validate_args
 
-    local cliId = cli.id and "(" .. cli.id .. ")" or ""
-    local action = cli.action
+    local _cliId = _cli.id and "(" .. _cli.id .. ")" or ""
+    local action = _cli.action
 
-    if not action and cli.type == "external" and type(cli.exec) == "string" then
-        action = cli.exec
+    if not action and _cli.type == "external" and type(_cli.exec) == "string" then
+        action = _cli.exec
     end
 
     ami_assert(
         type(action) == "table" or type(action) == "function" or type(action) == "string",
-        "Action not specified properly or not found! " .. cliId,
+        "Action not specified properly or not found! " .. _cliId,
         EXIT_CLI_ACTION_MISSING
     )
 
-    if cli.type == "external" then
+    if _cli.type == "external" then
         ami_assert(
             type(action) == "string" or type(exec) == "string",
             "Action has to be string specifying path to external cli",
             EXIT_CLI_INVALID_DEFINITION
         )
-        return exec_external_action(action, args, cli.injectArgs)
+        return exec_external_action(action, args, _cli.injectArgs)
     end
 
-    if cli.type == "raw" then
+    if _cli.type == "raw" then
         local _rawArgs = {}
         for _, v in ipairs(args) do
             table.insert(_rawArgs, v.arg)
@@ -260,22 +257,22 @@ function process_cli(cli, args)
         return exec_native_action(action, _rawArgs)
     end
 
-    local optionList, command, remainingArgs = parse_args(args, cli)
+    local optionList, command, remainingArgs = parse_args(args, _cli)
 
-    local _valid, _error = validate(cli, optionList, command)
+    local _valid, _error = validate(_cli, optionList, command)
     ami_assert(_valid, _error, EXIT_CLI_ARG_VALIDATION_ERROR)
 
     if type(command) == "table" then
-        command.__cliId = cli.__cliId or cli.id
-        command.__commandStack = cli.__commandStack or {}
+        command.__cliId = _cli.__cliId or _cli.id
+        command.__commandStack = _cli.__commandStack or {}
         table.insert(command.__commandStack, command and command.id)
     end
 
-    if not cli.customHelp and optionList.help then
-        return show_cli_help(cli)
+    if not _cli.customHelp and optionList.help then
+        return show_cli_help(_cli)
     end
 
-    return exec_native_action(action, optionList, command, remainingArgs, cli)
+    return exec_native_action(action, optionList, command, remainingArgs, _cli)
 end
 
 local function are_all_hidden(t)
@@ -296,8 +293,8 @@ local function compare_args(t, a, b)
 end
 
 local function generate_usage(cli, includeOptionsInUsage)
-    local hasCommands = cli.commands and #keys(cli.commands)
-    local hasOptions = cli.options and #keys(cli.options)
+    local hasCommands = cli.commands and #util.keys(cli.commands)
+    local hasOptions = cli.options and #util.keys(cli.options)
 
     local cliId = cli.__cliId or cli.id or eliPath.file(APP_ROOT_SCRIPT or "")
     local usage = "Usage: " .. cliId .. " "
@@ -309,7 +306,7 @@ local function generate_usage(cli, includeOptionsInUsage)
     end
 
     if hasOptions and includeOptionsInUsage then
-        local options = keys(cli.options)
+        local options = util.keys(cli.options)
         local sort_function = function(a, b)
             return compare_args(cli.options, a, b)
         end
@@ -348,13 +345,13 @@ local function generate_usage(cli, includeOptionsInUsage)
 end
 
 local function generate_help_message(cli)
-    local hasCommands = cli.commands and #keys(cli.commands) and not are_all_hidden(cli.commands)
-    local hasOptions = cli.options and #keys(cli.options) and not are_all_hidden(cli.options)
+    local hasCommands = cli.commands and #util.keys(cli.commands) and not are_all_hidden(cli.commands)
+    local hasOptions = cli.options and #util.keys(cli.options) and not are_all_hidden(cli.options)
 
     local rows = {}
     if hasOptions then
         table.insert(rows, {left = "Options: ", description = ""})
-        local options = keys(cli.options)
+        local options = util.keys(cli.options)
         local sort_function = function(a, b)
             return compare_args(cli.options, a, b)
         end
@@ -391,7 +388,7 @@ local function generate_help_message(cli)
     if hasCommands then
         table.insert(rows, {left = "", description = ""})
         table.insert(rows, {left = "Commands: ", description = ""})
-        local commands = keys(cli.commands)
+        local commands = util.keys(cli.commands)
         local sort_function = function(a, b)
             return compare_args(cli.commands, a, b)
         end

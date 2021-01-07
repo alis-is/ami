@@ -1,9 +1,8 @@
-local hjson = require "hjson"
 local _amiPkg = require "ami.pkg"
 
 local function _inject_mdl()
     local _path = "model.lua"
-    if eliFs.exists(_path) then
+    if fs.exists(_path) then
         local _ok, _error = pcall(dofile, "model.lua")
         if not _ok then
             ami_error("Failed to load app model - " .. _error, EXIT_APP_INVALID_MODEL)
@@ -29,7 +28,7 @@ local function _normalize_app_pkg_type(pkg)
 end
 
 function load_app_details()
-    local _ok, _configContent = eliFs.safe_read_file(APP_CONFIGURATION_PATH)
+    local _ok, _configContent = fs.safe_read_file(APP_CONFIGURATION_PATH)
     if _ok then
         _ok, APP = pcall(hjson.parse, _configContent)
         if not _ok then
@@ -54,21 +53,21 @@ function prepare_app()
 
     _amiPkg.unpack_layers(_fileList)
     _amiPkg.generate_model(_modelInfo)
-    eliFs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
+    fs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
     load_app_details()
 end
 
 function is_update_available()
     _normalize_app_pkg_type(APP)
 
-    local _ok, _verTreeJson = eliFs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
+    local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
     local _verTree = {}
     if _ok then
         _ok, _verTree = pcall(hjson.parse, _verTreeJson)
     end
     if not _ok then
         log_warn("Version tree not found. Running update check against specs...")
-        local _ok, _specsFile = eliFs.safe_read_file("specs.json")
+        local _ok, _specsFile = fs.safe_read_file("specs.json")
         ami_assert(_ok, "Failed to load app specs.json", EXIT_APP_UPDATE_ERROR)
         local _ok, _specs = pcall(hjson.parse, _specsFile)
         ami_assert(_ok, "Failed to parse app specs.json", EXIT_APP_UPDATE_ERROR)
@@ -81,7 +80,7 @@ end
 function get_app_version()
     _normalize_app_pkg_type(APP)
 
-    local _ok, _verTreeJson = eliFs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
+    local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
     local _verTree = {}
     if _ok then
         _ok, _verTree = pcall(hjson.parse, _verTreeJson)
@@ -95,7 +94,7 @@ function get_app_version()
 end
 
 function remove_app_data()
-    local _ok = eliFs.safe_remove("data", {recurse = true, contentOnly = true})
+    local _ok = fs.safe_remove("data", {recurse = true, contentOnly = true})
     ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
 end
 
@@ -105,13 +104,13 @@ for _, configCandidate in ipairs(APP_CONFIGURATION_CANDIDATES) do
 end
 
 function remove_app()
-    local _ok, _files = eliFs.safe_read_dir(".", {recurse = true, returnFullPaths = true})
+    local _ok, _files = fs.safe_read_dir(".", {recurse = true, returnFullPaths = true})
     ami_assert(_ok, "Failed to remove app - " .. (_error or "") .. "!", EXIT_RM_ERROR)
     for i = 1, #_files do
         local _file = _files[i]
 
-        if not _protectedFiles[eliPath.file(_file)] then
-            local _ok, _error = eliFs.safe_remove(_file)
+        if not _protectedFiles[path.file(_file)] then
+            local _ok, _error = fs.safe_remove(_file)
             ami_assert(_ok, "Failed to remove '" .. _file .. "' - " .. tostring(_error) .. "!", EXIT_RM_ERROR)
         end
     end

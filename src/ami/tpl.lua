@@ -4,11 +4,11 @@ local function _to_renderable_data(source)
    local _result = {}
    for key, value in pairs(source) do
       _result[key] = value
-      if type(value) == "table" and not eliUtil.is_array(value) then
-         _result[key .. "__ARRAY"] = eliUtil.to_array(value)
+      if type(value) == "table" and not util.is_array(value) then
+         _result[key .. "__ARRAY"] = util.to_array(value)
       end
 
-      if type(key) == "string" and key:lower():match("args") and eliUtil.is_array(value) then
+      if type(key) == "string" and key:lower():match("args") and util.is_array(value) then
          local _args = {}
          for _, _arg in ipairs(value) do
             if type(_arg) == "string" or type(_arg) == "boolean" or type(_arg) == "number" then
@@ -23,7 +23,7 @@ end
 
 function render_templates()
    log_info("Generating app templated files...")
-   local _ok, _templates = eliFs.safe_read_dir(".ami-templates", {recurse = true, asDirEntries = true})
+   local _ok, _templates = fs.safe_read_dir(".ami-templates", {recurse = true, asDirEntries = true})
    if not _ok or #_templates == 0 then
       log_trace("No template found, skipping...")
       return
@@ -36,7 +36,7 @@ function render_templates()
    local _vm = {
       configuration = _configuration,
       model = _model,
-      ROOT_DIR = eliProc.EPROC and eliProc.cwd() or ".",
+      ROOT_DIR = os.EOS and os.cwd() or ".",
       ID = APP.id,
       USER = APP.user
    }
@@ -44,19 +44,19 @@ function render_templates()
    for _, entry in ipairs(_templates) do
       if entry:type() == "file" then
          local _templatePath = entry:fullpath()
-         local _file = eliPath.file(_templatePath)
+         local _file = path.file(_templatePath)
          local _pre, _suf = _file:match("(.*)%.template(.*)")
-         local _renderedPath = eliPath.combine(eliPath.dir(eliPath.rel(_templatePath, ".ami-templates")), _pre .. _suf)
+         local _renderedPath = path.combine(path.dir(path.rel(_templatePath, ".ami-templates")), _pre .. _suf)
 
          log_trace("Rendering '" .. _templatePath .. "' to '" .. _renderedPath .. "'...")
 
-         local _ok, _template = eliFs.safe_read_file(_templatePath)
+         local _ok, _template = fs.safe_read_file(_templatePath)
          ami_assert(_ok, "Read failed for " .. _templatePath .. " - " .. (_template or ""), EXIT_TPL_READ_ERROR)
          local _result = _lustache:render(_template, _vm)
 
-         local _ok, _error = eliFs.safe_mkdirp(eliPath.dir(_renderedPath))
+         local _ok, _error = fs.safe_mkdirp(path.dir(_renderedPath))
          if _ok then
-            _ok, _error = eliFs.safe_write_file(_renderedPath, _result)
+            _ok, _error = fs.safe_write_file(_renderedPath, _result)
          end
 
          ami_assert(_ok, "Write failed for " .. _templatePath .. " - " .. (_error or ""), EXIT_TPL_WRITE_ERROR)

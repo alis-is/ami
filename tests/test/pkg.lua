@@ -1,6 +1,7 @@
 local _test = TEST or require "tests.vendor.u-test"
 
-local _eliUtil = require "eli.util"
+require"tests.test_init"
+
 local stringify = require "hjson".stringify
 
 require "src.ami.exit_codes"
@@ -10,7 +11,7 @@ require "src.ami.init"
 require "src.ami.plugin"
 local _amiPkg = require "src.ami.pkg"
 
-local _defaultCwd = eliProc.cwd()
+local _defaultCwd = os.cwd()
 
 _test["normalize pkg type"] = function()
     local _pkgType = {
@@ -211,9 +212,9 @@ _test["unpack layers"] = function()
         wanted_version = "latest"
     }
     local _testDir = "tests/tmp/pkg_test_unpack_layers"
-    eliFs.mkdirp(_testDir)
-    eliFs.remove(_testDir, {recurse = true, contentOnly = true})
-    eliProc.chdir(_testDir)
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    os.chdir(_testDir)
 
     _amiPkg.normalize_pkg_type(_pkgType)
     local _result, _fileList, _modelInfo, _verTree = pcall(_amiPkg.prepare_pkg, _pkgType)
@@ -221,14 +222,14 @@ _test["unpack layers"] = function()
 
     local _result = pcall(_amiPkg.unpack_layers, _fileList)
     _test.assert(_result)
-    local _ok, _testHash = eliFs.safe_hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
+    local _ok, _testHash = fs.safe_hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
     _test.assert(_ok and _testHash == "c2881a3b33316d5ba77075715601114092f50962d1935582db93bb20828fdae5")
-    local _ok, _test2Hash = eliFs.safe_hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
+    local _ok, _test2Hash = fs.safe_hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
     _test.assert(_ok and _test2Hash == "172fb97f3321e9e3616ada32fb5f9202b3917f5adcf4b67957a098a847e2f12c")
-    local _ok, _specsHash = eliFs.safe_hash_file("specs.json", {hex = true})
+    local _ok, _specsHash = fs.safe_hash_file("specs.json", {hex = true})
     _test.assert(_ok and _specsHash == "23f6ae968beffd955c48060c3a899d37474bc6a5e597b5dceb401efd2b6d2291")
 
-    eliProc.chdir(_defaultCwd)
+    os.chdir(_defaultCwd)
 end
 
 _test["generate model"] = function()
@@ -238,9 +239,9 @@ _test["generate model"] = function()
         wanted_version = "latest"
     }
     local _testDir ="tests/tmp/pkg_test_generate_model"
-    eliFs.mkdirp(_testDir)
-    eliFs.remove(_testDir, {recurse = true, contentOnly = true})
-    eliProc.chdir(_testDir)
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    os.chdir(_testDir)
 
     _amiPkg.normalize_pkg_type(_pkgType)
     local _result, _fileList, _modelInfo, _verTree = pcall(_amiPkg.prepare_pkg, _pkgType)
@@ -249,10 +250,10 @@ _test["generate model"] = function()
     local _result = pcall(_amiPkg.generate_model, _modelInfo)
     _test.assert(_result)
 
-    local _ok, _modelHash = eliFs.safe_hash_file("model.lua", {hex = true})
+    local _ok, _modelHash = fs.safe_hash_file("model.lua", {hex = true})
     _test.assert(_ok and _modelHash == "5644aab8a10461d20184a0c17ff3b97395740a76a6e14c183310067f2e3eda39")  
 
-    eliProc.chdir(_defaultCwd)
+    os.chdir(_defaultCwd)
 end
 
 _test["is update available"] = function()
