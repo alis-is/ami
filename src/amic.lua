@@ -11,7 +11,7 @@ require "ami.tpl"
 require "ami.sub"
 -- extensions
 
-load_app_details()
+am.app.load_details()
 
 local _cmdImplementationStatus = "(not installed)"
 local _cmdImplementationError = EXIT_NOT_INSTALLED
@@ -81,7 +81,7 @@ AMI = {
                 end
 
                 if _noOptions or _options.configure then
-                    render_templates(APP)
+                    am.app.render_templates()
                 end
             end
         },

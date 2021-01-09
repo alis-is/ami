@@ -4,7 +4,7 @@ local function _normalize_pkg_type(pkgType)
     end
     ami_assert(type(pkgType.version) == "string", "Invalid pkg version", EXIT_INVALID_PKG_VERSION)
     if type(pkgType.repository) ~= "string" then
-        pkgType.repository = REPOSITORY_URL
+        pkgType.repository = am.options.REPOSITORY_URL
     end
 end
 
@@ -17,7 +17,7 @@ local function _download_pkg_def(appType, channel)
     -- e.g.: /test/app/latest_beta.json
     local _defUrl = append_to_url(appType.repository, "definition", _pkgId, version .. _channel .. ".json")
     -- e.g.: test.app@latest_beta
-    local _defLocalPath = path.combine(CACHE_DIR_DEFS, appType.id .. "@" .. appType.version .. _channel)
+    local _defLocalPath = path.combine(am.options.CACHE_DIR_DEFS, appType.id .. "@" .. appType.version .. _channel)
 
     if CACHE_DISABLED ~= true then
         local _ok, _pkgDefJson = fs.safe_read_file(_defLocalPath)
@@ -25,7 +25,7 @@ local function _download_pkg_def(appType, channel)
             local _ok, _pkgDef = hjson.safe_parse(_pkgDefJson)
             if
                 _ok and
-                    (appType.version ~= "latest" or (type(_pkgDef.lastAmiCheck) == "number" and _pkgDef.lastAmiCheck + AMI_CACHE_TIMEOUT > os.time()))
+                    (appType.version ~= "latest" or (type(_pkgDef.lastAmiCheck) == "number" and _pkgDef.lastAmiCheck + am.options.CACHE_EXPIRATION_TIME > os.time()))
              then
                 return true, _pkgDef
             end
@@ -73,10 +73,10 @@ local function _get_pkg_def(appType)
 end
 
 local function _get_pkg(pkgDef)
-    local _cachedPkgPath = path.combine(CACHE_DIR_ARCHIVES, pkgDef.sha256)
+    local _cachedPkgPath = path.combine(am.options.CACHE_DIR_ARCHIVES, pkgDef.sha256)
 
     if CACHE_DISABLED ~= true then
-        if NO_INTEGRITY_CHECKS ~= true then
+        if am.options.NO_INTEGRITY_CHECKS ~= true then
             local _ok, _hash = fs.safe_hash_file(_cachedPkgPath, {hex = true})
             if _ok and _hash == pkgDef.sha256 then
                 log_trace("Using cached version of " .. pkgDef.sha256)
@@ -126,12 +126,12 @@ local function _prepare_pkg(appType)
     if type(SOURCES) == "table" and SOURCES[appType.id] then
         local _localSource = SOURCES[appType.id]
         log_trace("Loading local package from path " .. _localSource)
-        local _tmp = path.combine(CACHE_DIR_ARCHIVES, util.random_string(20))
+        local _tmp = path.combine(am.options.CACHE_DIR_ARCHIVES, util.random_string(20))
         local _ok, _error = zip.safe_compress(_localSource, _tmp, {recurse = true, overwrite = true})
         ami_assert(_ok, "Failed to compress local source directory: " .. (_error or ""), EXIT_PKG_LOAD_ERROR)
         _ok, _hash = fs.safe_hash_file(_tmp, {hex = true})
         ami_assert(_ok, "Failed to load package from local sources", EXIT_PKG_INTEGRITY_CHECK_ERROR)
-        os.rename(_tmp, path.combine(CACHE_DIR_ARCHIVES, _hash))
+        os.rename(_tmp, path.combine(am.options.CACHE_DIR_ARCHIVES, _hash))
         _pkgDef = {sha256 = _hash, id = "debug-dir-pkg"}
     else
         _pkgDef = _get_pkg_def(appType)
@@ -230,7 +230,7 @@ local function _unpack_layers(fileList)
         end
 
         local _options = {flattenRootDir = true, filter = _filter, transform_path = _transform}
-        local _ok, _error = zip.safe_extract(path.combine(CACHE_DIR_ARCHIVES, source), ".", _options)
+        local _ok, _error = zip.safe_extract(path.combine(am.options.CACHE_DIR_ARCHIVES, source), ".", _options)
         ami_assert(_ok, _error, EXIT_PKG_LAYER_EXTRACT_ERROR)
         log_trace("(" .. source .. ") " .. _unpackIdMap[source] .. " extracted.")
     end
@@ -242,12 +242,12 @@ local function _generate_model(modelInfo)
         return
     end
     log_trace("Generating app model...")
-    local _ok, _model = zip.safe_extract_string(path.combine(CACHE_DIR_ARCHIVES, modelInfo.model.source), "model.lua", {flattenRootDir = true})
+    local _ok, _model = zip.safe_extract_string(path.combine(am.options.CACHE_DIR_ARCHIVES, modelInfo.model.source), "model.lua", {flattenRootDir = true})
     if not _ok then
         ami_error("Failed to extract app model - " .. _model .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
     end
     for _, ext in ipairs(modelInfo.extensions) do
-        local _ok, _ext = zip.safe_extract_string(path.combine(CACHE_DIR_ARCHIVES, ext.source), "model.ext.lua", {flattenRootDir = true})
+        local _ok, _ext = zip.safe_extract_string(path.combine(am.options.CACHE_DIR_ARCHIVES, ext.source), "model.ext.lua", {flattenRootDir = true})
         if not _ok then
             ami_error("Failed to extract app model extension - " .. _ext .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
         end

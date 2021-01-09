@@ -21,7 +21,7 @@ local function _to_renderable_data(source)
    return _result
 end
 
-function render_templates()
+local function _render_templates()
    log_info("Generating app templated files...")
    local _ok, _templates = fs.safe_read_dir(".ami-templates", {recurse = true, asDirEntries = true})
    if not _ok or #_templates == 0 then
@@ -64,3 +64,7 @@ function render_templates()
       end
    end
 end
+
+return {
+   render_templates = _render_templates
+}

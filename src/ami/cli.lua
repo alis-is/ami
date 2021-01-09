@@ -1,4 +1,4 @@
-local _newLine = path.platform == "unix" and "\n" or "\r\n"
+local _print_help = require "ami.internals.cli.help".print_help
 
 local HELP_OPTION = {
     index = 100,
@@ -11,7 +11,7 @@ local HELP_OPTION = {
     @param {any} value
     @param {string} _type
 ]]
-local function parse_value(value, _type)
+local function _parse_value(value, _type)
     if type(value) ~= "string" then
         return value
     end
@@ -64,7 +64,7 @@ end
     @param {String{}} args
     @param {boolean} readOutput
 ]]
-local function exec_external_action(exec, args, injectArgs)
+local function _exec_external_action(exec, args, injectArgs)
     local _args = {}
     if type(injectArgs) == "table" then
         for _, v in ipairs(injectArgs) do
@@ -93,7 +93,7 @@ end
     @param {string} modulePath
     @params {any{}} ...
 ]]
-local function exec_native_action(action, ...)
+local function _exec_native_action(action, ...)
     if type(action) == "string" then
         return loadfile(action)(...)
     elseif type(action) == "table" then
@@ -133,7 +133,7 @@ end
     @param {table{}} options
     @param {table{}} commands
 ]]
-function parse_args(args, scheme, options)
+local function _parse_args(args, scheme, options)
     if not _is_array_of_tables(args) then
         args = cli.parse_args(args)
     end
@@ -176,7 +176,7 @@ function parse_args(args, scheme, options)
         if _arg.type == "option" then
             local _cliOptionDef = _cliOptionsMap[_arg.id]
             ami_assert(type(_cliOptionDef) == "table", "Unknown option - '" .. _arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
-            _cliOptionList[_cliOptionDef.id] = parse_value(_arg.value, _cliOptionDef.type)
+            _cliOptionList[_cliOptionDef.id] = _parse_value(_arg.value, _cliOptionDef.type)
         else
             if not options.stopOnCommand then
                 _cliCmd = _cliCmdMap[_arg.arg]
@@ -196,7 +196,7 @@ end
 --[[
     Validates processed args, whether there are valid in given cli definition
 ]]
-local function default_validate_args(cli, optionList, command)
+local function _default_validate_args(cli, optionList, command)
     local options = type(cli.options) == "table" and cli.options or {}
     --local commands = type(cli.commands) == "table" and cli.commands or {}
 
@@ -220,12 +220,12 @@ end
     @param {table} cli
     @param {string{}} args
 ]]
-function process_cli(_cli, args)
+local function _process_cli(_cli, args)
     ami_assert(type(_cli) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
 
     args = cli.parse_args(args)
 
-    local validate = type(_cli.validate) == "function" and _cli.validate or default_validate_args
+    local validate = type(_cli.validate) == "function" and _cli.validate or _default_validate_args
 
     local _cliId = _cli.id and "(" .. _cli.id .. ")" or ""
     local action = _cli.action
@@ -246,7 +246,7 @@ function process_cli(_cli, args)
             "Action has to be string specifying path to external cli",
             EXIT_CLI_INVALID_DEFINITION
         )
-        return exec_external_action(action, args, _cli.injectArgs)
+        return _exec_external_action(action, args, _cli.injectArgs)
     end
 
     if _cli.type == "raw" then
@@ -254,10 +254,10 @@ function process_cli(_cli, args)
         for _, v in ipairs(args) do
             table.insert(_rawArgs, v.arg)
         end
-        return exec_native_action(action, _rawArgs)
+        return _exec_native_action(action, _rawArgs)
     end
 
-    local optionList, command, remainingArgs = parse_args(args, _cli)
+    local optionList, command, remainingArgs = _parse_args(args, _cli)
 
     local _valid, _error = validate(_cli, optionList, command)
     ami_assert(_valid, _error, EXIT_CLI_ARG_VALIDATION_ERROR)
@@ -269,212 +269,14 @@ function process_cli(_cli, args)
     end
 
     if not _cli.customHelp and optionList.help then
-        return show_cli_help(_cli)
+        return _print_help(_cli)
     end
 
-    return exec_native_action(action, optionList, command, remainingArgs, _cli)
+    return _exec_native_action(action, optionList, command, remainingArgs, _cli)
 end
 
-local function are_all_hidden(t)
-    for _, v in pairs(t) do
-        if not v.hidden then
-            return false
-        end
-    end
-    return true
-end
-
-local function compare_args(t, a, b)
-    if t[a].index and t[b].index then
-        return t[a].index < t[b].index
-    else
-        return a < b
-    end
-end
-
-local function generate_usage(cli, includeOptionsInUsage)
-    local hasCommands = cli.commands and #util.keys(cli.commands)
-    local hasOptions = cli.options and #util.keys(cli.options)
-
-    local cliId = cli.__cliId or cli.id or eliPath.file(APP_ROOT_SCRIPT or "")
-    local usage = "Usage: " .. cliId .. " "
-    local optionalBegin = "["
-    local optionalEnd = "]"
-
-    for _, v in ipairs(cli.__commandStack or {}) do
-        usage = usage .. v .. " "
-    end
-
-    if hasOptions and includeOptionsInUsage then
-        local options = util.keys(cli.options)
-        local sort_function = function(a, b)
-            return compare_args(cli.options, a, b)
-        end
-
-        table.sort(options, sort_function)
-        for _, k in ipairs(options) do
-            local v = cli.options[k]
-            if not v.hidden then
-                local _begin = v.required and "" or optionalBegin
-                local _end = v.required and "" or optionalEnd
-                local optionAlias = v.aliases and v.aliases[1] or k
-                if #optionAlias == 1 then
-                    optionAlias = "-" .. optionAlias
-                else
-                    optionAlias = "--" .. optionAlias
-                end
-                usage = usage .. _begin .. optionAlias
-
-                if v.type == "boolean" or v.type == nil then
-                    usage = usage .. _end .. " "
-                else
-                    usage = usage .. "=<" .. k .. ">" .. _end .. " "
-                end
-            end
-        end
-    end
-
-    if hasCommands then
-        if cli.commandRequired then
-            usage = usage .. "<command>" .. " "
-        else
-            usage = usage .. "[<command>]" .. " "
-        end
-    end
-    return usage
-end
-
-local function generate_help_message(cli)
-    local hasCommands = cli.commands and #util.keys(cli.commands) and not are_all_hidden(cli.commands)
-    local hasOptions = cli.options and #util.keys(cli.options) and not are_all_hidden(cli.options)
-
-    local rows = {}
-    if hasOptions then
-        table.insert(rows, {left = "Options: ", description = ""})
-        local options = util.keys(cli.options)
-        local sort_function = function(a, b)
-            return compare_args(cli.options, a, b)
-        end
-        table.sort(options, sort_function)
-
-        for _, k in ipairs(options) do
-            local v = cli.options[k]
-            _aliases = ""
-            if v.aliases and v.aliases[1] then
-                for _, alias in ipairs(v.aliases) do
-                    if #alias == 1 then
-                        alias = "-" .. alias
-                    else
-                        alias = "--" .. alias
-                    end
-                    _aliases = _aliases .. alias .. "|"
-                end
-
-                _aliases = _aliases .. "--" .. k
-                if v.type == "boolean" or v.type == nil then
-                    _aliases = _aliases .. " "
-                else
-                    _aliases = _aliases .. "=<" .. k .. ">" .. " "
-                end
-            else
-                _aliases = "--" .. k
-            end
-            if not v.hidden then
-                table.insert(rows, {left = _aliases, description = v.description or ""})
-            end
-        end
-    end
-
-    if hasCommands then
-        table.insert(rows, {left = "", description = ""})
-        table.insert(rows, {left = "Commands: ", description = ""})
-        local commands = util.keys(cli.commands)
-        local sort_function = function(a, b)
-            return compare_args(cli.commands, a, b)
-        end
-        table.sort(commands, sort_function)
-
-        for _, k in ipairs(commands) do
-            local v = cli.commands[k]
-            if not v.hidden then
-                table.insert(rows, {left = k, description = v.summary or v.description or ""})
-            end
-        end
-    end
-
-    local leftLength = 0
-    for _, row in ipairs(rows) do
-        if #row.left > leftLength then
-            leftLength = #row.left
-        end
-    end
-
-    local msg = ""
-    for _, row in ipairs(rows) do
-        if #row.left == 0 then
-            msg = msg .. _newLine
-        else
-            msg = msg .. row.left .. string.rep(" ", leftLength - #row.left) .. "\t\t" .. row.description .. _newLine
-        end
-    end
-    return msg
-end
-
---[[
-    Shows cli help
-]]
-function show_cli_help(cli, options)
-    if type(options) ~= "table" then
-        options = {}
-    end
-    local title = options.title or cli.title
-    local description = options.description or cli.description
-    local _summary = options.summary or cli.summary
-
-    local includeOptionsInUsage = nil
-    if includeOptionsInUsage == nil and options.includeOptionsInUsage ~= nil then
-        includeOptionsInUsage = options.includeOptionsInUsage
-    end
-    if includeOptionsInUsage == nil and cli.includeOptionsInUsage ~= nil then
-        includeOptionsInUsage = cli.includeOptionsInUsage
-    end
-
-    if includeOptionsInUsage == nil then
-        includeOptionsInUsage = true
-    end
-
-    local printUsage = options.printUsage
-    if printUsage == nil then
-        printUsage = true
-    end
-
-    local footer = options.footer
-
-    if type(cli.help_message) == "function" then
-        print(cli.help_message(cli))
-    elseif type(cli.help_message) == "string" then
-        print(cli.help_message)
-    else
-        if OUTPUT_FORMAT == "json" then
-            print(require "hjson".stringify(cli.commands, {invalidObjectsAsType = true, indent = false}))
-        else
-            -- collect and print help
-            if type(title) == "string" then
-                print(title .. _newLine)
-            end
-            if type(description) == "string" then
-                print(description .. _newLine)
-            end
-            if type(_summary) == "string" then
-                print("- " .. _summary .. _newLine)
-            end
-            if printUsage then
-                print(generate_usage(cli, includeOptionsInUsage) .. _newLine)
-            end
-            print(generate_help_message(cli))
-            if type(footer) == "string" then
-                print(footer)
-            end
-        end
-    end
-end
+return {
+    parse_args = _parse_args,
+    process = _process_cli,
+    print_help = _print_help
+}

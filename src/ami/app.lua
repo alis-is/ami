@@ -1,4 +1,5 @@
-local _amiPkg = require "ami.pkg"
+local _amiPkg = require "ami.internals.pkg"
+local _amiTpl = require "ami.internals.tpl"
 
 local function _inject_mdl()
     local _path = "model.lua"
@@ -15,20 +16,20 @@ local function _normalize_app_pkg_type(pkg)
     if type(pkg.type) == "string" then
         pkg.type = {
             id = pkg.type,
-            repository = REPOSITORY_URL,
+            repository = am.options.REPOSITORY_URL,
             version = "latest"
         }
     end
     ami_assert(type(APP.type) == "table", "Invalid pkg type!", EXIT_INVALID_PKG_TYPE)
     if type(APP.type.repository) ~= "string" then
-        APP.type.repository = REPOSITORY_URL
-    elseif APP.type.repository ~= REPOSITORY_URL then
+        APP.type.repository = am.options.REPOSITORY_URL
+    elseif APP.type.repository ~= am.options.REPOSITORY_URL then
         log_warn("Using external repository - " .. APP.type.repository)
     end
 end
 
-function load_app_details()
-    local _ok, _configContent = fs.safe_read_file(APP_CONFIGURATION_PATH)
+local function _load_app_details()
+    local _ok, _configContent = fs.safe_read_file(am.options.APP_CONFIGURATION_PATH)
     if _ok then
         _ok, APP = pcall(hjson.parse, _configContent)
         if not _ok then
@@ -47,17 +48,17 @@ function load_app_details()
     end
 end
 
-function prepare_app()
+local function _prepare_app()
     log_info("Preparing the application...")
     local _fileList, _modelInfo, _verTree = _amiPkg.prepare_pkg(APP.type)
 
     _amiPkg.unpack_layers(_fileList)
     _amiPkg.generate_model(_modelInfo)
     fs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
-    load_app_details()
+    _load_app_details()
 end
 
-function is_update_available()
+local function _is_update_available()
     _normalize_app_pkg_type(APP)
 
     local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
@@ -77,7 +78,7 @@ function is_update_available()
     return _amiPkg.is_pkg_update_available(_verTree)
 end
 
-function get_app_version()
+local function _get_app_version()
     _normalize_app_pkg_type(APP)
 
     local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json", hjson.stringify_to_json(_verTree))
@@ -93,19 +94,15 @@ function get_app_version()
     end
 end
 
-function remove_app_data()
+local function _remove_app_data()
     local _ok = fs.safe_remove("data", {recurse = true, contentOnly = true})
     ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
 end
 
-local _protectedFiles = {}
-for _, configCandidate in ipairs(APP_CONFIGURATION_CANDIDATES) do
-    _protectedFiles[configCandidate] = true
-end
-
-function remove_app()
+local function _remove_app()
     local _ok, _files = fs.safe_read_dir(".", {recurse = true, returnFullPaths = true})
     ami_assert(_ok, "Failed to remove app - " .. (_error or "") .. "!", EXIT_RM_ERROR)
+    local _protectedFiles = am.options.__get_protected_files()
     for i = 1, #_files do
         local _file = _files[i]
 
@@ -115,3 +112,13 @@ function remove_app()
         end
     end
 end
+
+return {
+    remove = _remove_app,
+    remove_data = _remove_app_data,
+    get_version = _get_app_version,
+    is_update_available = _is_update_available,
+    prepare = _prepare_app,
+    load_details = _load_app_details,
+    render_templates = _amiTpl.render_templates
+}

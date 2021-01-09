@@ -1,14 +1,14 @@
 PLUGIN_IN_MEM_CACHE = PLUGIN_IN_MEM_CACHE or {}
 
-function _get_plugin_def(name, version)
+local function _get_plugin_def(name, version)
     local _pluginId = name .. "@" .. version
 
     if version == "latest" then
-        _defUrl = append_to_url(REPOSITORY_URL, "plugin", name, version .. ".json")
+        _defUrl = append_to_url(am.options.REPOSITORY_URL, "plugin", name, version .. ".json")
     else
-        _defUrl = append_to_url(REPOSITORY_URL, "plugin", name, "v", version .. ".json")
+        _defUrl = append_to_url(am.options.REPOSITORY_URL, "plugin", name, "v", version .. ".json")
     end
-    local _defLocalPath = path.combine(CACHE_PLUGIN_DIR_DEFS, _pluginId)
+    local _defLocalPath = path.combine(am.options.CACHE_PLUGIN_DIR_DEFS, _pluginId)
     if CACHE_DISABLED ~= true then
         local _ok, _pluginDefJson = fs.safe_read_file(_defLocalPath)
         if _ok then
@@ -17,7 +17,7 @@ function _get_plugin_def(name, version)
                 _ok and
                     (version ~= "latest" or
                         (type(_pluginDef.lastAmiCheck) == "number" and
-                            _pluginDef.lastAmiCheck + AMI_CACHE_TIMEOUT > os.time()))
+                            _pluginDef.lastAmiCheck + am.options.CACHE_EXPIRATION_TIME > os.time()))
              then
                 return _pluginDef
             end
@@ -37,7 +37,7 @@ function _get_plugin_def(name, version)
         EXIT_PLUGIN_INVALID_DEFINITION
     )
 
-    if CACHE_DISABLED ~= true then
+    if am.options.CACHE_DISABLED ~= true then
         local _cachedDef = util.merge_tables(_pluginDef, {lastAmiCheck = os.time()})
         local _ok, _pluginDefJson = hjson.safe_stringify(_cachedDef)
         _ok = _ok and fs.safe_write_file(_defLocalPath, _pluginDefJson)
@@ -53,7 +53,7 @@ function _get_plugin_def(name, version)
     return _pluginDef
 end
 
-function load_plugin(name, options)
+local function _load_plugin(name, options)
     if type(options) ~= "table" then
         options = {}
     end
@@ -71,8 +71,7 @@ function load_plugin(name, options)
     log_trace("Plugin not loaded, loading...")
 
     local _pluginDefinition = _get_plugin_def(name, _version)
-
-    local _cachedArchivePath = path.combine(CACHE_PLUGIN_DIR_ARCHIVES, _pluginId)
+    local _cachedArchivePath = path.combine(am.options.CACHE_PLUGIN_DIR_ARCHIVES, _pluginId)
     local _downloadRequired = true
     if fs.exists(_cachedArchivePath) then
         log_trace("Plugin package found, verifying...")
@@ -147,6 +146,6 @@ function load_plugin(name, options)
     return _result
 end
 
-function safe_load_plugin(...)
-    return pcall(load_plugin, ...)
-end
+return util.generate_safe_functions({
+    load = _load_plugin
+})

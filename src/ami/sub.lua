@@ -1,6 +1,5 @@
-local hjson = require "hjson"
 
-function load_sub_ami()
+local function _load_sub_ami()
     log_trace("Loading app specific ami...")
     local _ok, _subAmiContent = fs.safe_read_file("ami.json")
     if _ok then
@@ -44,3 +43,7 @@ function load_sub_ami()
     AMI = util.merge_tables(AMI, {id = _id, title = _title}, true)
     return true
 end
+
+return {
+    _load_sub_ami = load_sub_ami
+}

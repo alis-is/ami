@@ -1,39 +1,19 @@
-REPOSITORY_URL = "https://raw.githubusercontent.com/cryon-io/air/master/ami/"
-AMI_VERSION = "0.5.0"
-AMI_ABOUT = "AMI - Application Management Interface - cli " .. AMI_VERSION .. " (C) 2020 cryon.io"
-APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"}
-APP_CONFIGURATION_PATH = nil
-AMI_CACHE_TIMEOUT = 86400
+local AM_VERSION = "0.5.0"
 
 elify() -- globalize eli libs
 hjson = util.generate_safe_functions(require "hjson")
+am = {
+    cli = require"ami.cli",
+    cache = require"ami.cache",
+    app = require"ami.app",
+    VERSION = AM_VERSION,
+    ABOUT = "AMI - Application Management Interface - cli " .. AM_VERSION .. " (C) 2020 cryon.io",
+    options = require"ami.opt",
+    plugin = require"ami.plugin"
+}
 
 GLOBAL_LOGGER = Logger:new()
 log_success, log_trace, log_debug, log_info, log_warn, log_error = util.global_log_factory("ami", "success", "trace", "debug", "info", "warn", "error")
-
-function set_cache_dir(_path)
-    if _path == "false" then
-        CACHE_DISABLED = true
-        _path = ""
-    end
-    if not path.isabs(_path) then
-        _path = path.combine(os.EOS and os.cwd() or ".", _path)
-    end
-
-    CACHE_DIR = _path
-    CACHE_DIR_DEFS = path.combine(CACHE_DIR, "definition")
-    CACHE_DIR_ARCHIVES = path.combine(CACHE_DIR, "archive")
-
-    fs.mkdirp(CACHE_DIR_DEFS)
-    fs.mkdirp(CACHE_DIR_ARCHIVES)
-
-    CACHE_PLUGIN_DIR = path.combine(CACHE_DIR, "plugin")
-    CACHE_PLUGIN_DIR_DEFS = path.combine(CACHE_PLUGIN_DIR, "definition")
-    CACHE_PLUGIN_DIR_ARCHIVES = path.combine(CACHE_PLUGIN_DIR, "archive")
-
-    fs.mkdirp(CACHE_PLUGIN_DIR_ARCHIVES)
-    fs.mkdirp(CACHE_PLUGIN_DIR_DEFS)
-end
 
 ami_error = ami_error or function (msg, exitCode)
     log_error(msg)
@@ -49,7 +29,7 @@ function ami_assert(condition, msg, exitCode)
     end
 end
 
-set_cache_dir("/var/cache/ami")
+am.options.CACHE_DIR = "/var/cache/ami"
 
 basicCliOptions = {
     path = {
@@ -110,7 +90,7 @@ basicCliOptions = {
     }
 }
 
-local _parasedOptions = parse_args(arg, {options = basicCliOptions}, {strict = false, stopOnCommand = true})
+local _parasedOptions = am.cli.parse_args(arg, {options = basicCliOptions}, {strict = false, stopOnCommand = true})
 
 if _parasedOptions["local-sources"] then
     local _ok, _localPkgsFile = fs.safe_read_file(_parasedOptions["local-sources"])
@@ -132,26 +112,19 @@ if _parasedOptions.path then
     end
 end
 
-for _, configCandidate in ipairs(APP_CONFIGURATION_CANDIDATES) do
-    if fs.exists(configCandidate) then
-        APP_CONFIGURATION_PATH = configCandidate
-        break
-    end
-end
-
 if _parasedOptions.cache then
-    set_cache_dir(_parasedOptions.cache)
+    am.options.CACHE_DIR = _parasedOptions.cache
 end
 
 if _parasedOptions["cache-timeout"] then
-    AMI_CACHE_TIMEOUT = _parasedOptions["cache-timeout"]
+    am.options.CACHE_EXPIRATION_TIME = _parasedOptions["cache-timeout"]
 end
 
 if _parasedOptions["output-format"] then
     GLOBAL_LOGGER.options.format = _parasedOptions["output-format"]
     log_debug("Log format set to '" .. _parasedOptions["output-format"] .. "'.")
     if _parasedOptions["output-format"] == "json" then
-        OUTPUT_FORMAT = "json"
+        am.options.OUTPUT_FORMAT = "json"
     end
 end
 
@@ -161,17 +134,17 @@ if _parasedOptions["log-level"] then
 end
 
 if _parasedOptions["no-integrity-checks"] then
-    NO_INTEGRITY_CHECKS = true
+    am.options.NO_INTEGRITY_CHECKS = true
 end
 
-if type(APP_CONFIGURATION_PATH) ~= "string" then
+if type(am.options.APP_CONFIGURATION_PATH) ~= "string" then
     -- we are working without app configuration, expose default options
     if _parasedOptions.version then
-        print(AMI_VERSION)
+        print(am.VERSION)
         os.exit(EXIT_INVALID_CONFIGURATION)
     end
     if _parasedOptions.about then
-        print(AMI_ABOUT)
+        print(am.ABOUT)
         os.exit(EXIT_INVALID_CONFIGURATION)
     end
 end

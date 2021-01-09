@@ -9,7 +9,7 @@ require "src.ami.cli"
 require "src.ami.util"
 require "src.ami.init"
 require "src.ami.plugin"
-local _amiPkg = require "src.ami.pkg"
+local _amiPkg = require "src.ami.internals.pkg"
 
 local _defaultCwd = os.cwd()
 
@@ -19,7 +19,7 @@ _test["normalize pkg type"] = function()
     }
     _amiPkg.normalize_pkg_type(_pkgType)
     _test.assert(_pkgType.version == "latest")
-    _test.assert(_pkgType.repository == REPOSITORY_URL)
+    _test.assert(_pkgType.repository == am.options.REPOSITORY_URL)
 end
 
 _test["normalize pkg type (specific version)"] = function()
@@ -42,8 +42,8 @@ _test["normalize pkg type (specific repository)"] = function()
 end
 
 _test["prepare pkg from remote"] = function()
-    set_cache_dir("tests/cache/1")
-    cleanup_pkg_cache()
+    am.options.CACHE_DIR = "tests/cache/1"
+    am.cache.cleanup_pkg_cache()
 
     local _pkgType = {
         id = "test.app"
@@ -69,7 +69,7 @@ _test["prepare pkg from remote"] = function()
 end
 
 _test["prepare pkg from local cache"] = function()
-    set_cache_dir("tests/cache/2")
+    am.options.CACHE_DIR = "tests/cache/2"
 
     local _pkgType = {
         id = "test.app",
@@ -96,8 +96,8 @@ _test["prepare pkg from local cache"] = function()
 end
 
 _test["prepare specific pkg from remote"] = function()
-    set_cache_dir("tests/cache/1")
-    cleanup_pkg_cache()
+    am.options.CACHE_DIR = "tests/cache/1"
+    am.cache.cleanup_pkg_cache()
 
     local _pkgType = {
         id = "test.app",
@@ -124,7 +124,7 @@ _test["prepare specific pkg from remote"] = function()
 end
 
 _test["prepare specific pkg from local cache"] = function()
-    set_cache_dir("tests/cache/2")
+    am.options.CACHE_DIR = "tests/cache/2"
 
     local _pkgType = {
         id = "test.app",
@@ -152,8 +152,8 @@ _test["prepare specific pkg from local cache"] = function()
 end
 
 _test["prepare pkg no integrity checks"] = function()
-    NO_INTEGRITY_CHECKS = true
-    set_cache_dir("tests/cache/3")
+    am.options.NO_INTEGRITY_CHECKS = true
+    am.options.CACHE_DIR = "tests/cache/3"
 
     local _pkgType = {
         id = "test.app",
@@ -177,11 +177,11 @@ _test["prepare pkg no integrity checks"] = function()
     _test.assert(_verTree.dependencies[1].id == "test.base")
     _test.assert(_verTree.dependencies[2].id == "test.base2")
     _test.assert(_verTree.id == "test.app")
-    NO_INTEGRITY_CHECKS = false
+    am.options.NO_INTEGRITY_CHECKS = false
 end
 
 _test["prepare pkg from alternative channel"] = function()
-    set_cache_dir("tests/cache/4")
+    am.options.CACHE_DIR = "tests/cache/4"
 
     local _pkgType = {
         id = "test.app",
@@ -194,7 +194,7 @@ end
 
 
 _test["prepare pkg from non existing alternative channel"] = function()
-    set_cache_dir("tests/cache/4")
+    am.options.CACHE_DIR = "tests/cache/4"
 
     local _pkgType = {
         id = "test.app",
@@ -206,7 +206,7 @@ _test["prepare pkg from non existing alternative channel"] = function()
 end
 
 _test["unpack layers"] = function()
-    set_cache_dir("tests/cache/2")
+    am.options.CACHE_DIR = "tests/cache/2"
     local _pkgType = {
         id = "test.app",
         wanted_version = "latest"
@@ -233,7 +233,7 @@ _test["unpack layers"] = function()
 end
 
 _test["generate model"] = function()
-    set_cache_dir("tests/cache/2")
+    am.options.CACHE_DIR = "tests/cache/2"
     local _pkgType = {
         id = "test.app",
         wanted_version = "latest"
