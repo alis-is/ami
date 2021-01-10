@@ -1,15 +1,17 @@
-PLUGIN_IN_MEM_CACHE = PLUGIN_IN_MEM_CACHE or {}
+local _util = require "ami.internals.util"
+
+local PLUGIN_IN_MEM_CACHE = PLUGIN_IN_MEM_CACHE or {}
 
 local function _get_plugin_def(name, version)
     local _pluginId = name .. "@" .. version
 
     if version == "latest" then
-        _defUrl = append_to_url(am.options.REPOSITORY_URL, "plugin", name, version .. ".json")
+        _defUrl = _util.append_to_url(am.options.REPOSITORY_URL, "plugin", name, version .. ".json")
     else
-        _defUrl = append_to_url(am.options.REPOSITORY_URL, "plugin", name, "v", version .. ".json")
+        _defUrl = _util.append_to_url(am.options.REPOSITORY_URL, "plugin", name, "v", version .. ".json")
     end
     local _defLocalPath = path.combine(am.options.CACHE_PLUGIN_DIR_DEFS, _pluginId)
-    if CACHE_DISABLED ~= true then
+    if am.options.CACHE_DISABLED ~= true then
         local _ok, _pluginDefJson = fs.safe_read_file(_defLocalPath)
         if _ok then
             local _ok, _pluginDef = hjson.safe_parse(_pluginDefJson)
@@ -146,6 +148,15 @@ local function _load_plugin(name, options)
     return _result
 end
 
+local function __remove_cached_plugin(id, version)
+    if type(version) ~= "string" then
+        version = "latest"
+    end
+    local _pluginId = id .. '@' .. version
+    PLUGIN_IN_MEM_CACHE[_pluginId] = nil
+end
+
 return util.generate_safe_functions({
-    load = _load_plugin
+    get = _load_plugin,
+    __remove_cached = __remove_cached_plugin
 })

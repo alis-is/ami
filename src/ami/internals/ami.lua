@@ -1,5 +1,4 @@
-
-local function _load_sub_ami()
+local function _load_ami()
     log_trace("Loading app specific ami...")
     local _ok, _subAmiContent = fs.safe_read_file("ami.json")
     if _ok then
@@ -36,14 +35,15 @@ local function _load_sub_ami()
         return false
     end
 
-    local _id = AMI.id
-    local _title = exString.join_strings(" - ", AMI.title, _subAmi.title)
+    local _id = am.__inteface.id
+    local _title = exString.join_strings(" - ", am.__inteface.title, _subAmi.title)
 
-    AMI = util.merge_tables(AMI, _subAmi, true)
-    AMI = util.merge_tables(AMI, {id = _id, title = _title}, true)
+    am.__inteface = util.merge_tables(am.__inteface, _subAmi, true)
+    am.__inteface.id = _id
+    am.__inteface.title = _title
     return true
 end
 
 return {
-    _load_sub_ami = load_sub_ami
+    load_sub_ami = _load_ami
 }

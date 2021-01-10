@@ -1,4 +1,4 @@
-function append_to_url(p, ...)
+local function _append_to_url(p, ...)
     if type(p) == "string" then
         for _, _arg in ipairs(table.pack(...)) do
             if type(_arg) == "string" then
@@ -8,3 +8,7 @@ function append_to_url(p, ...)
     end
     return p
 end
+
+return {
+    append_to_url = _append_to_url
+}

@@ -56,7 +56,7 @@ _test["parse args (ignore commands)"] = function()
     }
 
     local _argList = {"-to", "-to2=testValue", "--testOption3=2", "test", "-c", "-d", "test2"}
-    local _ok, _cliOptionList, _cliCmd, _cliRemainingArgs = pcall(am.cli.parse_args, _argList, _cli)
+    local _ok, _cliOptionList, _cliCmd, _cliRemainingArgs = pcall(am.parse_args, _cli, _argList)
     _test.assert(_ok)
     _test.assert(_cliOptionList.testOption2 == "testValue")
     _test.assert(_cliOptionList.testOption == true)
@@ -78,7 +78,7 @@ _test["process cli (native)"] = function()
         },
         action = function(_, command, args, _)
             if command then
-                return am.cli.process(command, args, {strict = {unknown = true}})
+                return am.execute(command, args)
             else
                 ami_error("No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
             end
@@ -86,7 +86,7 @@ _test["process cli (native)"] = function()
     }
 
     local _argList = {"test", "testResult"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok)
     _test.assert(_result == "testResult")
 
@@ -112,7 +112,7 @@ _test["process cli (native)"] = function()
         },
         action = function(_, command, args, _)
             if command then
-                return am.cli.process(command, args, {strict = {unknown = true}})
+                return am.execute(command, args)
             else
                 ami_error("No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
             end
@@ -120,11 +120,11 @@ _test["process cli (native)"] = function()
     }
 
     local _argList = {"test", "-v=testResult2", "return" }
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok)
     _test.assert(_result == "testResult2")
     local _argList = { "test", "-v=testResult2" }
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok)
     _test.assert(_result == nil)
 
@@ -146,7 +146,7 @@ _test["process cli (native)"] = function()
         },
         action = function(_, command, args, _)
             if command then
-                return am.cli.process(command, args, {strict = {unknown = true}})
+                return am.execute(command, args)
             else
                 ami_error("No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
             end
@@ -154,7 +154,7 @@ _test["process cli (native)"] = function()
     }
 
     local _argList = {"test", "--help" }
-    local _ok, error = pcall(am.cli.process, _cli, _argList)
+    local _ok, error = pcall(am.execute, _cli, _argList)
     print(error)
     _test.assert(_ok)
 end
@@ -172,7 +172,7 @@ _test["process cli (external)"] = function()
         },
         action = function(_, command, args, _)
             if command then
-                return am.cli.process(command, args, {strict = {unknown = true}})
+                return am.execute(command, args)
             else
                 ami_error("No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
             end
@@ -180,20 +180,20 @@ _test["process cli (external)"] = function()
     }
 
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 179)
 
     proc.EPROC = false
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 179)
     proc.EPROC = true
 
@@ -209,7 +209,7 @@ _test["process cli (external)"] = function()
         },
         action = function(_, command, args, _)
             if command then
-                return am.cli.process(command, args, {strict = {unknown = true}})
+                return am.execute(command, args)
             else
                 ami_error("No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
             end
@@ -217,20 +217,20 @@ _test["process cli (external)"] = function()
     }
 
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 179)
 
     proc.EPROC = false
     local _argList = {"test", "-c", "exit 0"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 0)
 
     local _argList = {"test", "-c", "exit 179"}
-    local _ok, _result = pcall(am.cli.process, _cli, _argList)
+    local _ok, _result = pcall(am.execute, _cli, _argList)
     _test.assert(_ok and _result == 179)
     proc.EPROC = true
 end
@@ -282,7 +282,7 @@ _test["show cli help"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {})
+            am.print_help(_cli, {})
         end
     )
     _test.assert(_ok)
@@ -327,7 +327,7 @@ _test["show cli help (includeOptionsInUsage = false)"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {includeOptionsInUsage = false})
+            am.print_help(_cli, {includeOptionsInUsage = false})
         end
     )
     _test.assert(_ok and not _result:match("%[%-%-to%] %[%-%-to2%]") and _result:match("Usage:"))
@@ -365,7 +365,7 @@ _test["show cli help (printUsage = false)"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {printUsage = false})
+            am.print_help(_cli, {printUsage = false})
         end
     )
     _test.assert(_ok and not _result:match("%[%-%-to%] %[%-%-to2%]") and not _result:match("Usage:"))
@@ -405,7 +405,7 @@ _test["show cli help (hidden options & cmd)"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {})
+            am.print_help(_cli, {})
         end
     )
     _test.assert(_ok and not _result:match("test3") and not _result:match("to2") and not _result:match("testOption2"))
@@ -444,7 +444,7 @@ _test["show cli help (footer)"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {footer = "test footer"})
+            am.print_help(_cli, {footer = "test footer"})
         end
     )
 
@@ -461,7 +461,7 @@ _test["show cli help (custom help message)"] = function()
     local _ok, _result =
         _collect_printout(
         function()
-            am.cli.print_help(_cli, {})
+            am.print_help(_cli, {})
         end
     )
     _test.assert(_ok and _cli.help_message .. "\n" == _result)

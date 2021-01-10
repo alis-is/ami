@@ -28,8 +28,17 @@ local function _normalize_app_pkg_type(pkg)
     end
 end
 
-local function _load_app_details()
-    local _ok, _configContent = fs.safe_read_file(am.options.APP_CONFIGURATION_PATH)
+local function _get_configuration_path()
+    local _configurationCandidates = am.options.APP_CONFIGURATION_CANDIDATES
+    for _, _cfgCandidate in ipairs(_configurationCandidates) do
+        if fs.exists(_cfgCandidate) then
+            return _cfgCandidate
+        end
+    end
+end
+
+local function _load_config()
+    local _ok, _configContent = fs.safe_read_file(_get_configuration_path())
     if _ok then
         _ok, APP = pcall(hjson.parse, _configContent)
         if not _ok then
@@ -55,7 +64,7 @@ local function _prepare_app()
     _amiPkg.unpack_layers(_fileList)
     _amiPkg.generate_model(_modelInfo)
     fs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
-    _load_app_details()
+    _load_config()
 end
 
 local function _is_update_available()
@@ -99,10 +108,18 @@ local function _remove_app_data()
     ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
 end
 
+local _get_protected_files = function ()
+    local _protectedFiles = {}
+    for _, configCandidate in ipairs(am.options.APP_CONFIGURATION_CANDIDATES) do
+        _protectedFiles[configCandidate] = true
+    end
+    return _protectedFiles
+end
+
 local function _remove_app()
     local _ok, _files = fs.safe_read_dir(".", {recurse = true, returnFullPaths = true})
     ami_assert(_ok, "Failed to remove app - " .. (_error or "") .. "!", EXIT_RM_ERROR)
-    local _protectedFiles = am.options.__get_protected_files()
+    local _protectedFiles = _get_protected_files()
     for i = 1, #_files do
         local _file = _files[i]
 
@@ -113,12 +130,12 @@ local function _remove_app()
     end
 end
 
-return {
-    remove = _remove_app,
-    remove_data = _remove_app_data,
+return util.generate_safe_functions({
+    load_config = _load_config,
+    prepare = _prepare_app,
+    render = _amiTpl.render_templates,
     get_version = _get_app_version,
     is_update_available = _is_update_available,
-    prepare = _prepare_app,
-    load_details = _load_app_details,
-    render_templates = _amiTpl.render_templates
-}
+    remove_data = _remove_app_data,
+    remove = _remove_app
+})

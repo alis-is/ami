@@ -15,11 +15,11 @@ local function get_extensions()
 end
 
 _eliProc.chdir("src")
-amalg("-o", "../bin/ami.lua", "-s", "amic.lua", get_extensions())--, get_extensions())
+amalg("-o", "../bin/ami.lua", "-s", "ami.lua", get_extensions())--, get_extensions())
 
 local _exitCodes = require("ami.exit_codes")
-local _exitCodesJson = _hjson.stringify_to_json(_exitCodes, { item_sort_key = function (k1, k2) 
-    return _exitCodes[k1:match('"(.*)"')] < _exitCodes[k2:match('"(.*)"')] 
+local _exitCodesJson = _hjson.stringify_to_json(_exitCodes, { item_sort_key = function (k1, k2)
+    return _exitCodes[k1:match('"(.*)"')] < _exitCodes[k2:match('"(.*)"')]
 end  })
 
 _eliFs.write_file("../bin/exit-codes.json", _exitCodesJson)

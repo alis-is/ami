@@ -4,11 +4,6 @@ require"tests.test_init"
 
 local stringify = require "hjson".stringify
 
-require "src.ami.exit_codes"
-require "src.ami.cli"
-require "src.ami.util"
-require "src.ami.init"
-require "src.ami.plugin"
 local _amiPkg = require "src.ami.internals.pkg"
 
 local _defaultCwd = os.cwd()
@@ -43,7 +38,7 @@ end
 
 _test["prepare pkg from remote"] = function()
     am.options.CACHE_DIR = "tests/cache/1"
-    am.cache.cleanup_pkg_cache()
+    am.cache.rm_pkgs()
 
     local _pkgType = {
         id = "test.app"
@@ -97,7 +92,7 @@ end
 
 _test["prepare specific pkg from remote"] = function()
     am.options.CACHE_DIR = "tests/cache/1"
-    am.cache.cleanup_pkg_cache()
+    am.cache.rm_pkgs()
 
     local _pkgType = {
         id = "test.app",

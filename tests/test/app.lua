@@ -10,7 +10,7 @@ _test["load app details (json)"] = function()
     APP = {}
     am.options.APP_CONFIGURATION_PATH = "app.json"
     os.chdir("tests/app/app_details/1")
-    local _ok, error = pcall(am.app.load_details)
+    local _ok, error = pcall(am.app.load_config)
     local _result = hash.sha256sum(stringify(APP), {hex = true})
     os.chdir(_defaultCwd)
     _test.assert(_result == "59ce504e40b90ae50c6b99567fd57186bad89939a1714c3335381eccf9fb1688")
@@ -21,7 +21,7 @@ _test["load app details (hjson)"] = function()
     APP = {}
     am.options.APP_CONFIGURATION_PATH = "app.hjson"
     os.chdir("tests/app/app_details/1")
-    local _ok = pcall(am.app.load_details)
+    local _ok = pcall(am.app.load_config)
     local _result = hash.sha256sum(stringify(APP), {hex = true})
     os.chdir(_defaultCwd)
     _test.assert(_result == "59ce504e40b90ae50c6b99567fd57186bad89939a1714c3335381eccf9fb1688")
@@ -32,7 +32,7 @@ _test["load app details (inject model)"] = function()
     APP = {}
     am.options.APP_CONFIGURATION_PATH = "app.json"
     os.chdir("tests/app/app_details/2")
-    local _ok = pcall(am.app.load_details)
+    local _ok = pcall(am.app.load_config)
     local _result = hash.sha256sum(stringify(APP), {hex = true})
     os.chdir(_defaultCwd)
     _test.assert(_result == "a39be4440996c688ff15e5b9c151a35d47cd419405662daffc587795d2f4bc2e")
@@ -49,7 +49,6 @@ _test["prepare app"] = function()
     os.chdir(_testDir)
 
     local _ok, error = pcall(am.app.prepare)
-    print(_ok, error)
     _test.assert(_ok)
 
     os.chdir(_defaultCwd)
@@ -134,7 +133,7 @@ _test["is update available"] = function()
     local _testDir = "tests/app/app_update/1"
 
     os.chdir(_testDir)
-    local _ok = pcall(am.app.load_details)
+    local _ok = pcall(am.app.load_config)
     _test.assert(am.app.is_update_available())
     os.chdir(_defaultCwd)
 end
@@ -146,7 +145,7 @@ _test["is update available (updated already)"] = function()
     local _testDir = "tests/app/app_update/2"
 
     os.chdir(_testDir)
-    local _ok = pcall(am.app.load_details)
+    local _ok = pcall(am.app.load_config)
     _test.assert(not am.app.is_update_available())
     os.chdir(_defaultCwd)
 end
@@ -158,7 +157,7 @@ _test["is update available alternative channel"] = function()
     local _testDir = "tests/app/app_update/3"
 
     os.chdir(_testDir)
-    local _ok = pcall(am.app.load_details)
+    local _ok = pcall(am.app.load_config)
     local _isAvailable, _pkgId, _version = am.app.is_update_available()
     _test.assert(_isAvailable and _version == "0.0.2-beta")
     os.chdir(_defaultCwd)
