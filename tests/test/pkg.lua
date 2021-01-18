@@ -20,10 +20,10 @@ end
 _test["normalize pkg type (specific version)"] = function()
     local _pkgType = {
         id = "test.app",
-        version = "0.0.1"
+        version = "0.0.2"
     }
     _amiPkg.normalize_pkg_type(_pkgType)
-    _test.assert(_pkgType.version == "0.0.1")
+    _test.assert(_pkgType.version == "0.0.2")
 end
 
 _test["normalize pkg type (specific repository)"] = function()
@@ -80,9 +80,9 @@ _test["prepare pkg from local cache"] = function()
     -- model check
     local _testBase2PkgHash = _fileList["__test/assets/test2.template.txt"].source
     local _testAppPkgHash = _fileList["__test/assets/test.template.txt"].source
-    _test.assert(_modelInfo.model.source == "b1aaddc92d485909b75d37768560d8ee82a1358c204e849a46053383fec0dc8d")
-    _test.assert(_modelInfo.extensions[1].source == "b94a40bdea44a8324eaa105455c86e9767b91406754200730804206583e5a3df")
-    _test.assert(_modelInfo.extensions[2].source == "4512b9fd89a46518edd332ac6db07b33e278a685b0ed4fa2ce5fcaab9cf37e43")
+    _test.assert(_modelInfo.model.source == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
+    _test.assert(_modelInfo.extensions[1].source == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
+    _test.assert(_modelInfo.extensions[2].source == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")
@@ -96,7 +96,7 @@ _test["prepare specific pkg from remote"] = function()
 
     local _pkgType = {
         id = "test.app",
-        version = "0.0.1"
+        version = "0.0.2"
     }
     _amiPkg.normalize_pkg_type(_pkgType)
     local _result, _fileList, _modelInfo, _verTree = pcall(_amiPkg.prepare_pkg, _pkgType)
@@ -124,7 +124,7 @@ _test["prepare specific pkg from local cache"] = function()
     local _pkgType = {
         id = "test.app",
         repository = "non existing repository",
-        version = "0.0.1"
+        version = "0.0.2"
     }
     _amiPkg.normalize_pkg_type(_pkgType)
     local _result, _fileList, _modelInfo, _verTree = pcall(_amiPkg.prepare_pkg, _pkgType)
@@ -136,9 +136,10 @@ _test["prepare specific pkg from local cache"] = function()
     -- model check
     local _testBase2PkgHash = _fileList["__test/assets/test2.template.txt"].source
     local _testAppPkgHash = _fileList["__test/assets/test.template.txt"].source
-    _test.assert(_modelInfo.model.source == "b1aaddc92d485909b75d37768560d8ee82a1358c204e849a46053383fec0dc8d")
-    _test.assert(_modelInfo.extensions[1].source == "b94a40bdea44a8324eaa105455c86e9767b91406754200730804206583e5a3df")
-    _test.assert(_modelInfo.extensions[2].source == "4512b9fd89a46518edd332ac6db07b33e278a685b0ed4fa2ce5fcaab9cf37e43")
+
+    _test.assert(_modelInfo.model.source == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
+    _test.assert(_modelInfo.extensions[1].source == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
+    _test.assert(_modelInfo.extensions[2].source == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")
@@ -164,9 +165,10 @@ _test["prepare pkg no integrity checks"] = function()
     -- model check
     local _testBase2PkgHash = _fileList["__test/assets/test2.template.txt"].source
     local _testAppPkgHash = _fileList["__test/assets/test.template.txt"].source
-    _test.assert(_modelInfo.model.source == "b1aaddc92d485909b75d37768560d8ee82a1358c204e849a46053383fec0dc8d")
-    _test.assert(_modelInfo.extensions[1].source == "b94a40bdea44a8324eaa105455c86e9767b91406754200730804206583e5a3df")
-    _test.assert(_modelInfo.extensions[2].source == "48fb2e68bbd60beccf050f7cc0a5bfddac3a8688c73d8c0a1e985628a4f5e4ad")
+
+    _test.assert(_modelInfo.model.source == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
+    _test.assert(_modelInfo.extensions[1].source == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
+    _test.assert(_modelInfo.extensions[2].source == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")
@@ -217,6 +219,7 @@ _test["unpack layers"] = function()
 
     local _result = pcall(_amiPkg.unpack_layers, _fileList)
     _test.assert(_result)
+
     local _ok, _testHash = fs.safe_hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
     _test.assert(_ok and _testHash == "c2881a3b33316d5ba77075715601114092f50962d1935582db93bb20828fdae5")
     local _ok, _test2Hash = fs.safe_hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
@@ -246,7 +249,7 @@ _test["generate model"] = function()
     _test.assert(_result)
 
     local _ok, _modelHash = fs.safe_hash_file("model.lua", {hex = true})
-    _test.assert(_ok and _modelHash == "5644aab8a10461d20184a0c17ff3b97395740a76a6e14c183310067f2e3eda39")  
+    _test.assert(_ok and _modelHash == "fc264e110dad16845521d2c7b1347005ff6b682bac0b8b99e66b0817b7ae522b") 
 
     os.chdir(_defaultCwd)
 end
@@ -271,7 +274,7 @@ _test["is update available from alternative channel"] = function()
     }
     local isAvailable, id, version = _amiPkg.is_pkg_update_available(_pkg, "0.0.0")
     _test.assert(isAvailable)
-    local isAvailable, id, version = _amiPkg.is_pkg_update_available(_pkg, "0.0.2-beta")
+    local isAvailable, id, version = _amiPkg.is_pkg_update_available(_pkg, "0.0.3-beta")
     _test.assert(not isAvailable)
     local isAvailable, id, version = _amiPkg.is_pkg_update_available(_pkg, "100.0.0")
     _test.assert(not isAvailable)

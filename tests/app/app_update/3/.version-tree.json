@@ -4,20 +4,20 @@
    "dependencies": [],
    "id": "test.base",
    "repository": "https://raw.githubusercontent.com/cryon-io/air/master/ami/",
-   "version": "0.0.1",
+   "version": "0.0.2",
    "wanted_version": "latest"
   },
   {
    "dependencies": [],
    "id": "test.base2",
    "repository": "https://raw.githubusercontent.com/cryon-io/air/master/ami/",
-   "version": "0.0.1",
+   "version": "0.0.2",
    "wanted_version": "latest"
   }
  ],
  "id": "test.app",
  "repository": "https://raw.githubusercontent.com/cryon-io/air/master/ami/",
- "version": "0.0.1",
+ "version": "0.0.2",
  "wanted_version": "latest",
  "channel": "beta"
 }

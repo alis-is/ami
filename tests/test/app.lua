@@ -67,7 +67,7 @@ _test["get app version"] = function()
     local _ok = pcall(am.app.prepare)
     _test.assert(_ok)
     local _ok, _version = pcall(am.app.get_version)
-    _test.assert(_ok and _version == "0.0.1")
+    _test.assert(_ok and _version == "0.0.2")
 
     os.chdir(_defaultCwd)
 end
@@ -159,7 +159,7 @@ _test["is update available alternative channel"] = function()
     os.chdir(_testDir)
     local _ok = pcall(am.app.load_config)
     local _isAvailable, _pkgId, _version = am.app.is_update_available()
-    _test.assert(_isAvailable and _version == "0.0.2-beta")
+    _test.assert(_isAvailable and _version == "0.0.3-beta")
     os.chdir(_defaultCwd)
 end
 
