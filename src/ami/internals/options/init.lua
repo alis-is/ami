@@ -1,9 +1,10 @@
 local _cacheOptionsHooks = require"ami.internals.options.cache"
+local _repositoryOptionsHooks = require"ami.internals.options.repository"
 
 local _indexHooks = {}
 local _newindexHooks = {}
 
-for _, v in ipairs({ _cacheOptionsHooks }) do
+for _, v in ipairs({ _cacheOptionsHooks, _repositoryOptionsHooks }) do
     if type(v) == "table" then
         if type(v.index) == "function" then
             table.insert(_indexHooks, v.index)

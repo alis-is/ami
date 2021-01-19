@@ -6,9 +6,9 @@ local function _get_plugin_def(name, version)
     local _pluginId = name .. "@" .. version
 
     if version == "latest" then
-        _defUrl = _util.append_to_url(am.options.REPOSITORY_URL, "plugin", name, version .. ".json")
+        _defUrl = _util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, version .. ".json")
     else
-        _defUrl = _util.append_to_url(am.options.REPOSITORY_URL, "plugin", name, "v", version .. ".json")
+        _defUrl = _util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, "v", version .. ".json")
     end
     local _defLocalPath = path.combine(am.options.CACHE_PLUGIN_DIR_DEFS, _pluginId)
     if am.options.CACHE_DISABLED ~= true then
@@ -29,13 +29,13 @@ local function _get_plugin_def(name, version)
     local _ok, _pluginDefJson = net.safe_download_string(_defUrl)
     ami_assert(
         _ok,
-        string.join_strings("", "Failed to download ", _pluginId, " definition: ", _error),
+        string.join_strings("", "Failed to download ", _pluginId, " definition: ", _pluginDefJson),
         EXIT_PLUGIN_INVALID_DEFINITION
     )
     local _ok, _pluginDef = hjson.safe_parse(_pluginDefJson)
     ami_assert(
         _ok,
-        string.join_strings("", "Failed to parse ", _pluginId, " definition: ", _pluginDefinition),
+        string.join_strings("", "Failed to parse ", _pluginId, " definition: ", _pluginDef),
         EXIT_PLUGIN_INVALID_DEFINITION
     )
 
@@ -158,5 +158,5 @@ end
 
 return util.generate_safe_functions({
     get = _load_plugin,
-    __remove_cached = __remove_cached_plugin
+    __remove_cached = TEST_MODE and __remove_cached_plugin
 })

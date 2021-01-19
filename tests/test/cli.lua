@@ -15,12 +15,6 @@ _test["parse args"] = function()
     args = _oldArgs
 end
 
-function ami_assert(_ok, msg)
-    if not _ok then
-        error(msg)
-    end
-end
-
 _test["parse args (ignore commands)"] = function()
     local _cli = {
         title = "test cli2",

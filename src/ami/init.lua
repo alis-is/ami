@@ -1,7 +1,6 @@
 require"ami.exit-codes"
 
 am = util.merge_tables(require"version-info", require "ami.am")
-APP = nil
 hjson = util.generate_safe_functions(require "hjson")
 
 GLOBAL_LOGGER = Logger:new()

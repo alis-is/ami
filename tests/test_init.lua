@@ -1,9 +1,12 @@
 elify()
 hjson = util.generate_safe_functions(require"hjson")
 
+TEST_MODE = true
+
 package.loaded["version-info"] = require"src.version-info"
 package.loaded["ami.exit-codes"] = require"src.ami.exit-codes"
 package.loaded["ami.internals.util"] = require"src.ami.internals.util"
+package.loaded["ami.internals.options.repository"] = require"src.ami.internals.options.repository"
 package.loaded["ami.internals.options.cache"] = require"src.ami.internals.options.cache"
 package.loaded["ami.internals.options.init"] = require"src.ami.internals.options.init"
 package.loaded["ami.internals.ami-base"] = require"src.ami.internals.ami-base"

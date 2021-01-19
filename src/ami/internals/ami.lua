@@ -1,3 +1,5 @@
+local _amiBase = require"ami.internals.ami-base"
+
 local function _load_ami()
     log_trace("Loading app specific ami...")
     local _ok, _subAmiContent = fs.safe_read_file("ami.json")
@@ -35,10 +37,11 @@ local function _load_ami()
         return false
     end
 
-    local _id = am.__inteface.id
-    local _title = exString.join_strings(" - ", am.__inteface.title, _subAmi.title)
+    local _baseInterface = _amiBase.new()
+    local _id = _baseInterface.id
+    local _title = exString.join_strings(" - ", _baseInterface.title, _subAmi.title)
 
-    am.__inteface = util.merge_tables(am.__inteface, _subAmi, true)
+    am.__inteface = util.merge_tables(_baseInterface, _subAmi, true)
     am.__inteface.id = _id
     am.__inteface.title = _title
     return true

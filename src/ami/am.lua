@@ -38,7 +38,6 @@ local _am = {
         return _cli.parse_args(args, cmd, options)
     end,
     __reload_interface = require"ami.internals.ami".load_sub_ami,
-    __interface = require"ami.internals.ami-base"
 }
 
 return _am

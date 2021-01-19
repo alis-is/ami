@@ -3,10 +3,7 @@ local _test = TEST or require "tests.vendor.u-test"
 require"tests.test_init"
 
 _test["template rendering"] = function()
-    APP = {
-        model = {
-            version="0.0.1"
-        },
+    local _app = {
         configuration = {
             TEST_CONFIGURATION = {
                 version="0.0.1",
@@ -18,6 +15,10 @@ _test["template rendering"] = function()
         id = "test.rendering",
         user = "test"
     }
+    am.app.__set(_app)
+    am.app.set_model({
+        version="0.0.1"
+    })
 
     local _testCwd = os.cwd()
     os.chdir("tests/app/templates/1")

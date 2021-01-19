@@ -7,35 +7,30 @@ local stringify = require "hjson".stringify
 local _defaultCwd = os.cwd()
 
 _test["load app details (json)"] = function()
-    APP = {}
     am.options.APP_CONFIGURATION_PATH = "app.json"
     os.chdir("tests/app/app_details/1")
     local _ok, error = pcall(am.app.load_config)
-    local _result = hash.sha256sum(stringify(APP), {hex = true})
+    local _result = hash.sha256sum(stringify(am.app.__get()), {hex = true})
     os.chdir(_defaultCwd)
     _test.assert(_result == "59ce504e40b90ae50c6b99567fd57186bad89939a1714c3335381eccf9fb1688")
 end
 
 _test["load app details (hjson)"] = function()
-    old = stringify(APP)
-    APP = {}
     am.options.APP_CONFIGURATION_PATH = "app.hjson"
     os.chdir("tests/app/app_details/1")
     local _ok = pcall(am.app.load_config)
-    local _result = hash.sha256sum(stringify(APP), {hex = true})
+    local _result = hash.sha256sum(stringify(am.app.__get()), {hex = true})
     os.chdir(_defaultCwd)
     _test.assert(_result == "59ce504e40b90ae50c6b99567fd57186bad89939a1714c3335381eccf9fb1688")
 end
 
-_test["load app details (inject model)"] = function()
-    old = stringify(APP)
-    APP = {}
+_test["load app model"] = function()
     am.options.APP_CONFIGURATION_PATH = "app.json"
     os.chdir("tests/app/app_details/2")
     local _ok = pcall(am.app.load_config)
-    local _result = hash.sha256sum(stringify(APP), {hex = true})
+    local _result = hash.sha256sum(stringify(am.app.get_model()), {hex = true})
     os.chdir(_defaultCwd)
-    _test.assert(_result == "a39be4440996c688ff15e5b9c151a35d47cd419405662daffc587795d2f4bc2e")
+    _test.assert(_result == "4042b5f3b3dd1463d55166db96f3b17ecfe08b187fecfc7fb53860a478ed0844")
 end
 
 _test["prepare app"] = function()

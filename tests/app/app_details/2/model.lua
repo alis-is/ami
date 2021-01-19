@@ -1,8 +1,3 @@
-APP.model = {
+am.app.set_model({
     injected = true
-}
-
--- this should not be injected
-APP.configuration = {
-    injected = true
-}
+})

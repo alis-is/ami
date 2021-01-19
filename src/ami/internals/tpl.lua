@@ -30,15 +30,15 @@ local function _render_templates()
    end
 
    -- transform model and configuration table to renderable data ( __ARRAY, __CLI_ARGS)
-   local _model = _to_renderable_data(APP.model)
-   local _configuration = _to_renderable_data(APP.configuration)
+   local _model = _to_renderable_data(am.app.get_model())
+   local _configuration = _to_renderable_data(am.app.get_config())
 
    local _vm = {
       configuration = _configuration,
       model = _model,
       ROOT_DIR = os.EOS and os.cwd() or ".",
-      ID = APP.id,
-      USER = APP.user
+      ID = am.app.get("id"),
+      USER = am.app.get("user")
    }
 
    for _, entry in ipairs(_templates) do

@@ -6,7 +6,7 @@ local function _normalize_pkg_type(pkgType)
     end
     ami_assert(type(pkgType.version) == "string", "Invalid pkg version", EXIT_INVALID_PKG_VERSION)
     if type(pkgType.repository) ~= "string" then
-        pkgType.repository = am.options.REPOSITORY_URL
+        pkgType.repository = am.options.DEFAULT_REPOSITORY_URL
     end
 end
 

@@ -14,7 +14,7 @@ _test["normalize pkg type"] = function()
     }
     _amiPkg.normalize_pkg_type(_pkgType)
     _test.assert(_pkgType.version == "latest")
-    _test.assert(_pkgType.repository == am.options.REPOSITORY_URL)
+    _test.assert(_pkgType.repository == am.options.DEFAULT_REPOSITORY_URL)
 end
 
 _test["normalize pkg type (specific version)"] = function()
