@@ -99,10 +99,15 @@ local function _get_configuration_path()
             return _cfgCandidate
         end
     end
+    return nil
 end
 
 local function _load_config()
-    local _ok, _configContent = fs.safe_read_file(_get_configuration_path())
+    local _configPath = _get_configuration_path()
+    if _configPath == nil then
+        ami_error("Failed to locate app.h/json!", EXIT_INVALID_CONFIGURATION)
+    end
+    local _ok, _configContent = fs.safe_read_file(_configPath)
     if _ok then
         _ok, __APP = pcall(hjson.parse, _configContent)
         if not _ok then
@@ -165,6 +170,13 @@ local function _get_app_version()
     end
 end
 
+local function _get_type()
+    if type(__APP.type) == "table" then
+        return __APP.type.id
+    end
+    return __APP.type
+end
+
 local function _remove_app_data()
     local _ok = fs.safe_remove("data", {recurse = true, contentOnly = true})
     ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
@@ -203,6 +215,7 @@ return util.generate_safe_functions({
     get = _get,
     get_config = _get_config,
     get_model = _get_model,
+    get_type = _get_type,
     set_model = _set_model,
     __is_loaded = _is_loaded,
     __set = TEST_MODE and __set_app,

@@ -482,8 +482,8 @@ local function _process_cli(_cli, args)
     return _exec_native_action(action, optionList, command, remainingArgs, _cli)
 end
 
-return {
+return util.generate_safe_functions({
     parse_args = _parse_args,
     process = _process_cli,
     print_help = _print_help
-}
+})

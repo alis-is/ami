@@ -1,0 +1,6 @@
+{
+ lastAmiCheck: 9999999999
+ sha256: 65788b2ae41c3a7bcda1676746836812d56730cb33a61359eaa23cae22c291d8
+ source: https://github.com/cryon-io/ami.test.packages/releases/download/0.0.2/test.base-0.0.2.zip
+ version: 0.0.2
+}
