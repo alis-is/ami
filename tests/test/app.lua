@@ -62,7 +62,7 @@ _test["get app version"] = function()
     local _ok = pcall(am.app.prepare)
     _test.assert(_ok)
     local _ok, _version = pcall(am.app.get_version)
-    _test.assert(_ok and _version == "0.0.2")
+    _test.assert(_ok and _version == "0.0.3")
 
     os.chdir(_defaultCwd)
 end

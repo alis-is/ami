@@ -25,6 +25,7 @@ function _new(options)
             options = {
                 environment = {
                     index = 0,
+                    aliases = {"env"},
                     description = "Creates application environment"
                 },
                 app = {
@@ -52,10 +53,8 @@ function _new(options)
                 end
 
                 -- You should not use next 5 lines in your app
-                if _noOptions or _options.app then
-                    if _subAmiLoaded then
-                        am.execute(am.get_proc_args())
-                    end
+                if _subAmiLoaded then
+                    am.execute(am.get_proc_args())
                 end
 
                 if _noOptions or _options.configure then

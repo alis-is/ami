@@ -68,10 +68,10 @@ local function _get_pkg_def(appType)
         local _ok, _pkgDefOrError, _exitCode = _download_pkg_def(appType, "")
         ami_assert(_ok, _pkgDefOrError, _exitCode)
         _pkgDef = _pkgDefOrError
+        return _ok, _pkgDef
     end
-
     log_trace("Successfully parsed " .. appType.id .. " definition.")
-    return _pkgDef
+    return _ok, _pkgDef
 end
 
 local function _get_pkg(pkgDef)
@@ -136,7 +136,8 @@ local function _prepare_pkg(appType)
         os.rename(_tmp, path.combine(am.options.CACHE_DIR_ARCHIVES, _hash))
         _pkgDef = {sha256 = _hash, id = "debug-dir-pkg"}
     else
-        _pkgDef = _get_pkg_def(appType)
+        _ok, _pkgDef = _get_pkg_def(appType)
+        ami_assert(_ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
     end
 
     local _cachedPkgPath = _get_pkg(_pkgDef)
@@ -274,7 +275,9 @@ local function _is_pkg_update_available(pkg, currentVer)
 
     pkg.version = pkg.wanted_version
 
-    local _pkgDef = _get_pkg_def(pkg)
+    local _ok, _pkgDef = _get_pkg_def(pkg)
+    ami_assert(_ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+
     if type(currentVer) ~= "string" then
         log_trace("New version available...")
         return true, pkg.id, _pkgDef.version

@@ -9,8 +9,8 @@ local function _execute(cmd, args)
         args = cmd
         cmd = _am.__interface
     end
-    if type(cmd) == "string" then
-        cmd = _am.__interface[cmd]
+    if type(cmd) == "string" and type(util.get(_am, { "__interface", "commands" })) == "table" then
+        cmd = _am.__interface.commands[cmd]
     end
     ami_assert(type(cmd) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
 
@@ -79,8 +79,9 @@ local function _print_help(cmd, options)
 end
 
 local function __reload_interface()
-    local _ --[[_isAppSpecific]], _interface = _inteface.load(_am.options.BASE_INTERFACE)
+    local _isAppSpecific, _interface = _inteface.load(_am.options.BASE_INTERFACE)
     _am.__interface = _interface
+    return _isAppSpecific
 end
 
 _am = {

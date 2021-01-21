@@ -15,7 +15,7 @@ local _originalAmiErrorFn = ami_error
 ami_error = function (msg)
     _errorCalled = true
     print(msg)
-    log_error(msg)
+    error(msg)
 end
 
 _test["ami setup"] = function()
@@ -24,24 +24,62 @@ _test["ami setup"] = function()
     fs.remove(_testDir, {recurse = true, contentOnly = true})
     local _ok = fs.safe_copy_file("tests/app/configs/ami_test_app@latest.hjson", path.combine(_testDir, "app.hjson"))
     _test.assert(_ok)
-    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/5/", "setup")
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "setup")
+    _test.assert(fs.exists("__test/assets") and fs.exists("data/test/test.file") and fs.exists("data/test2/test.file"))
     os.chdir(_defaultCwd)
+    _test.assert(not _errorCalled)
 end
 
 _test["ami setup (env)"] = function()
-    -- // TODO
+    local _testDir = "tests/tmp/ami_test_setup_env"
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    local _ok = fs.safe_copy_file("tests/app/configs/ami_test_app@latest.hjson", path.combine(_testDir, "app.hjson"))
+    _test.assert(_ok)
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "setup", "-env")
+    _test.assert(not fs.exists("__test/assets") and not fs.exists("bin") and not fs.exists("data"))
+    os.chdir(_defaultCwd)
+    _test.assert(not _errorCalled)
 end
 
 _test["ami setup (app)"] = function()
-    -- // TODO
+    local _testDir = "tests/tmp/ami_test_setup_app"
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    local _ok = fs.safe_copy_file("tests/app/configs/ami_test_app@latest.hjson", path.combine(_testDir, "app.hjson"))
+    _test.assert(_ok)
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "setup", "--env", "--app")
+    _test.assert(fs.read_file("bin/test.bin") == "true")
+    _test.assert(fs.exists("bin/test.bin"))
+    _test.assert(not fs.exists("__test/assets") and not fs.exists("data/test/test.file") and not fs.exists("data/test2/test.file"))
+    os.chdir(_defaultCwd)
+    _test.assert(not _errorCalled)
 end
 
 _test["ami setup (configure)"] = function()
-    -- // TODO
+    local _testDir = "tests/tmp/ami_test_setup_configure"
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    local _ok = fs.safe_copy_file("tests/app/configs/ami_test_app@latest.hjson", path.combine(_testDir, "app.hjson"))
+    _test.assert(_ok)
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "setup", "--env", "--app", "--configure")
+    _test.assert(fs.read_file("data/test/test.file") == "true")
+    _test.assert(fs.exists("__test/assets") and fs.exists("data/test/test.file") and fs.exists("data/test2/test.file"))
+    os.chdir(_defaultCwd)
+    _test.assert(not _errorCalled)
 end
 
 _test["ami setup (invalid setup)"] = function()
-    -- // TODO
+    local _testDir = "tests/tmp/ami_test_setup_invalid"
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    local _ok = fs.safe_copy_file("tests/app/configs/ami_invalid_app@latest.hjson", path.combine(_testDir, "app.hjson"))
+    _test.assert(_ok)
+    local _ok, _error = pcall(_ami, "--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "setup")
+    _test.assert(not _ok)
+    _test.assert(not fs.exists("__test/assets") and not fs.exists("data/test/test.file") and not fs.exists("data/test2/test.file"))
+    _test.assert(_errorCalled)
+    os.chdir(_defaultCwd)
 end
 
 _test["ami start"] = function()
@@ -136,14 +174,14 @@ _test["ami remove"] = function()
     local _testDir = "tests/tmp/ami_test_setup/"
     fs.mkdirp(_testDir .. "data")
     fs.write_file(_testDir .. "data/test.file", "test")
-    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/5/", "remove")
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "remove")
     _test.assert(fs.exists("model.lua") and not fs.exists(_testDir .. "data/test.file"))
     os.chdir(_defaultCwd)
 end
 
 _test["ami remove --all"] = function()
     local _testDir = "tests/tmp/ami_test_setup"
-    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/5/", "remove", "--all")
+    _ami("--path=".._testDir, "-ll=trace", "--cache=../../cache/2/", "remove", "--all")
     _test.assert(not fs.exists("model.lua") and fs.exists("app.hjson"))
     os.chdir(_defaultCwd)
 end

@@ -1,0 +1,13 @@
+{
+    id: invalid
+    type: invalid72994febe9b868e655b884a9bda1a434218c318367e9fbcada4e2e13ae166a4c
+    configuration: {
+        TEST_CONFIGURATION: {
+            key: value
+            bool: true
+            bool2: false
+            number: 15
+        }
+    },
+    user: "invalid"
+}

@@ -8,6 +8,7 @@ require"tests.test.plugin"
 require"tests.test.pkg"
 require"tests.test.tpl"
 require"tests.test.app"
+require"tests.test.ami"
 
 local _ntests, _nfailed = _test.result()
 _test.summary()
