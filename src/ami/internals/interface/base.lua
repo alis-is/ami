@@ -25,6 +25,12 @@ local function _new()
                 type = "string",
                 description = "Log format - json/standard"
             },
+            ["environment"] = {
+                index = 4,
+                aliases = { "env" },
+                type = "string",
+                description = "Name of environment to use"
+            },
             ["cache"] = {
                 index = 4,
                 type = "string",

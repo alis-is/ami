@@ -40,6 +40,85 @@ _test["load app details (variables - hjson)"] = function()
     _test.assert(am.app.get_configuration({"TEST_CONFIGURATION", "key"}) == "test-key")
 end
 
+_test["load app details (dev env)"] = function()
+    am.app.__set({})
+    am.options.APP_CONFIGURATION_PATH = nil
+    am.options.ENVIRONMENT = "dev"
+    os.chdir("tests/app/app_details/5")
+    local _ok = pcall(am.app.load_configuration)
+    local _result = hash.sha256sum(stringify(am.app.__get(), { sortKeys = true }), true)
+    os.chdir(_defaultCwd)
+    _test.assert(_result == "47020b774fe74a8e054341a944aedeee9379f9d88c92086ce9ffa293c5e88f95")
+end
+
+_test["load app details missing default config (dev env)"] = function()
+    am.app.__set({})
+    am.options.APP_CONFIGURATION_PATH = nil
+    am.options.ENVIRONMENT = "dev"
+    os.chdir("tests/app/app_details/6")
+    local _old_log_warn = log_warn
+    local _log = ""
+    log_warn = function (msg)
+        _log = _log .. tostring(msg)
+    end
+    local _ok = pcall(am.app.load_configuration)
+    local _result = hash.sha256sum(stringify(am.app.__get(), { sortKeys = true }), true)
+    os.chdir(_defaultCwd)
+    log_warn = _old_log_warn
+    _test.assert(_result == "65bd94d4e9e858f46b17b70c2ba606fd3ba61d13a40149c4d9f6c0e8b7128a3d" and string.find(_log, "Failed to load default configuration", 0, true))
+end
+
+_test["load app details missing env config (dev env)"] = function()
+    am.app.__set({})
+    am.options.APP_CONFIGURATION_PATH = nil
+    am.options.ENVIRONMENT = "dev"
+    os.chdir("tests/app/app_details/4")
+    local _old_log_warn = log_warn
+    local _log = ""
+    log_warn = function (msg)
+        _log = _log .. tostring(msg)
+    end
+    local _ok = pcall(am.app.load_configuration)
+    local _result = hash.sha256sum(stringify(am.app.__get(), { sortKeys = true }), true)
+    os.chdir(_defaultCwd)
+    log_warn = _old_log_warn
+    _test.assert(_result == "7bae45e2773a78ac8327cfa5078452ec67451287174afa6dcfb90b304850b2ec" and string.find(_log, "Failed to load environment configuration", 0, true))
+end
+
+_test["load app details missing config (dev env)"] = function()
+    os.chdir("tests/app/app_details/7")
+    local _errorCode = 0
+    local _originalAmiErrorFn = ami_error
+    ami_error = function (_, exitCode)
+        _errorCode = _errorCode ~= 0 and _errorCode or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+    end
+    local _old_log_warn = log_warn
+    local _log = ""
+    log_warn = function (msg)
+        _log = _log .. tostring(msg)
+    end
+    -- test dev env
+    am.options.APP_CONFIGURATION_PATH = nil
+    am.options.ENVIRONMENT = "dev"
+    local _ok = pcall(am.app.load_configuration)
+    local _devErrorCode = _errorCode
+    local _devLog = _log
+    -- test no env
+    _errorCode = 0
+    _log = ""
+    am.options.APP_CONFIGURATION_PATH = nil
+    am.options.ENVIRONMENT = nil
+    local _ok = pcall(am.app.load_configuration)
+    local _defaultErrorCode = _errorCode
+    local _defaultLog = _log
+
+    os.chdir(_defaultCwd)
+    ami_error = _originalAmiErrorFn
+    log_warn = _old_log_warn
+    _test.assert(_defaultErrorCode == EXIT_INVALID_CONFIGURATION and not string.find(_defaultLog, "app.dev.json", 0, true))
+    _test.assert(_devErrorCode == EXIT_INVALID_CONFIGURATION and string.find(_devLog, "app.dev.json", 0, true))
+end
+
 _test["load app model"] = function()
     am.options.APP_CONFIGURATION_PATH = "app.json"
     os.chdir("tests/app/app_details/2")

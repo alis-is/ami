@@ -12,6 +12,7 @@ require"ami.app"
 require"ami.plugin"
 am.options = _initialize_options({
     APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"},
+    APP_CONFIGURATION_ENVIRONMENT_CANDIDATES = {"app.${environment}.hjson", "app.${environment}.json"},
     BASE_INTERFACE = "app"
 })
 

@@ -1,0 +1,10 @@
+{
+    "id": "test1",
+    "type": "test.app.dev",
+    "configuration": {
+        "TEST_CONFIGURATION": {
+            "key": "value",
+            "bool": true
+        }
+    }
+}

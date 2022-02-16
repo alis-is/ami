@@ -162,26 +162,49 @@ local function _normalize_app_pkg_type(pkg)
             version = "latest"
         }
     end
-    local _type = __APP.type
+    local _type = pkg.type
     ami_assert(type(_type) == "table", "Invalid pkg type!", EXIT_PKG_INVALID_TYPE)
     if type(_type.repository) ~= "string" then
         _type.repository = am.options.DEFAULT_REPOSITORY_URL
     end
 end
 
----Looks up path to configuration file and retuns it
----@return string|nil
-local function _get_configuration_path()
-    if type(am.options.APP_CONFIGURATION_PATH) == "string" then 
-        return am.options.APP_CONFIGURATION_PATH
-    end
-    local _configurationCandidates = am.options.APP_CONFIGURATION_CANDIDATES
-    for _, _cfgCandidate in ipairs(_configurationCandidates) do
-        if fs.exists(_cfgCandidate) then
-            return _cfgCandidate
+---@param candidates string[]
+---@return boolean, string|table
+local function _find_and_load_configuration(candidates)
+    local _ok, _configContent
+    for _, _cfgCandidate in ipairs(candidates) do
+        _ok, _configContent = fs.safe_read_file(_cfgCandidate)
+        if _ok then
+            local _ok, _config = hjson.safe_parse(_configContent)
+            return _ok, _config
         end
     end
-    return nil
+    return false, _configContent
+end
+
+---loads configuration and env configuration if available
+---@param path string
+---@return string
+local function _load_configuration_content(path)
+    local _predefinedPath = path or am.options.APP_CONFIGURATION_PATH
+    if type(_predefinedPath) == "string" then
+        local _ok, _configContent = fs.safe_read_file(_predefinedPath)
+        ami_assert(_ok, "Failed to load app.h/json - " .. tostring(_configContent), EXIT_INVALID_CONFIGURATION)
+        return _configContent
+    end
+
+    local _envOk, _envConfig
+    local _defaultOk, _defaultConfig = _find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
+    if am.options.ENVIRONMENT then
+        local _candidates = table.map(am.options.APP_CONFIGURATION_ENVIRONMENT_CANDIDATES, function (v) local _result = string.interpolate(v, { environment = am.options.ENVIRONMENT }); return _result; end)
+        _envOk, _envConfig = _find_and_load_configuration(_candidates)
+        if not _envOk then log_warn("Failed to load environment configuration - " .. tostring(_envConfig)) end
+    end
+
+    ami_assert(_defaultOk or _envOk, "Failed to load app.h/json - " .. tostring(_defaultConfig), EXIT_INVALID_CONFIGURATION)
+    if not _defaultOk then log_warn("Failed to load default configuration - " .. tostring(_defaultConfig)) end
+    return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig or {}, _envOk and _envConfig or {}, true), { indent = false })
 end
 
 ---#DES am.app.load_configuration
@@ -189,23 +212,16 @@ end
 ---Loads APP from path
 ---@param path nil|string
 function am.app.load_configuration(path)
-    local _configPath = type(path) == "string" and path or _get_configuration_path()
-    if _configPath == nil then
-        ami_error("Failed to locate app.h/json!", EXIT_INVALID_CONFIGURATION)
-    end
-    local _ok, _configContent = fs.safe_read_file(_configPath)
-    if not _ok then
-        ami_error("Failed to load app.h/json - " .. _configContent, EXIT_INVALID_CONFIGURATION)
-    end
-    _ok, __APP = hjson.safe_parse(_configContent)
-	if not _ok then
-        ami_error("Failed to parse app.h/json - " .. __APP, EXIT_INVALID_CONFIGURATION)
-	else
-		local _variables = am.app.get("variables", {})
-        local _options = am.app.get("options", {})
-		_variables = util.merge_tables(_variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
-		_configContent = am.util.replace_variables(_configContent, _variables, _options)
-    end
+    local _configContent = _load_configuration_content(path)
+    local _ok, _app = hjson.safe_parse(_configContent)
+    ami_assert(_ok, "Failed to parse app.h/json - " .. tostring(_app), EXIT_INVALID_CONFIGURATION)
+
+    __APP = _app
+    local _variables = am.app.get("variables", {})
+    local _options = am.app.get("options", {})
+    _variables = util.merge_tables(_variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
+    _configContent = am.util.replace_variables(_configContent, _variables, _options)
+
     __APP = hjson.parse(_configContent)
     _normalize_app_pkg_type(__APP)
     __loaded = true

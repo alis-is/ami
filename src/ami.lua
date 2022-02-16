@@ -46,6 +46,10 @@ if _parsedOptions["shallow"] then
     am.options.SHALLOW = true
 end
 
+if _parsedOptions["environment"] then
+    am.options.ENVIRONMENT =  _parsedOptions["environment"]
+end
+
 if _parsedOptions["output-format"] then
     GLOBAL_LOGGER.options.format = _parsedOptions["output-format"]
     log_debug("Log format set to '" .. _parsedOptions["output-format"] .. "'.")
