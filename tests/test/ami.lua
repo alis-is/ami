@@ -34,9 +34,15 @@ local function _init_ami_test(testDir, configPath, options)
     if options.cleanupTestDir then
         fs.remove(testDir, {recurse = true, contentOnly = true})
     end
-    local _ok = fs.safe_copy_file(configPath, path.combine(testDir, "app.hjson"))
+    local _ok
+    if type(options.environment) == "string" then
+        _ok = fs.safe_copy_file(configPath, path.combine(testDir, "app." .. options.environment .. ".hjson"))
+    else
+        _ok = fs.safe_copy_file(configPath, path.combine(testDir, "app.hjson"))
+    end
     _test.assert(_ok)
     am.app.__set_loaded(false)
+    am.__reset_options()
     _errorCalled = false
 end
 
@@ -61,6 +67,16 @@ _test["ami setup"] = function()
     _init_ami_test(_testDir, "tests/app/configs/ami_test_app@latest.hjson", { cleanupTestDir = true })
 
     _ami("--path=".._testDir, "-ll=info", "--cache=../../cache/2/", "setup")
+    _test.assert(fs.exists("__test/assets") and fs.exists("data/test/test.file") and fs.exists("data/test2/test.file"))
+    os.chdir(_defaultCwd)
+    _test.assert(not _errorCalled)
+end
+
+_test["ami --environment=dev setup"] = function()
+    local _testDir = "tests/tmp/ami_dev_setup"
+    _init_ami_test(_testDir, "tests/app/configs/ami_test_app@latest.hjson", { cleanupTestDir = true, environment = "dev" })
+
+    _ami("--environment=dev", "--path=".._testDir, "-ll=info", "--cache=../../cache/2/", "setup")
     _test.assert(fs.exists("__test/assets") and fs.exists("data/test/test.file") and fs.exists("data/test2/test.file"))
     os.chdir(_defaultCwd)
     _test.assert(not _errorCalled)

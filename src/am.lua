@@ -10,11 +10,15 @@ require"ami.cache"
 require"ami.util"
 require"ami.app"
 require"ami.plugin"
-am.options = _initialize_options({
-    APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"},
-    APP_CONFIGURATION_ENVIRONMENT_CANDIDATES = {"app.${environment}.hjson", "app.${environment}.json"},
-    BASE_INTERFACE = "app"
-})
+
+local function _get_default_options()
+    return {
+        APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"},
+        APP_CONFIGURATION_ENVIRONMENT_CANDIDATES = {"app.${environment}.hjson", "app.${environment}.json"},
+        BASE_INTERFACE = "app"
+    }
+end
+am.options = _initialize_options(_get_default_options())
 
 local function _get_interface(cmd, args)
     local _interface = cmd
@@ -116,10 +120,7 @@ if TEST_MODE then
 
     ---Resets am options
     function am.__reset_options()
-        am.options = _initialize_options({
-            APP_CONFIGURATION_CANDIDATES = {"app.hjson", "app.json"},
-            BASE_INTERFACE = "app"
-        })
+        am.options = _initialize_options(_get_default_options())
     end
 end
 

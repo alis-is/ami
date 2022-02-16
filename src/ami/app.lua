@@ -221,7 +221,6 @@ function am.app.load_configuration(path)
     local _options = am.app.get("options", {})
     _variables = util.merge_tables(_variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
     _configContent = am.util.replace_variables(_configContent, _variables, _options)
-
     __APP = hjson.parse(_configContent)
     _normalize_app_pkg_type(__APP)
     __loaded = true
