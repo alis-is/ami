@@ -184,12 +184,12 @@ _test["print_help"] = function()
     am.print_help(_interface)
     _result = hash.sha256sum(_result, true)
     -- we have 2 hashes because we can run test standalone or as part of suite (all.lue)
-    _test.assert(_result == "684bed66b85eccb425c5f2e0aa81a006739e4e05937f77559350d1f0120d79b0" or _result == "b802fbb8bfedddbec25e46fce75c297898a76ae75b17636649fef6bdb7e06619")
-
+    _test.assert(_result == "4ecf01fca8de8648532163f1052a9195aae4d9b2bf860cfba7bcabdba2663e76" or _result == "f85566ba37c6562ae1552338329fbbee0c9e7518f5d18724f38cfa29576b3199")
+	
     _result = ""
     am.print_help(_interface.commands.test)
     _result = hash.sha256sum(_result, true)
-    _test.assert(_result == "4f6c4d363622877a60f8d02e81672931c9b310fc2fcd43f04ec51d07b1cbca2d" or _result == "c3855f466d9f7205a325e3459efa8644bb2e1c2fe18d67e892b685c23e141460")
+    _test.assert(_result == "fd7a5ea291673592b1d21b57c91f661ae356d7e876889536a64d794f00ab8aa0" or _result == "c17d42a549afe70794de3bac55936495ffdca2834e64c0bee48e0b9e1e6e39df")
 
     print = _originalPrint
 end
