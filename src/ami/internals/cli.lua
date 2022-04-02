@@ -83,7 +83,8 @@ end
     @param {table{}} commands
 ]]
 ---@class AmiParseArgsOptions
----@field stopOnCommand boolean
+---@field stopOnNonOption boolean
+---@field nonCommand boolean
 
 
 ---Parses arguments in respect to cli scheme
@@ -129,26 +130,35 @@ function _amiCli.parse_args(args, scheme, options)
 	local _cliCmd = nil
 
 	local _lastIndex = 0
+	local _cliRemainingArgs = {}
 	for i = 1, #args, 1 do
 		local _arg = args[i]
 		if _arg.type == "option" then
 			local _cliOptionDef = _cliOptionsMap[_arg.id]
 			ami_assert(type(_cliOptionDef) == "table", "Unknown option - '" .. _arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
 			_cliOptionList[_cliOptionDef.id] = _parse_value(_arg.value, _cliOptionDef.type)
-			_lastIndex = i + 1
+		elseif options.stopOnNonOption then
+			-- we stop collecting if stopOnNonOption enabled to return everything remaining
+			_lastIndex = i
+			break
+		elseif options.nonCommand then
+			-- we collect all options and inject anything else as remaining args
+			-- unless stopOnNonOption enabled
+			table.insert(_cliRemainingArgs, _arg)
 		else
-			if not options.stopOnCommand then
-				_cliCmd = _cliCmdMap[_arg.arg]
-				ami_assert(type(_cliCmd) == "table", "Unknown command '" .. (_arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
-				_lastIndex = i + 1
-			else
-				_lastIndex = i
-			end
+			-- default mode - we try to identify underlying command
+			_cliCmd = _cliCmdMap[_arg.arg]
+			ami_assert(type(_cliCmd) == "table", "Unknown command '" .. (_arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
+			_lastIndex = i + 1
 			break
 		end
+		_lastIndex = i + 1
 	end
-
-	local _cliRemainingArgs = { table.unpack(args, _lastIndex) }
+	
+	if not options.nonCommand or options.stopOnNonOption then
+		-- in case we did not precollect cli args (are precolleted if nonCommand == true and stopOnNonOption == false)
+		_cliRemainingArgs = { table.unpack(args, _lastIndex) }
+	end
 	return _cliOptionList, _cliCmd, _cliRemainingArgs
 end
 
@@ -249,7 +259,9 @@ local function _generate_usage(cli, includeOptionsInUsage)
 	end
 
 	if hasCommands then
-		if cli.commandRequired then
+		if cli.type == "no-command" then
+			usage = usage .. "[args...]" .. " "
+		elseif cli.commandRequired then
 			usage = usage .. "<command>" .. " "
 		else
 			usage = usage .. "[<command>]" .. " "
@@ -260,6 +272,12 @@ end
 
 local function _generate_help_message(cli)
 	local hasCommands = cli.commands and #table.keys(cli.commands) and not _are_all_hidden(cli.commands)
+	if not cli.customHelp then
+		if type(cli.options) ~= "table" then
+			cli.options = {}
+		end
+		cli.options.help = HELP_OPTION
+	end
 	local hasOptions = cli.options and #table.keys(cli.options) and not _are_all_hidden(cli.options)
 
 	local rows = {}
@@ -433,7 +451,7 @@ function _amiCli.process(_ami, args)
 		return _exec.native_action(action, _rawArgs, _ami)
 	end
 
-	local optionList, command, remainingArgs = _amiCli.parse_args(_parsedArgs, _ami)
+	local optionList, command, remainingArgs = _amiCli.parse_args(_parsedArgs, _ami, { nonCommand = _ami.type == "no-command", stopOnNonOption = _ami.stopOnNonOption })
 	---@type ExecutableAmiCli
 	local _executableCommand = command
 

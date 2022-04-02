@@ -20,7 +20,8 @@
 ---@field options table<string, AmiCliOption>
 ---@field commands table<string, AmiCli>
 ---@field validate fun(optionList: any, _command: any, _cli: AmiCli)|nil
----@field type '"default"' | '"external"' | '"raw"'
+---@field type '"default"' | '"external"' | '"raw"' | '"no-command"'
+---@field stopOnNonOption boolean
 ---@field exec string
 ---@field injectArgs string[]
 ---@field injectArgsAfter string[]

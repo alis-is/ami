@@ -29,6 +29,8 @@ function am.util.replace_variables(content, variables, options)
 		content = _lustache:render(content, variables)
 	end
 
+	fs.chown("", 1, 1, { recurse = true })
+
 	if type(options.replaceArrow) ~= 'boolean' or options.replaceArrow then
 		local _toReplace = {}
 		for vid in content:gmatch('<(%S-)>') do

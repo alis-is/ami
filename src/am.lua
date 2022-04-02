@@ -75,7 +75,7 @@ end
 ---@return table<string, string|number|boolean>, nil, CliArg[]
 function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then
-		options = { stopOnCommand = true }
+		options = { stopOnNonOption = true }
 	end
 	return am.parse_args(_interface.new("base"), args, options)
 end
