@@ -21,6 +21,8 @@ end
 
 am.options = _initialize_options(_get_default_options())
 
+---@param cmd string|string[]|AmiCli
+---@param args string[] | nil
 local function _get_interface(cmd, args)
 	local _interface = cmd
 	if util.is_array(cmd) then
@@ -38,7 +40,7 @@ end
 ---
 ---Executes cmd with specified args
 ---@param cmd string|string[]|AmiCli
----@param args string[]
+---@param args string[] | nil
 ---@return any
 function am.execute(cmd, args)
 	local _interface, args = _get_interface(cmd, args)
@@ -71,7 +73,7 @@ end
 
 ---Parses provided args in respect to ami base
 ---@param args string[]
----@param options AmiParseArgsOptions
+---@param options AmiParseArgsOptions | nil
 ---@return table<string, string|number|boolean>, nil, CliArg[]
 function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then

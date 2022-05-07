@@ -144,6 +144,23 @@ _test["prepare app"] = function()
     os.chdir(_defaultCwd)
 end
 
+_test["is app installed"] = function ()
+	am.options.CACHE_DIR = "tests/cache/2"
+    local _testDir = "tests/tmp/app_test_get_app_version"
+    fs.mkdirp(_testDir)
+    fs.remove(_testDir, {recurse = true, contentOnly = true})
+
+    local _ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(_testDir, "app.json"))
+    _test.assert(_ok)
+    os.chdir(_testDir)
+
+	_test.assert(am.app.is_installed() == false)
+    local _ok = pcall(am.app.prepare)
+    _test.assert(_ok)
+	_test.assert(am.app.is_installed() == true)
+    os.chdir(_defaultCwd)
+end
+
 _test["get app version"] = function()
     am.options.CACHE_DIR = "tests/cache/2"
     local _testDir = "tests/tmp/app_test_get_app_version"

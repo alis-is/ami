@@ -334,7 +334,7 @@ end
 ---Check whether there is new version of specified pkg.
 ---If new version is found returns true, pkg.id and new version
 ---@param pkg AmiPackage
----@param currentVer string
+---@param currentVer string | nil
 ---@return boolean, string|nil, string|nil
 function _pkg.is_pkg_update_available(pkg, currentVer)
 	if type(currentVer) ~= "string" then

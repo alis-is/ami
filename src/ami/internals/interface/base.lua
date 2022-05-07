@@ -58,6 +58,11 @@ local function _new()
 				type = "boolean",
 				description = "Prints AMI about"
 			},
+			["is-app-installed"] = {
+				index = 9,
+				type = "boolean",
+				description = "Checks whether app is  installed"
+			},
 			["erase-cache"] = {
 				index = 50,
 				type = "boolean",

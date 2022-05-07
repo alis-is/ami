@@ -360,3 +360,18 @@ function am.app.remove()
 		end
 	end
 end
+
+---#DES am.app.remove
+---
+---Checks whether app is installed based on app.h/json and .version-tree.json
+---@return boolean
+function am.app.is_installed()
+	_normalize_app_pkg_type(__APP)
+
+	local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json")
+	if not _ok then return false end
+	local _ok, _verTree = hjson.safe_parse(_verTreeJson)
+	if not _ok then return false end
+
+	return __APP.type.id == _verTree.id and (__APP.type.version == "latest" or __APP.version == _verTree.version)
+end

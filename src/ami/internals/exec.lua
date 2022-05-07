@@ -60,7 +60,7 @@ end
 ---Executes native action - (lua file module)
 ---@param action string|function
 ---@param args CliArg[]|string[]
----@param options ExecNativeActionOptions
+---@param options ExecNativeActionOptions | nil
 ---@return any
 function exec.native_action(action, args, options)
 	if type(action) ~= "string" and type(action) ~= "function" then

@@ -77,6 +77,12 @@ if _parsedOptions.version then
 	print(am.VERSION)
 	os.exit(0)
 end
+
+if _parsedOptions["is-app-installed"] then
+	local _isInstalled = am.app.is_installed()
+	print(_isInstalled)
+	os.exit(_isInstalled and 0 or EXIT_NOT_INSTALLED)
+end
 if _parsedOptions.about then
 	print(am.ABOUT)
 	os.exit(0)
