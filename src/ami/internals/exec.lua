@@ -83,6 +83,7 @@ function exec.native_action(action, args, options)
 		local _ext, _error = loadfile(action)
 		if type(_ext) ~= "function" then
 			ami_error("Failed to load extension from " .. action .. " - " .. _error)
+			return
 		end
 		_id = action
 		action = _ext

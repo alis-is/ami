@@ -5,7 +5,7 @@ am.__args = { ... }
 local _parsedOptions, _, _remainingArgs = am.__parse_base_args({ ... })
 
 if _parsedOptions["local-sources"] then
-	local _ok, _localPkgsFile = fs.safe_read_file(_parsedOptions["local-sources"])
+	local _ok, _localPkgsFile = fs.safe_read_file(tostring(_parsedOptions["local-sources"]))
 	ami_assert(_ok, "Failed to read local sources file " .. _parsedOptions["local-sources"], EXIT_INVALID_SOURCES_FILE)
 	local _ok, _sources = hjson.safe_parse(_localPkgsFile)
 	ami_assert(_ok, "Failed to parse local sources file " .. _parsedOptions["local-sources"], EXIT_INVALID_SOURCES_FILE)
@@ -15,7 +15,7 @@ end
 if _parsedOptions.path then
 	if os.EOS then
 		package.path = package.path .. ";" .. os.cwd() .. "/?.lua"
-		local _ok, _err = os.chdir(_parsedOptions.path)
+		local _ok, _err = os.chdir(tostring(_parsedOptions.path))
 		assert(_ok, _err)
 	else
 		log_error("Option 'path' provided, but chdir not supported.")
@@ -32,7 +32,7 @@ else
 	end
 	am.options.CACHE_DIR = "/var/cache/ami"
 	--fallback to local dir in case we have no access to global one
-	if not fs.safe_write_file(path.combine(am.options.CACHE_DIR, ".ami-test-access"), "") then
+	if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
 		log_debug("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
 		am.options.CACHE_DIR = ".ami-cache"
 	end
@@ -99,10 +99,10 @@ if _parsedOptions["dry-run"] then
 		if _ok then -- model is valid json
 			am.app.__set(_appConfig)
 		else -- model is not valid json fallback to path
-			am.app.load_configuration(_parsedOptions["dry-run-config"])
+			am.app.load_configuration(tostring(_parsedOptions["dry-run-config"]))
 		end
 	end
-	am.execute_extension(_remainingArgs[1].value, ...)
+	am.execute_extension(tostring(_remainingArgs[1].value), ...)
 	os.exit(0)
 end
 

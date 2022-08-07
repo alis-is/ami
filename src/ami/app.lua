@@ -44,8 +44,8 @@ end
 ---#DES am.app.get
 ---
 ---Gets valua from path in APP or falls back to default if value in path is nil
----@param path string
----@param default any
+---@param path string|string[]
+---@param default any?
 ---@return any
 function am.app.get(path, default)
 	return table.get(__APP, path, default)
@@ -54,8 +54,8 @@ end
 ---#DES am.app.get_configuration
 ---
 ---Gets valua from path in app.configuration or falls back to default if value in path is nil
----@param path string
----@param default any
+---@param path (string|string[])?
+---@param default any?
 ---@return any
 function am.app.get_configuration(path, default)
 	if path ~= nil then
@@ -72,8 +72,8 @@ end
 ---
 ---Gets valua from path in app.configuration or falls back to default if value in path is nil
 ---@deprecated
----@param path string
----@param default any
+---@param path string|string[]
+---@param default any?
 ---@return any
 function am.app.get_config(path, default)
 	return am.app.get_configuration(path, default)
@@ -99,8 +99,8 @@ end
 ---#DES am.app.get_model
 ---
 ---Gets valua from path in app model or falls back to default if value in path is nil
----@param path string|string[]
----@param default any
+---@param path (string|string[])?
+---@param default any?
 ---@return any
 function am.app.get_model(path, default)
 	if not __modelLoaded then
@@ -123,7 +123,7 @@ end
 ---
 ---Gets valua from path in app model or falls back to default if value in path is nil
 ---@param value any
----@param path string|string[]|SetModelOptions
+---@param path (string|string[]|SetModelOptions)?
 ---@param options SetModelOptions
 function am.app.set_model(value, path, options)
 	if not __modelLoaded then
@@ -149,7 +149,7 @@ function am.app.set_model(value, path, options)
 		if options.merge and type(_original) == "table" and type(value) == "table" then
 			value = util.merge_tables(_original, value, options.overwrite)
 		end
-		table.set(__model, path, value)
+		table.set(__model, path --[[@as string|string[] ]], value)
 	end
 end
 
@@ -185,7 +185,7 @@ local function _find_and_load_configuration(candidates)
 end
 
 ---loads configuration and env configuration if available
----@param path string
+---@param path string?
 ---@return string
 local function _load_configuration_content(path)
 	local _predefinedPath = path or am.options.APP_CONFIGURATION_PATH
@@ -208,13 +208,13 @@ local function _load_configuration_content(path)
 
 	ami_assert(_defaultOk or _envOk, "Failed to load app.h/json - " .. tostring(_defaultConfig), EXIT_INVALID_CONFIGURATION)
 	if not _defaultOk then log_warn("Failed to load default configuration - " .. tostring(_defaultConfig)) end
-	return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig or {}, _envOk and _envConfig or {}, true), { indent = false })
+	return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig --[[@as table]] or {}, _envOk and _envConfig --[[@as table]] or {}, true), { indent = false })
 end
 
 ---#DES am.app.load_configuration
 ---
 ---Loads APP from path
----@param path nil|string
+---@param path string?
 function am.app.load_configuration(path)
 	local _configContent = _load_configuration_content(path)
 	local _ok, _app = hjson.safe_parse(_configContent)
@@ -286,7 +286,7 @@ function am.app.is_update_available()
 	ami_assert(_ok, "Failed to load app specs.json", EXIT_APP_UPDATE_ERROR)
 	local _ok, _specs = hjson.parse(_specsFile)
 	ami_assert(_ok, "Failed to parse app specs.json", EXIT_APP_UPDATE_ERROR)
-	return _amiPkg.is_pkg_update_available(__APP.type, _specs.version)
+	return _amiPkg.is_pkg_update_available(__APP.type, _specs and _specs.version)
 end
 
 ---#DES am.app.get_version
@@ -346,9 +346,11 @@ end
 ---
 ---Removes all app related files except app.h/json
 function am.app.remove()
+	---@type boolean, string[]|string
 	local _ok, _files = fs.safe_read_dir(".", { recurse = true, returnFullPaths = true })
 	if not _ok then
 		ami_error("Failed to remove app - " .. (_files or "") .. "!", EXIT_RM_ERROR)
+		return
 	end
 	local _protectedFiles = _get_protected_files()
 	for i = 1, #_files do

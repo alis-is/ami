@@ -12,7 +12,7 @@ local _amiCli = {}
 ---Parses value into required type if possible.
 ---@param value string
 ---@param _type string
----@return string
+---@return boolean|number|string|nil
 local function _parse_value(value, _type)
 	if type(value) ~= "string" then
 		return value
@@ -136,7 +136,7 @@ function _amiCli.parse_args(args, scheme, options)
 		if _arg.type == "option" then
 			local _cliOptionDef = _cliOptionsMap[_arg.id]
 			ami_assert(type(_cliOptionDef) == "table", "Unknown option - '" .. _arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
-			_cliOptionList[_cliOptionDef.id] = _parse_value(_arg.value, _cliOptionDef.type)
+			_cliOptionList[_cliOptionDef.id] = _parse_value(tostring(_arg.value), _cliOptionDef.type)
 		elseif options.stopOnNonOption then
 			-- we stop collecting if stopOnNonOption enabled to return everything remaining
 			_lastIndex = i
@@ -413,7 +413,7 @@ end
 
 ---Processes args passed to cli and executes appropriate operation
 ---@param _ami ExecutableAmiCli
----@param args string[]
+---@param args string[]?
 ---@return any
 function _amiCli.process(_ami, args)
 	ami_assert(type(_ami) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
@@ -448,15 +448,16 @@ function _amiCli.process(_ami, args)
 		for _, v in ipairs(_parsedArgs) do
 			table.insert(_rawArgs, v.arg)
 		end
+		--- we validate within native_action
+		---@diagnostic disable-next-line: param-type-mismatch
 		return _exec.native_action(action, _rawArgs, _ami)
 	end
 
 	local optionList, command, remainingArgs = _amiCli.parse_args(_parsedArgs, _ami, { nonCommand = _ami.type == "no-command", stopOnNonOption = _ami.stopOnNonOption })
-	---@type ExecutableAmiCli
 	local _executableCommand = command
 
 	local _valid, _error = validate(optionList, _executableCommand, _ami)
-	ami_assert(_valid, _error, EXIT_CLI_ARG_VALIDATION_ERROR)
+	ami_assert(_valid, _error or "unknown", EXIT_CLI_ARG_VALIDATION_ERROR)
 
 	if type(_executableCommand) == "table" then
 		_executableCommand.__parentCliId = _ami.__parentCliId or _ami.id
@@ -467,6 +468,8 @@ function _amiCli.process(_ami, args)
 	if not _ami.customHelp and optionList.help then
 		return _amiCli.print_help(_ami)
 	end
+	--- we validate within native_action
+	---@diagnostic disable-next-line: param-type-mismatch
 	return _exec.native_action(action, { optionList, _executableCommand, remainingArgs, _ami }, _ami)
 end
 

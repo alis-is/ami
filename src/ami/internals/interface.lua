@@ -17,7 +17,7 @@ function _interface.new(kind, options)
 	-- try load from path if not cached
 	local _new_base, _error = loadfile(kind)
 	ami_assert(_new_base, "Base interface " .. (kind or "undefined") .. "not found or can not be loaded (Error: '" .. (_error or "") .. "')!", EXIT_INVALID_AMI_BASE_INTERFACE)
-	local _ok, _base = pcall(_new_base, options)
+	local _ok, _base = pcall(_new_base --[[@as function]], options)
 	ami_assert(_ok, "Failed to load base interface - " .. (kind or "undefined") .. "!", EXIT_INVALID_AMI_BASE_INTERFACE)
 	-- recursively match all nested interfaces
 	if type(_base.base) == "string" then
@@ -27,15 +27,15 @@ function _interface.new(kind, options)
 end
 
 ---Finds and returns ami entrypoint
----@return boolean, ExecutableAmiCli, string
+---@return boolean, ExecutableAmiCli|string, string?
 function _interface.find_entrypoint()
 	---@alias LoaderFn fun(content: string): boolean, ExecutableAmiCli
 
 	---@type table<string, LoaderFn>
 	local _candidates = {
 		["ami.lua"] = function(content)
-			local _ok, _subAmiFn = load(content)
-			if not _ok then return false, _subAmiFn end
+			local _ok, _subAmiFn, _err = pcall(load, content)
+			if not _ok or type(_subAmiFn) ~= "function" then return false, _err end
 			local _ok, _subAmi = pcall(_subAmiFn)
 			if not _ok then return false, _subAmi end
 			return true, _subAmi
@@ -61,7 +61,7 @@ end
 
 ---Loads ExecutableAmiCli from ami.lua using specified base of interfaceKind
 ---@param interfaceKind string
----@param shallow boolean
+---@param shallow boolean?
 ---@return boolean, ExecutableAmiCli
 function _interface.load(interfaceKind, shallow)
 	log_trace("Loading app specific ami...")
@@ -86,13 +86,18 @@ function _interface.load(interfaceKind, shallow)
 		if not _ok then
 			_ok, _subAmiContent = fs.safe_read_file("ami.lua")
 			if _ok then
-				log_trace("ami.lua found loading...")
-				_, _subAmi = pcall(load, _subAmiContent)
-				_ok, _subAmi = pcall(_subAmi)
-				if _ok then
-					log_trace("ami.lua load successful...")
+				log_trace("ami.lua found, loading...")
+				local _err
+				_ok, _subAmi, _err = pcall(load, _subAmiContent)
+				if _ok and type(_subAmi) == "function" then 
+					_ok, _subAmi = pcall(_subAmi)
+					if _ok then
+						log_trace("ami.lua load successful...")
+					else
+						log_trace("ami.lua load failed - " .. _subAmi)
+					end
 				else
-					log_trace("ami.lua load failed - " .. _subAmi)
+					log_trace("ami.lua load failed - " .. _err)
 				end
 			end
 		end

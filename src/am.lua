@@ -5,6 +5,8 @@ local _initialize_options = require "ami.internals.options.init"
 
 require "ami.globals"
 
+ami_assert(ver.compare(ELI_LIB_VERSION, "0.23.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
+
 am = require "version-info"
 require "ami.cache"
 require "ami.util"
@@ -15,6 +17,7 @@ local function _get_default_options()
 	return {
 		APP_CONFIGURATION_CANDIDATES = { "app.hjson", "app.json" },
 		APP_CONFIGURATION_ENVIRONMENT_CANDIDATES = { "app.${environment}.hjson", "app.${environment}.json" },
+		---@type string
 		BASE_INTERFACE = "app"
 	}
 end
@@ -26,7 +29,7 @@ am.options = _initialize_options(_get_default_options())
 local function _get_interface(cmd, args)
 	local _interface = cmd
 	if util.is_array(cmd) then
-		args = cmd
+		args = cmd --[[@as string[] ]]
 		_interface = am.__interface
 	end
 	if type(cmd) == "string" then
@@ -40,7 +43,7 @@ end
 ---
 ---Executes cmd with specified args
 ---@param cmd string|string[]|AmiCli
----@param args string[] | nil
+---@param args string[]?
 ---@return any
 function am.execute(cmd, args)
 	local _interface, args = _get_interface(cmd, args)
@@ -100,7 +103,7 @@ function am.print_help(cmd, options)
 end
 
 ---Reloads application interface and returns true if it is application specific. (False if it is from templates)
----@param shallow boolean
+---@param shallow boolean?
 ---@return boolean
 function am.__reload_interface(shallow)
 	local _isAppSpecific, _amiInterface = _interface.load(am.options.BASE_INTERFACE, shallow)
@@ -109,7 +112,7 @@ function am.__reload_interface(shallow)
 end
 
 ---Finds app entrypoint (ami.lua/ami.json/ami.hjson)
----@return boolean, ExecutableAmiCli, string
+---@return boolean, ExecutableAmiCli|string, string?
 function am.__find_entrypoint()
 	return _interface.find_entrypoint()
 end
@@ -130,8 +133,11 @@ end
 ---#DES am.execute_extension()
 ---
 ---Executes native lua extensions
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param action string|function
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param args CliArg[]|string[]
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param options ExecNativeActionOptions
 ---@return any
 am.execute_extension = _exec.native_action
@@ -139,8 +145,11 @@ am.execute_extension = _exec.native_action
 ---#DES am.execute_external()
 ---
 ---Executes external command
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param command string
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param args CliArg[]
+---@diagnostic disable-next-line: undefined-doc-param
 ---@param injectArgs string[]
 ---@return integer
 am.execute_external = _exec.external_action

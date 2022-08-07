@@ -33,7 +33,7 @@ local _util = require "ami.internals.util"
 local _pkg = {}
 
 ---Normalizes package type
----@param pkgType AmiPackageType
+---@param pkgType AmiPackageType | AmiPackage
 local function _normalize_pkg_type(pkgType)
 	local _boundPackages = am.app.get("dependency override")
 	if type(pkgType.id) == "string" and type(_boundPackages) == "table" and type(_boundPackages[pkgType.id]) == "string" then
@@ -53,6 +53,9 @@ if TEST_MODE then
 	_pkg.normalize_pkg_type = _normalize_pkg_type
 end
 
+---@param appType table
+---@param channel string?
+---@return boolean, AmiPackageDef|string, number?
 local function _download_pkg_def(appType, channel)
 	local _pkgId = appType.id:gsub("%.", "/")
 
@@ -101,7 +104,7 @@ local function _download_pkg_def(appType, channel)
 end
 
 ---Downloads app package definition from repository.
----@param appType AmiPackageType
+---@param appType AmiPackage|AmiPackageType
 ---@return boolean, AmiPackageDef
 local function _get_pkg_def(appType)
 	-- try to download based on app channel
@@ -111,13 +114,13 @@ local function _get_pkg_def(appType)
 		log_trace("Failed to obtain package definition from channel " .. appType.channel .. "! Retrying with default...")
 		local _pkgDefOrError, _exitCode
 		_ok, _pkgDefOrError, _exitCode = _download_pkg_def(appType, nil)
-		ami_assert(_ok, _pkgDefOrError, _exitCode)
+		ami_assert(_ok, _pkgDefOrError--[[@as string]] , _exitCode)
 		_pkgDef = _pkgDefOrError
 	end
 	if _ok then
 		log_trace("Successfully parsed " .. appType.id .. " definition.")
 	end
-	return _ok, _pkgDef
+	return _ok, _pkgDef --[[@as AmiPackageDef]]
 end
 
 ---Downloads app package and returns its path.
@@ -125,11 +128,11 @@ end
 ---@return string
 local function _get_pkg(pkgDef)
 	local _cachedPkgPath = path.combine(am.options.CACHE_DIR_ARCHIVES, pkgDef.sha256)
-	local _expectedPkgHash = (pkgDef.sha256 or "unknown"):lower()
+	local _expectedPkgHash = (pkgDef.sha256 or "unknown")
 	if am.options.CACHE_DISABLED ~= true then
 		if     am.options.NO_INTEGRITY_CHECKS ~= true then
 			local _ok, _hash = fs.safe_hash_file(_cachedPkgPath, { hex = true })
-			if _ok and _hash == _expectedPkgHash then
+			if _ok and hash.hex_equals(_hash, _expectedPkgHash) then
 				log_trace("Using cached version of " .. _expectedPkgHash)
 				return _cachedPkgPath
 			end
@@ -303,7 +306,7 @@ function _pkg.unpack_layers(fileList)
 
 		local _options = { flattenRootDir = true, filter = _filter, transform_path = _transform }
 		local _ok, _error = zip.safe_extract(path.combine(am.options.CACHE_DIR_ARCHIVES, source), ".", _options)
-		ami_assert(_ok, _error, EXIT_PKG_LAYER_EXTRACT_ERROR)
+		ami_assert(_ok, _error or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
 		log_trace("(" .. source .. ") " .. _unpackIdMap[source] .. " extracted.")
 	end
 end
@@ -333,7 +336,7 @@ end
 
 ---Check whether there is new version of specified pkg.
 ---If new version is found returns true, pkg.id and new version
----@param pkg AmiPackage
+---@param pkg AmiPackage | AmiPackageType
 ---@param currentVer string | nil
 ---@return boolean, string|nil, string|nil
 function _pkg.is_pkg_update_available(pkg, currentVer)

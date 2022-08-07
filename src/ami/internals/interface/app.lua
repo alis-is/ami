@@ -16,7 +16,7 @@ local function _new(options)
         if not _ok then
             -- fails with proper error in case of entrypoint not found or invalid
             print("Failed to load entrypoint:")
-            ami_error(_entrypoint, EXIT_INVALID_AMI_INTERFACE)
+            ami_error(_entrypoint --[[@as string]], EXIT_INVALID_AMI_INTERFACE)
         end
         -- entrypoint found and loadable but required action undefined
         ami_error("Violation of AMI standard! " .. _implementationStatus, _implementationError)
@@ -146,7 +146,7 @@ local function _new(options)
             action = _violation_fallback
         }
     }
-    return _base
+    return _base --[[@as ExecutableAmiCli]]
 end
 
 return {

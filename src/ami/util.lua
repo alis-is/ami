@@ -12,7 +12,7 @@ am.util = {}
 ---@param content string
 ---@param variables table
 ---@param options ReplaceVariablesOptions
----@return string, number
+---@return string
 function am.util.replace_variables(content, variables, options)
 	if type(options) ~= 'table' then
 		options = {}

@@ -73,7 +73,7 @@ local function _get_plugin_def(name, version)
 	return _pluginDef
 end
 
----@class AmiGetPluginOptions
+---@class AmiGetPluginOptions: AmiErrorOptions
 ---@field version string
 ---@field safe boolean
 
@@ -81,7 +81,7 @@ end
 ---
 ---Loads plugin by name and returns it.
 ---@param name string
----@param options AmiGetPluginOptions
+---@param options AmiGetPluginOptions?
 ---@return any, any
 function am.plugin.get(name, options)
 	if type(options) ~= "table" then
@@ -128,7 +128,7 @@ function am.plugin.get(name, options)
 		if fs.exists(_cachedArchivePath) then
 			log_trace("Plugin package found, verifying...")
 			local _ok, _hash = fs.safe_hash_file(_cachedArchivePath, { hex = true })
-			_downloadRequired = not _ok or _hash:lower() ~= _pluginDefinition.sha256:lower()
+			_downloadRequired = not _ok or not hash.hex_equals(_hash, _pluginDefinition.sha256)
 			log_trace(
 			not _downloadRequired and "Plugin package verified..." or
 				"Plugin package verification failed, downloading... "
@@ -139,7 +139,7 @@ function am.plugin.get(name, options)
 			local _ok = net.safe_download_file(_pluginDefinition.source, _cachedArchivePath, { followRedirects = true })
 			local _ok2, _hash = fs.safe_hash_file(_cachedArchivePath, { hex = true })
 			if not ami_assert(
-			_ok and _ok2 and _hash:lower() == _pluginDefinition.sha256:lower(),
+			_ok and _ok2 and hash.hex_equals(_hash, _pluginDefinition.sha256),
 				"Failed to verify package integrity - " .. _pluginId .. "!",
 				EXIT_PLUGIN_DOWNLOAD_ERROR,
 				options
@@ -190,7 +190,7 @@ function am.plugin.get(name, options)
 	-- plugins used in non EPROC should be used compiled as single lue file. Requiring sub files from plugin dir wont be available.
 	-- NOTE: use amalg.lua
 	if os.EOS then
-		_originalCwd = os.cwd()
+		_originalCwd = os.cwd() or ""
 		os.chdir(_loadDir)
 	end
 	local _ok, _result = pcall(dofile, _entrypoint)
@@ -222,7 +222,7 @@ end
 ---
 ---Loads plugin by name and returns it.
 ---@param name string
----@param options AmiGetPluginOptions
+---@param options AmiGetPluginOptions?
 ---@return boolean, any
 function am.plugin.safe_get(name, options)
 	if type(options) ~= "table" then
