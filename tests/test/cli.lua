@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global, lowercase-global
 local _test = TEST or require "tests.vendor.u-test"
-
+local _isUnixLike = package.config:sub(1, 1) == "/"
 require "tests.test_init"
 
 _test["parse args"] = function()
@@ -225,7 +225,7 @@ _test["process cli (external)"] = function()
 		description = "test cli description",
 		commands = {
 			test = {
-				action = "sh",
+				action = _isUnixLike and "sh" or "cmd",
 				description = "test cli test command",
 				type = "external"
 			}
@@ -239,20 +239,21 @@ _test["process cli (external)"] = function()
 		end
 	}
 
-	local _argList = { "test", "-c", "exit 0" }
+	local _argListInit = _isUnixLike and { "test", "-c" } or { "test", "/c" }
+	local _argList = util.merge_arrays(_argListInit, { "exit 0" })
+	
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 0)
 
-	local _argList = { "test", "-c", "exit 179" }
+	local _argList =  util.merge_arrays(_argListInit, { "exit 179" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 179)
 
 	proc.EPROC = false
-	local _argList = { "test", "-c", "exit 0" }
+	local _argList =  util.merge_arrays(_argListInit, { "exit 0" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 0)
-
-	local _argList = { "test", "-c", "exit 179" }
+	local _argList =  util.merge_arrays(_argListInit, { "exit 179" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 179)
 	proc.EPROC = true
@@ -262,7 +263,7 @@ _test["process cli (external)"] = function()
 		description = "test cli description",
 		commands = {
 			test = {
-				exec = "sh",
+				exec =  _isUnixLike and "sh" or "cmd",
 				description = "test cli test command",
 				type = "external"
 			}
@@ -276,20 +277,20 @@ _test["process cli (external)"] = function()
 		end
 	}
 
-	local _argList = { "test", "-c", "exit 0" }
+	local _argList = util.merge_arrays(_argListInit, { "exit 0" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 0)
 
-	local _argList = { "test", "-c", "exit 179" }
+	local _argList = util.merge_arrays(_argListInit, { "exit 179" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 179)
 
 	proc.EPROC = false
-	local _argList = { "test", "-c", "exit 0" }
+	local _argList = util.merge_arrays(_argListInit, { "exit 0" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 0)
 
-	local _argList = { "test", "-c", "exit 179" }
+	local _argList = util.merge_arrays(_argListInit, { "exit 179" })
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 179)
 	proc.EPROC = true
@@ -301,7 +302,7 @@ _test["process cli (external - custom env)"] = function()
 		description = "test cli description",
 		commands = {
 			test = {
-				action = "sh",
+				action = _isUnixLike and "sh" or "cmd",
 				description = "test cli test command",
 				type = "external",
 				environment = {
@@ -318,12 +319,11 @@ _test["process cli (external - custom env)"] = function()
 		end
 	}
 
-	local _argList = { "test", "-c", "exit $EXIT_CODE" }
+	local _argList = _isUnixLike and { "test", "-c", "exit $EXIT_CODE" } or { "test", "/c", "exit %EXIT_CODE%" }
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 179)
 
 	_cli.commands.test.environment.EXIT_CODE = 175
-	local _argList = { "test", "-c", "exit $EXIT_CODE" }
 	local _ok, _result = pcall(am.execute, _cli, _argList)
 	_test.assert(_ok and _result == 175)
 end

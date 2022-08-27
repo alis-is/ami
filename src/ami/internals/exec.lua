@@ -24,7 +24,6 @@ end
 function exec.external_action(cmd, args, options)
 	local _args = {}
 	if type(options) ~= "table" then options = {} end
-
 	_append_strings(_args, options.injectArgs)
 	_append_strings(_args, table.map(args, function(v)
 		if type(v) == "table" then
@@ -41,7 +40,11 @@ function exec.external_action(cmd, args, options)
 		end
 		local execArgs = ""
 		for _, v in ipairs(args) do
-			execArgs = execArgs .. ' "' .. v.arg:gsub("\\", "\\\\"):gsub('"', '\\"') .. '"' -- add qouted string
+			local _requiresQuoting = v.arg:match("%s")
+			local _quote = _requiresQuoting and '"' or ""
+			local _arg = v.arg:gsub("\\", "\\\\")
+			if _requiresQuoting then _arg = _arg:gsub('"', '\\"') end
+			execArgs = execArgs .. ' ' .. _quote .. _arg .. _quote -- add qouted string
 		end
 		local _ok, _result = proc.safe_exec(cmd .. " " .. execArgs)
 		ami_assert(_ok, "Failed to execute external action - " .. tostring(_result) .. "!")

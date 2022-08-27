@@ -34,7 +34,7 @@
 ---@field includeOptionsInUsage boolean | nil
 
 ---@class ExecutableAmiCli: AmiCli
----@field __parentCliId string
+---@field __rootCliId string
 ---@field __commandStack string[]
 
 ---@class AmiCliGeneratorOptions

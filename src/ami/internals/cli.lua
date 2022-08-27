@@ -220,7 +220,7 @@ local function _generate_usage(cli, includeOptionsInUsage)
 	local hasCommands = cli.commands and #table.keys(cli.commands)
 	local hasOptions = cli.options and #table.keys(cli.options)
 
-	local cliId = cli.__parentCliId or cli.id or path.file(APP_ROOT_SCRIPT or "")
+	local cliId = cli.__rootCliId or path.file(APP_ROOT_SCRIPT or "")
 	local usage = "Usage: " .. cliId .. " "
 	local optionalBegin = "["
 	local optionalEnd = "]"
@@ -460,7 +460,7 @@ function _amiCli.process(_ami, args)
 	ami_assert(_valid, _error or "unknown", EXIT_CLI_ARG_VALIDATION_ERROR)
 
 	if type(_executableCommand) == "table" then
-		_executableCommand.__parentCliId = _ami.__parentCliId or _ami.id
+		_executableCommand.__rootCliId = _ami.__rootCliId or _ami.id
 		_executableCommand.__commandStack = _ami.__commandStack or {}
 		table.insert(_executableCommand.__commandStack, _executableCommand and _executableCommand.id)
 	end

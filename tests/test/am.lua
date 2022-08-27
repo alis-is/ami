@@ -164,8 +164,6 @@ _test["print_help"] = function()
 						type = "string"
 					}
 				},
-				type = "raw",
-				--  raw args
 				action = function(...)
 					am.execute_extension("tests/assets/extensions/am_test_extension.lua", { ... })
 				end
@@ -181,15 +179,29 @@ _test["print_help"] = function()
 		_result = _result .. msg
 	end
 
-	am.print_help(_interface)
-	_result = hash.sha256sum(_result, true)
-	-- we have 2 hashes because we can run test standalone or as part of suite (all.lue)
-	_test.assert(_result == "4ecf01fca8de8648532163f1052a9195aae4d9b2bf860cfba7bcabdba2663e76" or _result == "f85566ba37c6562ae1552338329fbbee0c9e7518f5d18724f38cfa29576b3199")
+	am.execute(_interface, { "--help" })
+	--am.print_help(_interface)
+	local _start, _end = _result:find("Usage:")
+	_test.assert(_start)
+	_start, _end = _result:find("Options:", _end)
+	_test.assert(_start)
+	_start, _end = _result:find("%-h|%-%-help%s*Prints this help message", _end)
+	_test.assert(_start)
+	_start, _end = _result:find("Commands:", _end)
+	_test.assert(_start)
+	_start, _end = _result:find("test", _end)
+	_test.assert(_start)
 
 	_result = ""
-	am.print_help(_interface.commands.test)
-	_result = hash.sha256sum(_result, true)
-	_test.assert(_result == "fd7a5ea291673592b1d21b57c91f661ae356d7e876889536a64d794f00ab8aa0" or _result == "c17d42a549afe70794de3bac55936495ffdca2834e64c0bee48e0b9e1e6e39df")
+	am.execute(_interface, { "test", "--help" })
+	local _start, _end = _result:find("Usage: .-test")
+	_test.assert(_start)
+	_start, _end = _result:find("Options:", _end)
+	_test.assert(_start)
+	_start, _end = _result:find("%-h|%-%-help%s*Prints this help message", _end)
+	_test.assert(_start)
+	_start, _end = _result:find("%-%-to|%-%-test%-option=<test%-option>", _end)
+	_test.assert(_start)
 
 	print = _originalPrint
 end
