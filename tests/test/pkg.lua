@@ -79,9 +79,9 @@ _test["prepare pkg from local cache"] = function()
     _test.assert(_fileList["__test/assets/test.template.txt"].id == "test.app")
     _test.assert(_fileList["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    _test.assert(_modelInfo.model.source == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
-    _test.assert(_modelInfo.extensions[1].source == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
-    _test.assert(_modelInfo.extensions[2].source == "e27b66bfb87d15fa4419a27435e883de65e7ff9c49c26b833381cadae9ef2853")
+    _test.assert(_modelInfo.model.pkgId == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
+    _test.assert(_modelInfo.extensions[1].pkgId == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
+    _test.assert(_modelInfo.extensions[2].pkgId == "e27b66bfb87d15fa4419a27435e883de65e7ff9c49c26b833381cadae9ef2853")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")
@@ -133,12 +133,9 @@ _test["prepare specific pkg from local cache"] = function()
     _test.assert(_fileList["__test/assets/test.template.txt"].id == "test.app")
     _test.assert(_fileList["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    local _testBase2PkgHash = _fileList["__test/assets/test2.template.txt"].source
-    local _testAppPkgHash = _fileList["__test/assets/test.template.txt"].source
-
-    _test.assert(_modelInfo.model.source == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
-    _test.assert(_modelInfo.extensions[1].source == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
-    _test.assert(_modelInfo.extensions[2].source == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
+    _test.assert(_modelInfo.model.pkgId == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
+    _test.assert(_modelInfo.extensions[1].pkgId == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
+    _test.assert(_modelInfo.extensions[2].pkgId == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")
@@ -162,12 +159,9 @@ _test["prepare pkg no integrity checks"] = function()
     _test.assert(_fileList["__test/assets/test.template.txt"].id == "test.app")
     _test.assert(_fileList["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    local _testBase2PkgHash = _fileList["__test/assets/test2.template.txt"].source
-    local _testAppPkgHash = _fileList["__test/assets/test.template.txt"].source
-
-    _test.assert(_modelInfo.model.source == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
-    _test.assert(_modelInfo.extensions[1].source == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
-    _test.assert(_modelInfo.extensions[2].source == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
+    _test.assert(_modelInfo.model.pkgId == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
+    _test.assert(_modelInfo.extensions[1].pkgId == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
+    _test.assert(_modelInfo.extensions[2].pkgId == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
     _test.assert(#_verTree.dependencies == 2)
     _test.assert(_verTree.dependencies[1].id == "test.base")

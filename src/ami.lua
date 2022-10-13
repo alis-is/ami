@@ -37,6 +37,7 @@ else
 		am.options.CACHE_DIR = ".ami-cache"
 	end
 end
+am.cache.init()
 
 if _parsedOptions["cache-timeout"] then
 	am.options.CACHE_EXPIRATION_TIME = _parsedOptions["cache-timeout"]

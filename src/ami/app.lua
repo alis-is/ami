@@ -242,10 +242,13 @@ am.app.load_config = am.app.load_configuration
 ---Prepares app environment - extracts layers and builds model.
 function am.app.prepare()
 	log_info("Preparing the application...")
-	local _fileList, _modelInfo, _verTree = _amiPkg.prepare_pkg(__APP.type)
+	local _fileList, _modelInfo, _verTree, _tmpPkgs = _amiPkg.prepare_pkg(__APP.type)
 
 	_amiPkg.unpack_layers(_fileList)
 	_amiPkg.generate_model(_modelInfo)
+	for _, v in ipairs(_tmpPkgs) do
+		fs.safe_remove(v)
+	end
 	fs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
 
 	__modelLoaded = false -- force mode load on next access

@@ -10,8 +10,9 @@ tests/tmp/*
 tests/cache/1/*
 !tests/cache/1/.gitkeep
 tests/cache/2/*
-!tests/cache/2/c321c36625d7a6fa55dfe8074ccb90933143bd90898aaa12fad98ac82239a8ba
-!tests/cache/2/d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5
+!tests/cache/2/package/archive/c321c36625d7a6fa55dfe8074ccb90933143bd90898aaa12fad98ac82239a8ba
+!tests/cache/2/package/archive/d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5
+!tests/cache/2/package/definition/*
 tests/cache/4/*
 !tests/cache/4/.gitkeep
 .meta

@@ -5,7 +5,7 @@ require"tests.test_init"
 _test["load cached plugin"] = function()
     am.plugin.__remove_cached("test")
     am.options.CACHE_DIR = "tests/cache/2"
-    local _plugin = am.plugin.get("test")
+    local _plugin, _err = am.plugin.get("test")
     _test.assert(_plugin.test() == "cached test plugin")
     am.plugin.__erase_cache()
     local _ok, _plugin = am.plugin.safe_get("test")

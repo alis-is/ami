@@ -11,20 +11,7 @@ for k, _ in pairs(_options) do
 	_members[k] = true
 end
 
-local function _get_cache_sub_dir(subDir)
-	return function() return path.combine(CACHE_DIR or "", subDir) end
-end
-
-local function _get_plugin_cache_sub_dir(subDir)
-	return function(t) return path.combine(t.CACHE_PLUGIN_DIR or "", subDir) end
-end
-
 local _computed = {
-	CACHE_DIR_DEFS = _get_cache_sub_dir("definition"),
-	CACHE_DIR_ARCHIVES = _get_cache_sub_dir("archive"),
-	CACHE_PLUGIN_DIR = _get_cache_sub_dir("plugin"),
-	CACHE_PLUGIN_DIR_DEFS = _get_plugin_cache_sub_dir("definition"),
-	CACHE_PLUGIN_DIR_ARCHIVES = _get_plugin_cache_sub_dir("archive"),
 }
 
 function cacheOpts.index(t, k)
@@ -56,10 +43,7 @@ function cacheOpts.newindex(t, k, v)
 			v = path.combine(os.EOS and os.cwd() or ".", v)
 		end
 		CACHE_DIR = v
-		fs.mkdirp(t.CACHE_DIR_DEFS)
-		fs.mkdirp(t.CACHE_DIR_ARCHIVES)
-		fs.mkdirp(t.CACHE_PLUGIN_DIR_ARCHIVES)
-		fs.mkdirp(t.CACHE_PLUGIN_DIR_DEFS)
+		am.cache.init()
 		return true
 	end
 
