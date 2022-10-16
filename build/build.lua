@@ -20,7 +20,7 @@ _metaGenerator()
 
 os.chdir("src")
 
-amalg("-o", "../bin/ami.lua", "-s", "ami.lua", "am", "version-info", get_extensions()) --, get_extensions())
+amalg("-o", "../bin/ami.lua", "-s", "ami.lua", "am", "version-info", get_extensions())
 
 -- minify
 if not fs.exists("../build/luasrcdiet") then
