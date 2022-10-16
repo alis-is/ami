@@ -16,3 +16,6 @@ tests/cache/2/*
 tests/cache/4/*
 !tests/cache/4/.gitkeep
 .meta
+
+tools/luasrcdiet
+tools/luasrcdiet*
