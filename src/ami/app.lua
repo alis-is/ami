@@ -164,7 +164,7 @@ function am.app.set_model(value, path, options)
 		if options.merge and type(_original) == "table" and type(value) == "table" then
 			value = util.merge_tables(_original, value, options.overwrite)
 		end
-		table.set(__model, path --[[@as string|string[] ]], value)
+		table.set(__model, path--[[@as string|string[] ]] , value)
 	end
 end
 
@@ -223,7 +223,8 @@ local function _load_configuration_content(path)
 
 	ami_assert(_defaultOk or _envOk, "Failed to load app.h/json - " .. tostring(_defaultConfig), EXIT_INVALID_CONFIGURATION)
 	if not _defaultOk then log_warn("Failed to load default configuration - " .. tostring(_defaultConfig)) end
-	return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig --[[@as table]] or {}, _envOk and _envConfig --[[@as table]] or {}, true), { indent = false })
+	return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig --[[@as table]] or {}, _envOk and _envConfig --[[@as table]] or {},
+		true), { indent = false })
 end
 
 ---#DES am.app.load_configuration
@@ -347,8 +348,26 @@ end
 ---#DES am.app.remove_data
 ---
 ---Removes content of app data directory
-function am.app.remove_data()
-	local _ok, _error = fs.safe_remove("data", { recurse = true, contentOnly = true })
+---@param keep string[]|fun(string):boolean?
+function am.app.remove_data(keep)
+	local _protectedFiles = {}
+	if type(keep) == "table" then
+		-- inject keep files into protected files
+		table.reduce(keep, function(acc, v)
+			acc[path.normalize(v, "unix", { endsep = "leave" })] = true
+			return acc
+		end, _protectedFiles)
+	end
+
+	local _ok, _error = fs.safe_remove("data", { recurse = true, contentOnly = true, keep = function(p, fp)
+		local _np = path.normalize(p, "unix", { endsep = "leave" })
+		if _protectedFiles[_np] then
+			return true
+		end
+		if type(keep) == "function" then
+			return keep(p, fp)
+		end
+	end })
 	ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
 end
 
@@ -363,24 +382,28 @@ end
 ---#DES am.app.remove
 ---
 ---Removes all app related files except app.h/json
-function am.app.remove()
-	---@type boolean, string[]|string
-	local _ok, _files = fs.safe_read_dir(".", { recurse = true, returnFullPaths = true })
-	if not _ok then
-		ami_error("Failed to remove app - " .. (_files or "") .. "!", EXIT_RM_ERROR)
-		return
-	end
+---@param keep string[]|fun(string, string):boolean?
+function am.app.remove(keep)
 	local _protectedFiles = _get_protected_files()
-	for i = 1, #_files do
-		local _file = _files[i]
-
-		if not _protectedFiles[path.file(_file)] then
-			local _ok, _error = fs.safe_remove(_file)
-			ami_assert(_ok, "Failed to remove '" .. _file .. "' - " .. tostring(_error) .. "!", EXIT_RM_ERROR)
-		end
+	if type(keep) == "table" then
+		-- inject keep files into protected files
+		table.reduce(keep, function(acc, v)
+			acc[path.normalize(v, "unix", { endsep = "leave" })] = true
+			return acc
+		end, _protectedFiles)
 	end
-end
 
+	local _ok, _error = fs.safe_remove(".", { recurse = true, contentOnly = true, keep = function(p, fp)
+		local _np = path.normalize(p, "unix", { endsep = "leave" })
+		if _protectedFiles[_np] then
+			return true
+		end
+		if type(keep) == "function" then
+			return keep(p, fp)
+		end
+	end })
+	ami_assert(_ok, "Failed to remove app - " .. tostring(_error) .. "!", EXIT_RM_ERROR)
+end
 ---#DES am.app.remove
 ---
 ---Checks whether app is installed based on app.h/json and .version-tree.json
