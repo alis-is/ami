@@ -133,7 +133,7 @@ function _interface.load(interfaceKind, shallow)
 	if type(_subAmi) ~= "table" then
 		_baseInterface = _interface.new(interfaceKind or "app", { isAppAmiLoaded = false })
 		if not shallow then
-			log_warn("App specific ami not found...")
+			log_warn("App specific ami not found!")
 		end
 		return false, _baseInterface
 	else
