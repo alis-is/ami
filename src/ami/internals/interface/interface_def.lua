@@ -38,4 +38,4 @@
 ---@field __commandStack string[]
 
 ---@class AmiCliGeneratorOptions
----@field isLoaded boolean
+---@field isAppAmiLoaded boolean

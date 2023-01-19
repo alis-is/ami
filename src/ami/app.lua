@@ -348,7 +348,7 @@ end
 ---#DES am.app.remove_data
 ---
 ---Removes content of app data directory
----@param keep string[]|fun(string):boolean?
+---@param keep (string[]|fun(string):boolean?)?
 function am.app.remove_data(keep)
 	local _protectedFiles = {}
 	if type(keep) == "table" then
@@ -382,7 +382,7 @@ end
 ---#DES am.app.remove
 ---
 ---Removes all app related files except app.h/json
----@param keep string[]|fun(string, string):boolean?
+---@param keep (string[]|fun(string, string):boolean?)?
 function am.app.remove(keep)
 	local _protectedFiles = _get_protected_files()
 	if type(keep) == "table" then

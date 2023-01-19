@@ -84,7 +84,11 @@ if _parsedOptions["no-integrity-checks"] then
 end
 
 if _parsedOptions["base"] then
-	am.options.BASE_INTERFACE = _parsedOptions["base"]
+	if type(_parsedOptions["base"]) ~= "string" then 
+		log_error("Invalid base interface: " .. tostring(_parsedOptions["base"]))
+		os.exit(EXIT_INVALID_AMI_BASE_INTERFACE)
+	end
+	am.options.BASE_INTERFACE = _parsedOptions["base"] --[[@as string]]
 end
 
 

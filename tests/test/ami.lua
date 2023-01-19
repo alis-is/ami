@@ -56,8 +56,8 @@ _test["shallow"] = function()
         _printed = _printed .. v
     end
     _ami("--path=".._testDir, "-ll=info", "--cache=../../cache/2/", "--shallow", "--help")
-    _test.assert(_printed:find("AMI") == 1)
     print = _originalPrint
+    _test.assert(_printed:find("AMI") == 1)
     os.chdir(_defaultCwd)
     _test.assert(not _errorCalled)
 end

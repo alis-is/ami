@@ -119,11 +119,8 @@ end
 
 ---Reloads application interface and returns true if it is application specific. (False if it is from templates)
 ---@param shallow boolean?
----@return boolean
 function am.__reload_interface(shallow)
-	local _isAppSpecific, _amiInterface = _interface.load(am.options.BASE_INTERFACE, shallow)
-	am.__interface = _amiInterface
-	return _isAppSpecific
+	am.__has_app_specific_interface, am.__interface = _interface.load(am.options.BASE_INTERFACE, shallow)
 end
 
 ---Finds app entrypoint (ami.lua/ami.json/ami.hjson)

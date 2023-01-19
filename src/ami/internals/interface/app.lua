@@ -22,8 +22,8 @@ local function _new(options)
     if type(options) ~= "table" then
         options = {}
     end
-    local _implementationStatus = not options.isLoaded and "(not installed)" or "(not implemented)"
-    local _implementationError = not options.isLoaded and EXIT_NOT_INSTALLED or EXIT_NOT_IMPLEMENTED
+    local _implementationStatus = not options.isAppAmiLoaded and "(not installed)" or "(not implemented)"
+    local _implementationError = not options.isAppAmiLoaded and EXIT_NOT_INSTALLED or EXIT_NOT_IMPLEMENTED
 
     local function _violation_fallback()
         -- we falled in default interface... lets verify why
@@ -72,20 +72,19 @@ local function _new(options)
             action = function(_options)
                 local _noOptions = #table.keys(_options) == 0
 
-                local _subAmiLoaded = false
                 if _noOptions or _options.environment then
                     am.app.prepare()
                     -- no need to load sub ami in your app ami
-                    _subAmiLoaded = am.__reload_interface()
+                    am.__reload_interface()
                 end
 
                 -- You should not use next 3 lines in your app
-                if _subAmiLoaded then
+                if am.__has_app_specific_interface then
                     am.execute(am.get_proc_args())
                 end
 
                 if (_noOptions or _options.configure) and not am.app.__are_templates_generated() then
-                     am.app.render()
+					am.app.render()
                 end
             end
         },
@@ -140,11 +139,16 @@ local function _new(options)
             options = {
                 all = {
                     description = "Removes entire application keeping only app.hjson"
-                }
+                },
+				force = {
+					description = "Forces removal of application",
+					hidden = true,
+				}
             },
             -- (options, command, args, cli)
             action = function(_options)
-                if _options.all then
+				ami_assert(am.__has_app_specific_interface or _options.force, "You are trying to remove app, but app specific removal routine is not available. Use '--force' to force removal", EXIT_APP_REMOVE_ERROR)
+				if _options.all then
                     am.app.remove()
                     log_success("Application removed.")
                 else
