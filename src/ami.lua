@@ -39,28 +39,7 @@ if _parsedOptions.path then
 	end
 end
 
-if type(_parsedOptions.cache) == "string" then
-	am.options.CACHE_DIR = _parsedOptions.cache
-else
-	if _parsedOptions.cache ~= nil then
-		log_warn("Invalid cache directory: " .. tostring(_parsedOptions.cache))
-	end
-
-	local custom_cache_path = true
-	local cache_path = os.getenv("AMI_CACHE")
-	if not cache_path then
-		cache_path = "/var/cache/ami"
-		custom_cache_path = false
-	end
-	am.options.CACHE_DIR = cache_path
-
-	--fallback to local dir in case we have no access to global one
-	if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
-		local log = custom_cache_path and log_error or log_debug
-		log("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
-		am.options.CACHE_DIR = ".ami-cache"
-	end
-end
+am.configure_cache(_parsedOptions.cache --[[ @as string ]])
 am.cache.init()
 
 if _parsedOptions["cache-timeout"] then
@@ -93,7 +72,7 @@ if _parsedOptions["no-integrity-checks"] then
 end
 
 if _parsedOptions["base"] then
-	if type(_parsedOptions["base"]) ~= "string" then 
+	if type(_parsedOptions["base"]) ~= "string" then
 		log_error("Invalid base interface: " .. tostring(_parsedOptions["base"]))
 		os.exit(EXIT_INVALID_AMI_BASE_INTERFACE)
 	end
@@ -127,7 +106,7 @@ if _parsedOptions["dry-run"] then
 		local _ok, _appConfig = hjson.safe_parse(_parsedOptions["dry-run-config"])
 		if _ok then -- model is valid json
 			am.app.__set(_appConfig)
-		else -- model is not valid json fallback to path
+		else  -- model is not valid json fallback to path
 			am.app.load_configuration(tostring(_parsedOptions["dry-run-config"]))
 		end
 	end
