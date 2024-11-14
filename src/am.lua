@@ -100,6 +100,33 @@ function am.__parse_base_args(args, options)
 	return am.parse_args(_interface.new("base"), args, options)
 end
 
+---Configures ami cache location
+---@param cache string
+function am.configure_cache(cache)
+	if type(cache) == "string" then
+		am.options.CACHE_DIR = cache
+	else
+		if cache ~= nil then
+			log_warn("Invalid cache directory: " .. tostring(cache))
+		end
+
+		local custom_cache_path = true
+		local cache_path = os.getenv("AMI_CACHE")
+		if not cache_path then
+			cache_path = "/var/cache/ami"
+			custom_cache_path = false
+		end
+		am.options.CACHE_DIR = cache_path
+
+		--fallback to local dir in case we have no access to global one
+		if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+			local log = custom_cache_path and log_error or log_debug
+			log("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
+			am.options.CACHE_DIR = ".ami-cache"
+		end
+	end
+end
+
 ---@class AmiPrintHelpOptions
 
 ---#DES am.print_help()
