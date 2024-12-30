@@ -375,7 +375,7 @@ function am.app.remove_data(keep)
 		end, _protectedFiles)
 	end
 
-	local _ok, _error = fs.safe_remove("data", { recurse = true, contentOnly = true, keep = function(p, _)
+	local _ok, _error = fs.safe_remove("data", { recurse = true, content_only = true, keep = function(p, _)
 		local _np = path.normalize(p, "unix", { endsep = "leave" })
 		if _protectedFiles[_np] then
 			return true
@@ -409,7 +409,7 @@ function am.app.remove(keep)
 		end, _protectedFiles)
 	end
 
-	local _ok, _error = fs.safe_remove(".", { recurse = true, contentOnly = true, keep = function(p, fp)
+	local _ok, _error = fs.safe_remove(".", { recurse = true, content_only = true, keep = function(p, fp)
 		local _np = path.normalize(p, "unix", { endsep = "leave" })
 		if _protectedFiles[_np] then
 			return true

@@ -214,7 +214,7 @@ test["load app model"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/app_details/2")
 	local _ok = pcall(am.app.load_configuration)
-	local _result = hash.sha256sum(stringify(am.app.get_model(), { sortKeys = true, indent = " " }), true)
+	local _result = hash.sha256_sum(stringify(am.app.get_model(), { sortKeys = true, indent = " " }), true)
 	os.chdir(defaultCwd)
 	test.assert(_result == "4042b5f3b3dd1463d55166db96f3b17ecfe08b187fecfc7fb53860a478ed0844")
 end
@@ -223,7 +223,7 @@ test["prepare app"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_prepare_app"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 
 	local _ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(_testDir, "app.json"))
 	test.assert(_ok)
@@ -239,7 +239,7 @@ test["is app installed"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_get_app_version"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 
 	local _ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(_testDir, "app.json"))
 	test.assert(_ok)
@@ -256,7 +256,7 @@ test["get app version"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_get_app_version"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 
 	local _ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(_testDir, "app.json"))
 	test.assert(_ok)
@@ -274,7 +274,7 @@ test["remove app data"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app_data"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 
@@ -298,7 +298,7 @@ test["remove app data (list of protected files)"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app_data"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 
@@ -322,7 +322,7 @@ test["remove app data (keep function)"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app_data"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 
@@ -348,7 +348,7 @@ test["remove app"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 
@@ -377,7 +377,7 @@ test["remove app (list of protected files)"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 
@@ -406,7 +406,7 @@ test["remove app (keep function)"] = function()
 	am.options.CACHE_DIR = "tests/cache/2"
 	local _testDir = "tests/tmp/app_test_remove_app"
 	fs.mkdirp(_testDir)
-	fs.remove(_testDir, { recurse = true, contentOnly = true })
+	fs.remove(_testDir, { recurse = true, content_only = true })
 	local _dataDir = path.combine(_testDir, "data")
 	fs.mkdirp(_dataDir)
 

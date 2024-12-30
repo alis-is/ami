@@ -157,7 +157,7 @@ local function _get_pkg(pkgDef)
 		end
 	end
 
-	local _ok, _error = net.safe_download_file(pkgDef.source, _tmpPkgPath, { followRedirects = true, showDefaultProgress = false })
+	local _ok, _error = net.safe_download_file(pkgDef.source, _tmpPkgPath, { follow_redirects = true, show_default_progress = false })
 	if not _ok then
 		ami_error("Failed to get package " .. tostring(_error) .. " - " .. tostring(pkgDef.id or _pkgId), EXIT_PKG_DOWNLOAD_ERROR)
 	end

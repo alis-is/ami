@@ -24,7 +24,8 @@ amalg("-o", "../bin/ami.lua", "-s", "ami.lua", "am", "version-info", get_extensi
 
 -- minify
 if not fs.exists("../build/luasrcdiet") then
-	net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip", { followRedirects = true })
+	-- // TODO: remove 'followRedirects' after eli 0.35.0 release
+	net.download_file("https://github.com/cryi/luasrcdiet/archive/refs/tags/1.1.1.zip", "../build/luasrcdiet.zip", { follow_redirects = true, followRedirects = true })
 	fs.mkdirp("../build/luasrcdiet")
 	zip.extract("../build/luasrcdiet.zip", "../build/luasrcdiet", { flatten_root_dir = true })
 end

@@ -32,7 +32,7 @@ local function _init_ami_test(testDir, configPath, options)
         options = {}
     end
     if options.cleanupTestDir then
-        fs.remove(testDir, {recurse = true, contentOnly = true})
+        fs.remove(testDir, {recurse = true, content_only = true})
     end
     local _ok
     if type(options.environment) == "string" then

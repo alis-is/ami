@@ -147,7 +147,7 @@ function am.plugin.get(name, options)
 		log_trace(not _downloadRequired and "Plugin package found..." or "Plugin package not found or verification failed, downloading... ")
 
 		if _downloadRequired then
-			local _ok = net.safe_download_file(_pluginDefinition.source, _archivePath, { followRedirects = true, showDefaultProgress = false })
+			local _ok = net.safe_download_file(_pluginDefinition.source, _archivePath, { follow_redirects = true, show_default_progress = false })
 			local _ok2, _hash = fs.safe_hash_file(_archivePath, { hex = true, type = "sha256" })
 			if not _ok or not _ok2 or not hash.equals(_hash, _pluginDefinition.sha256, true) then
 				fs.safe_remove(_archivePath)

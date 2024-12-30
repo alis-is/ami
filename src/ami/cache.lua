@@ -165,8 +165,8 @@ end
 ---
 ---Deletes content of package cache
 function am.cache.rm_pkgs()
-	fs.remove(am.cache.__get_package_cache_sub_dir("archive")(), { recurse = true, contentOnly = true })
-	fs.remove(am.cache.__get_package_cache_sub_dir("definition")(), { recurse = true, contentOnly = true })
+	fs.remove(am.cache.__get_package_cache_sub_dir("archive")(), { recurse = true, content_only = true })
+	fs.remove(am.cache.__get_package_cache_sub_dir("definition")(), { recurse = true, content_only = true })
 end
 
 ---#DES am.cache.safe_rm_pkgs
@@ -182,8 +182,8 @@ function am.cache.rm_plugins()
 	if TEST_MODE then
 		am.plugin.__erase_cache()
 	end
-	fs.remove(am.cache.__get_plugin_cache_sub_dir("archive")(), { recurse = true, contentOnly = true })
-	fs.remove(am.cache.__get_plugin_cache_sub_dir("definition")(), { recurse = true, contentOnly = true })
+	fs.remove(am.cache.__get_plugin_cache_sub_dir("archive")(), { recurse = true, content_only = true })
+	fs.remove(am.cache.__get_plugin_cache_sub_dir("definition")(), { recurse = true, content_only = true })
 end
 
 ---#DES am.cache.safe_rm_plugins

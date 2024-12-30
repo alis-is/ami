@@ -203,7 +203,7 @@ test["unpack layers"] = function()
     }
     local _testDir = "tests/tmp/pkg_test_unpack_layers"
     fs.mkdirp(_testDir)
-    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    fs.remove(_testDir, {recurse = true, content_only = true})
     os.chdir(_testDir)
 
     _amiPkg.normalize_pkg_type(_pkgType)
@@ -231,7 +231,7 @@ test["generate model"] = function()
     }
     local _testDir ="tests/tmp/pkg_test_generate_model"
     fs.mkdirp(_testDir)
-    fs.remove(_testDir, {recurse = true, contentOnly = true})
+    fs.remove(_testDir, {recurse = true, content_only = true})
     os.chdir(_testDir)
 
     _amiPkg.normalize_pkg_type(_pkgType)
