@@ -167,7 +167,7 @@ function am.plugin.get(name, options)
 			return false, nil
 		end
 
-		local _ok, _error = zip.safe_extract(_archivePath, _loadDir, { flattenRootDir = true })
+		local _ok, _error = zip.safe_extract(_archivePath, _loadDir, { flatten_root_dir = true })
 		if not _ok then
 			fs.safe_remove(_archivePath)
 			ami_error(string.join_strings("", "Failed to extract plugin package: ", _pluginId, " - ", _error), EXIT_PLUGIN_LOAD_ERROR, options)

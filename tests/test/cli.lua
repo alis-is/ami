@@ -223,8 +223,8 @@ test["process cli (external)"] = function()
 	local osExit = os.exit
 
 	local recordedExitCode = nil
-	os.exit = function(exitcode)
-		recordedExitCode = exitcode
+	os.exit = function(exit_code)
+		recordedExitCode = exit_code
 	end
 
 
@@ -321,8 +321,8 @@ test["process cli (external - custom env)"] = function()
 	local osExit = os.exit
 
 	local recordedExitCode = nil
-	os.exit = function(exitcode)
-		recordedExitCode = exitcode
+	os.exit = function(exit_code)
+		recordedExitCode = exit_code
 	end
 
 	local _cli = {

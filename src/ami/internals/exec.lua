@@ -66,9 +66,9 @@ function exec.external_action(cmd, args, options)
 		local _ok, _result = proc.safe_exec(cmd .. " " .. execArgs)
 		ami_assert(_ok, "Failed to execute external action - " .. tostring(_result) .. "!")
 		if options.shouldReturn then
-			return _result.exitcode
+			return _result.exit_code
 		end
-		os.exit(_result.exitcode)
+		os.exit(_result.exit_code)
 	end
 
 	local desiredStdio = "inherit"
@@ -79,9 +79,9 @@ function exec.external_action(cmd, args, options)
 	local _ok, _result = proc.safe_spawn(cmd, _args, { wait = true, stdio = desiredStdio, env = options.environment })
 	ami_assert(_ok, "Failed to execute external action - " .. tostring(_result) .. "!")
 	if options.shouldReturn then
-		return _result.exitcode
+		return _result.exit_code
 	end
-	os.exit(_result.exitcode)
+	os.exit(_result.exit_code)
 end
 
 ---@class ExecNativeActionOptions

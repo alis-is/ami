@@ -175,7 +175,7 @@ end
 ---@param pkgPath string
 ---@return table
 local function _get_pkg_specs(pkgPath)
-	local _ok, _specsJson = zip.safe_extract_string(pkgPath, "specs.json", { flattenRootDir = true })
+	local _ok, _specsJson = zip.safe_extract_string(pkgPath, "specs.json", { flatten_root_dir = true })
 
 	ami_assert(_ok, "Failed to extract " .. pkgPath .. "", EXIT_PKG_LOAD_ERROR)
 	if _specsJson == nil then
@@ -273,7 +273,7 @@ function _pkg.prepare_pkg(appType)
 	end
 
 	log_trace("Preparing " .. appType.id .. " files...")
-	local files = zip.get_files(_pkgArchivePath, { flattenRootDir = true })
+	local files = zip.get_files(_pkgArchivePath, { flatten_root_dir = true })
 	local _filter = function(_, v) -- ignore directories
 		return type(v) == "string" and #v > 0 and not v:match("/$")
 	end
@@ -333,7 +333,7 @@ function _pkg.unpack_layers(fileList)
 			return path.combine(destination, files[f])
 		end
 
-		local _options = { flattenRootDir = true, filter = _filter, transform_path = _transform }
+		local _options = { flatten_root_dir = true, filter = _filter, transform_path = _transform }
 		local _ok, _error = zip.safe_extract(source, ".", _options)
 		ami_assert(_ok, _error or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
 		log_trace("(" .. source .. ") " .. _unpackIdMap[source] .. " extracted.")
@@ -348,12 +348,12 @@ function _pkg.generate_model(modelDef)
 		return
 	end
 	log_trace("Generating app model...")
-	local _ok, _model = zip.safe_extract_string(modelDef.model.source, "model.lua", { flattenRootDir = true })
+	local _ok, _model = zip.safe_extract_string(modelDef.model.source, "model.lua", { flatten_root_dir = true })
 	if not _ok then
 		ami_error("Failed to extract app model - " .. _model .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
 	end
 	for _, ext in ipairs(modelDef.extensions) do
-		local _ok, _ext = zip.safe_extract_string(ext.source, "model.ext.lua", { flattenRootDir = true })
+		local _ok, _ext = zip.safe_extract_string(ext.source, "model.ext.lua", { flatten_root_dir = true })
 		if not _ok then
 			ami_error("Failed to extract app model extension - " .. _ext .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
 		end
