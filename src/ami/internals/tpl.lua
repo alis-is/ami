@@ -50,7 +50,7 @@ end
 function tpl.render_templates()
 	log_info("Generating app templated files...")
 	---@type boolean, DirEntry[]|string
-	local _ok, _templates = fs.safe_read_dir(".ami-templates", { recurse = true, asDirEntries = true })
+	local _ok, _templates = fs.safe_read_dir(".ami-templates", { recurse = true, as_dir_entries = true })
 	if not _ok or #_templates == 0 then
 		log_trace("No template found, skipping...")
 		return
