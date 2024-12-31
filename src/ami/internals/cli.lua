@@ -191,14 +191,14 @@ end
 local function default_validate_args(optionList, command, cli)
 	local options = type(cli.options) == "table" and cli.options or {}
 
-	if cli.commandRequired and not command then
+	if cli.expects_command == true and not command then
 		return false, "command not specified"
 	end
 
 	for k, v in pairs(options) do
 		if v and v.required then
 			if not optionList[k] then
-				return false, "Required option not specified! (" .. k .. ")"
+				return false, "required option not specified (" .. k .. ")"
 			end
 		end
 	end
@@ -285,7 +285,7 @@ local function generate_usage(cli, include_options_in_usage)
 
 		if cli.type == "namespace" then
 			usage = usage .. "[args...]" .. " "
-		elseif cli.commandRequired then
+		elseif cli.expects_command then
 			usage = usage .. "<command>" .. " "
 		else
 			usage = usage .. "[<command>]" .. " "

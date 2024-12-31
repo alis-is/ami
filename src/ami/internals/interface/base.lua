@@ -19,6 +19,7 @@ local function new()
 	return {
 		id = "ami",
 		title = "AMI",
+		expects_command = false,
 		include_options_in_usage = true,
 		options = {
 			path = {
