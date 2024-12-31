@@ -264,13 +264,6 @@ function am.app.load_configuration(path)
 	_load_configuration(path)
 end
 
----#DES am.app.load_config
----
----@deprecated
----Loads APP from path
----@param path nil|string
-am.app.load_config = am.app.load_configuration
-
 ---#DES am.app.prepare
 ---
 ---Prepares app environment - extracts layers and builds model.
