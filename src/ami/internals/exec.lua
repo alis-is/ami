@@ -16,19 +16,19 @@
 local exec = {}
 
 ---@class ExternalActionOptions
----@field injectArgs string[]?
----@field injectArgsAfter string[]?
+---@field inject_args string[]?
+---@field inject_args_after string[]?
 ---@field stdio ActionStdioType
 ---@field environment table<string, string>?
----@field shouldReturn boolean?
+---@field should_return boolean?
 
----@param destTable string[]
----@param toAppend string[]
-local function _append_strings(destTable, toAppend)
-	if not util.is_array(toAppend) then return end
-	for _, v in ipairs(toAppend) do
+---@param destination_table string[]
+---@param to_append string[]
+local function append_strings(destination_table, to_append)
+	if not util.is_array(to_append) then return end
+	for _, v in ipairs(to_append) do
 		if type(v) ~= "string" then goto CONTINUE end
-		table.insert(destTable, v)
+		table.insert(destination_table, v)
 		::CONTINUE::
 	end
 end
@@ -39,55 +39,55 @@ end
 ---@param args CliArg[]
 ---@param options ExternalActionOptions
 function exec.external_action(cmd, args, options)
-	local _args = {}
+	local raw_args = {}
 	if type(options) ~= "table" then options = {} end
-	_append_strings(_args, options.injectArgs)
-	_append_strings(_args, table.map(args, function(v)
+	append_strings(raw_args, options.inject_args)
+	append_strings(raw_args, table.map(args, function(v)
 		if type(v) == "table" then
 			return v.arg
 		elseif type(v) == "string" or type(v) == "number" or type(v) == "boolean" then
 			return tostring(v)
 		end
 	end))
-	_append_strings(_args, options.injectArgsAfter)
+	append_strings(raw_args, options.inject_args_after)
 
 	if not proc.EPROC then
 		if type(options.environment) == "table" then
 			log_warn("EPROC not available but environment in external action defined. Environment variables are ignored and process environment inherited from ami process...")
 		end
-		local execArgs = ""
+		local exec_args = ""
 		for _, v in ipairs(args) do
-			local _requiresQuoting = v.arg:match("%s")
-			local _quote = _requiresQuoting and '"' or ""
-			local _arg = v.arg:gsub("\\", "\\\\")
-			if _requiresQuoting then _arg = _arg:gsub('"', '\\"') end
-			execArgs = execArgs .. ' ' .. _quote .. _arg .. _quote -- add qouted string
+			local require_quoting = v.arg:match("%s")
+			local quote = require_quoting and '"' or ""
+			local arg = v.arg:gsub("\\", "\\\\")
+			if require_quoting then arg = arg:gsub('"', '\\"') end
+			exec_args = exec_args .. ' ' .. quote .. arg .. quote -- add qouted string
 		end
-		local _ok, _result = proc.safe_exec(cmd .. " " .. execArgs)
-		ami_assert(_ok, "Failed to execute external action - " .. tostring(_result) .. "!")
-		if options.shouldReturn then
-			return _result.exit_code
+		local ok, result = proc.safe_exec(cmd .. " " .. exec_args)
+		ami_assert(ok, "Failed to execute external action - " .. tostring(result) .. "!")
+		if options.should_return then
+			return result.exit_code
 		end
-		os.exit(_result.exit_code)
+		os.exit(result.exit_code)
 	end
 
-	local desiredStdio = "inherit"
+	local desired_stdio = "inherit"
 	if options.stdio ~= nil then
-		desiredStdio = options.stdio
+		desired_stdio = options.stdio
 	end
 
-	local _ok, _result = proc.safe_spawn(cmd, _args, { wait = true, stdio = desiredStdio, env = options.environment })
-	ami_assert(_ok, "Failed to execute external action - " .. tostring(_result) .. "!")
-	if options.shouldReturn then
-		return _result.exit_code
+	local ok, result = proc.safe_spawn(cmd, raw_args, { wait = true, stdio = desired_stdio, env = options.environment })
+	ami_assert(ok, "Failed to execute external action - " .. tostring(result) .. "!")
+	if options.should_return then
+		return result.exit_code
 	end
-	os.exit(_result.exit_code)
+	os.exit(result.exit_code)
 end
 
 ---@class ExecNativeActionOptions
----@field contextFailExitCode number?
----@field errorMsg string|nil
----@field partialErrorMsg string|nil
+---@field context_fail_exit_code number?
+---@field error_message string|nil
+---@field partial_error_message string|nil
 
 ---Executes native action - (lua file module)
 ---@param action string|function
@@ -108,31 +108,31 @@ function exec.native_action(action, args, options)
 			options = {}
 		end
 	end
-	local _pastCtxExitCode = AMI_CONTEXT_FAIL_EXIT_CODE
-	AMI_CONTEXT_FAIL_EXIT_CODE = options.contextFailExitCode
-	local _id = table.get(options, "id", table.get(options, "title", "unspecified"))
+	local past_ctx_exit_code = AMI_CONTEXT_FAIL_EXIT_CODE
+	AMI_CONTEXT_FAIL_EXIT_CODE = options.context_fail_exit_code
+	local id = table.get(options, "id", table.get(options, "title", "unspecified"))
 	if type(action) == "string" then
-		local _ext, _error = loadfile(action)
-		if type(_ext) ~= "function" then
-			ami_error("Failed to load extension from " .. action .. " - " .. _error)
+		local ext, err = loadfile(action)
+		if type(ext) ~= "function" then
+			ami_error("Failed to load extension from " .. action .. " - " .. err)
 			return
 		end
-		_id = action
-		action = _ext
+		id = action
+		action = ext
 	end
 
-	local _ok, _result = pcall(action, table.unpack(args))
-	if not _ok then
-		local _errMsg = "Execution of extension [" .. _id .. "] failed - " .. (tostring(_result) or "")
-		if     type(options.errorMsg) == "string" then
-			_errMsg = options.errorMsg
-		elseif type(options.partialErrorMsg) == "string" then
-			_errMsg = options.partialErrorMsg .. " - " .. tostring(_result)
+	local ok, result = pcall(action, table.unpack(args))
+	if not ok then
+		local err_msg = "Execution of extension [" .. id .. "] failed - " .. (tostring(result) or "")
+		if     type(options.error_message) == "string" then
+			err_msg = options.error_message
+		elseif type(options.partial_error_message) == "string" then
+			err_msg = options.partial_error_message .. " - " .. tostring(result)
 		end
-		ami_error(_errMsg)
+		ami_error(err_msg)
 	end
-	AMI_CONTEXT_FAIL_EXIT_CODE = _pastCtxExitCode
-	return _result
+	AMI_CONTEXT_FAIL_EXIT_CODE = past_ctx_exit_code
+	return result
 end
 
 return exec

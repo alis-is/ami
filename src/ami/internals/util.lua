@@ -13,21 +13,21 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _util = {}
+local util = {}
 
 ---Appends parts to url
 ---@param url string
 ---@vararg string
 ---@return any
-function _util.append_to_url(url, ...)
+function util.append_to_url(url, ...)
 	if type(url) == "string" then
-		for _, _arg in ipairs(table.pack(...)) do
-			if type(_arg) == "string" then
-				url = path.combine(url, _arg)
+		for _, arg in ipairs(table.pack(...)) do
+			if type(arg) == "string" then
+				url = path.combine(url, arg)
 			end
 		end
 	end
 	return url
 end
 
-return _util
+return util

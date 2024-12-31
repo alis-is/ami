@@ -15,10 +15,10 @@
 
 require "ami.globals"
 
-local _cli = require "ami.internals.cli"
-local _exec = require "ami.internals.exec"
-local _interface = require "ami.internals.interface"
-local _initialize_options = require "ami.internals.options.init"
+local cli = require "ami.internals.cli"
+local exec = require "ami.internals.exec"
+local interface = require "ami.internals.interface"
+local initialize_options = require "ami.internals.options.init"
 
 ami_assert(ver.compare(ELI_LIB_VERSION, "0.35.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
 
@@ -28,7 +28,7 @@ require "ami.util"
 require "ami.app"
 require "ami.plugin"
 
-local function _get_default_options()
+local function get_default_options()
 	return {
 		APP_CONFIGURATION_CANDIDATES = { "app.hjson", "app.json" },
 		APP_CONFIGURATION_ENVIRONMENT_CANDIDATES = { "app.${environment}.hjson", "app.${environment}.json" },
@@ -37,21 +37,21 @@ local function _get_default_options()
 	}
 end
 
-am.options = _initialize_options(_get_default_options())
+am.options = initialize_options(get_default_options())
 
 ---@param cmd string|string[]|AmiCli
 ---@param args string[] | nil
-local function _get_interface(cmd, args)
-	local _interface = cmd
+local function get_interface(cmd, args)
+	local interface = cmd
 	if util.is_array(cmd) then
 		args = cmd --[[@as string[] ]]
-		_interface = am.__interface
+		interface = am.__interface
 	end
 	if type(cmd) == "string" then
-		local _commands = table.get(am, { "__interface", "commands" }, {})
-		_interface = _commands[cmd] or _interface
+		local commands = table.get(am, { "__interface", "commands" }, {})
+		interface = commands[cmd] or interface
 	end
-	return _interface, args
+	return interface, args
 end
 
 ---#DES am.execute
@@ -61,9 +61,9 @@ end
 ---@param args string[]?
 ---@return any
 function am.execute(cmd, args)
-	local _interface, args = _get_interface(cmd, args)
-	ami_assert(type(_interface) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
-	return _cli.process(_interface, args)
+	local interface, args = get_interface(cmd, args)
+	ami_assert(type(interface) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
+	return cli.process(interface, args)
 end
 
 ---@type string[]
@@ -85,8 +85,8 @@ end
 ---@param options AmiParseArgsOptions|nil
 ---@return table<string, string|number|boolean>, AmiCli|nil, CliArg[]:
 function am.parse_args(cmd, args, options)
-	local _interface, args = _get_interface(cmd, args)
-	return _cli.parse_args(args, _interface, options)
+	local interface, args = get_interface(cmd, args)
+	return cli.parse_args(args, interface, options)
 end
 
 ---Parses provided args in respect to ami base
@@ -95,9 +95,9 @@ end
 ---@return table<string, string|number|boolean>, nil, CliArg[]
 function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then
-		options = { stopOnNonOption = true }
+		options = { stop_on_non_option = true }
 	end
-	return am.parse_args(_interface.new("base"), args, options)
+	return am.parse_args(interface.new("base"), args, options)
 end
 
 ---Configures ami cache location
@@ -141,19 +141,19 @@ function am.print_help(cmd, options)
 	if type(cmd) == "string" then
 		cmd = am.__interface[cmd]
 	end
-	_cli.print_help(cmd, options)
+	cli.print_help(cmd, options)
 end
 
 ---Reloads application interface and returns true if it is application specific. (False if it is from templates)
 ---@param shallow boolean?
 function am.__reload_interface(shallow)
-	am.__has_app_specific_interface, am.__interface = _interface.load(am.options.BASE_INTERFACE, shallow)
+	am.__has_app_specific_interface, am.__interface = interface.load(am.options.BASE_INTERFACE, shallow)
 end
 
 ---Finds app entrypoint (ami.lua/ami.json/ami.hjson)
 ---@return boolean, ExecutableAmiCli|string, string?
 function am.__find_entrypoint()
-	return _interface.find_entrypoint()
+	return interface.find_entrypoint()
 end
 
 if TEST_MODE then
@@ -165,7 +165,7 @@ if TEST_MODE then
 
 	---Resets am options
 	function am.__reset_options()
-		am.options = _initialize_options(_get_default_options())
+		am.options = initialize_options(get_default_options())
 	end
 end
 
@@ -179,7 +179,7 @@ end
 ---@diagnostic disable-next-line: undefined-doc-param
 ---@param options ExecNativeActionOptions?
 ---@return any
-am.execute_extension = _exec.native_action
+am.execute_extension = exec.native_action
 
 ---#DES am.execute_external()
 ---
@@ -189,6 +189,6 @@ am.execute_extension = _exec.native_action
 ---@diagnostic disable-next-line: undefined-doc-param
 ---@param args CliArg[]?
 ---@diagnostic disable-next-line: undefined-doc-param
----@param injectArgs ExternalActionOptions?
+---@param inject_args ExternalActionOptions?
 ---@return integer
-am.execute_external = _exec.external_action
+am.execute_external = exec.external_action

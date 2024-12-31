@@ -1,6 +1,6 @@
 {
- lastAmiCheck: 9999999999
- sha256: e27b66bfb87d15fa4419a27435e883de65e7ff9c49c26b833381cadae9ef2853
- source: https://github.com/cryon-io/ami.test.packages/releases/download/0.1.0/test.app-0.1.0.zip
- version: 0.1.0
+    sha256: e27b66bfb87d15fa4419a27435e883de65e7ff9c49c26b833381cadae9ef2853
+    source: https://github.com/cryon-io/ami.test.packages/releases/download/0.1.0/test.app-0.1.0.zip
+    last_ami_check: 1735651433
+    version: 0.1.0
 }

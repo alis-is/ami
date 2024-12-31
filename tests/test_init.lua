@@ -3,7 +3,7 @@ hjson = util.generate_safe_functions(require"hjson")
 
 TEST_MODE = true
 
-local _originalCwd = os.cwd()
+local original_cwd = os.cwd()
 os.chdir("src")
 require"am"
 
@@ -11,4 +11,4 @@ ami_error = function (msg)
     print(msg)
 end
 
-os.chdir(_originalCwd)
+os.chdir(original_cwd)

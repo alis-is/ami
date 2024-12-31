@@ -1,5 +1,5 @@
 ---@global
-local _exitCodes = {
+local exit_codes = {
 	EXIT_SETUP_ERROR = 1,
 	EXIT_NOT_INSTALLED = 2,
 	EXIT_NOT_IMPLEMENTED = 3,
@@ -65,8 +65,8 @@ local _exitCodes = {
 	-- 126 - 255 reserved for alis-cl
 }
 
-for k, v in pairs(_exitCodes) do
+for k, v in pairs(exit_codes) do
 	_G[k] = v
 end
 
-return _exitCodes
+return exit_codes

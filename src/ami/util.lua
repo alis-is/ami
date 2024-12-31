@@ -13,15 +13,15 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _lustache = require 'lustache'
+local lustache = require 'lustache'
 
 am.util = {}
 
 ---@class ReplaceVariablesOptions
 ---@field used table?
 ---@field cache table?
----@field replaceMustache boolean?
----@field replaceArrow boolean?
+---@field replace_mustache boolean?
+---@field replace_arrow boolean?
 
 ---Appends parts to url
 ---@param content string
@@ -39,36 +39,36 @@ function am.util.replace_variables(content, variables, options)
 		options.cache = {}
 	end
 
-	if type(options.replaceMustache) ~= 'boolean' or options.replaceMustache then
+	if type(options.replace_mustache) ~= 'boolean' or options.replace_mustache then
 		-- replace mustache variables
-		content = _lustache:render(content, variables)
+		content = lustache:render(content, variables)
 	end
 
 	fs.chown("", 1, 1, { recurse = true })
 
-	if type(options.replaceArrow) ~= 'boolean' or options.replaceArrow then
-		local _toReplace = {}
+	if type(options.replace_arrow) ~= 'boolean' or options.replace_arrow then
+		local to_replace = {}
 		for vid in content:gmatch('<(%S-)>') do
 			if     type(options.cache[vid]) == 'string' then
-				_toReplace['<' .. vid .. '>'] = options.cache[vid]
+				to_replace['<' .. vid .. '>'] = options.cache[vid]
 			elseif type(variables[vid]) == 'string' then
-				local _value = variables[vid]
+				local value = variables[vid]
 				variables[vid] = nil
 				options.used[vid] = true
-				local _result = am.util.replace_variables(_value, variables, options)
-				_toReplace['<' .. vid .. '>'] = _result
-				options.cache[vid] = _result
-				variables[vid] = _value
+				local result = am.util.replace_variables(value, variables, options)
+				to_replace['<' .. vid .. '>'] = result
+				options.cache[vid] = result
+				variables[vid] = value
 				options.used[vid] = nil
 			elseif type(variables[vid]) == 'number' then
-				_toReplace['<' .. vid .. '>'] = variables[vid]
+				to_replace['<' .. vid .. '>'] = variables[vid]
 				options.cache[vid] = variables[vid]
 			elseif options.used[vid] == true then
 				log_warn("Cyclic variable reference detected '" .. tostring(vid) .. "'.")
 			end
 		end
 
-		for k, v in pairs(_toReplace) do
+		for k, v in pairs(to_replace) do
 			content = content:gsub(k:gsub('[%(%)%.%%%+%-%*%?%[%^%$%]]', '%%%1'), v)
 		end
 	end

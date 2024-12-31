@@ -62,14 +62,14 @@ log_success,
 ---
 ---Raises ami error and exits ami with specified exit code unless safe is set to true
 ---@param msg string
----@param exitCode number?
+---@param exit_code number?
 ---@param options AmiErrorOptions?
-function ami_error(msg, exitCode, options)
+function ami_error(msg, exit_code, options)
 	log_error(msg)
 	if type(options) == "table" and options.safe then
 		return false
 	end
-	os.exit(exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR)
+	os.exit(exit_code or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR)
 end
 if TEST_MODE then
 	function ami_error()
@@ -81,14 +81,14 @@ end
 ---Calls ami_error if result of the condition equals false
 ---@param condition boolean|any
 ---@param msg string
----@param exitCode number?
+---@param exit_code number?
 ---@param options AmiErrorOptions?
-function ami_assert(condition, msg, exitCode, options)
+function ami_assert(condition, msg, exit_code, options)
 	if not condition then
-		if exitCode == nil then
-			exitCode = AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+		if exit_code == nil then
+			exit_code = AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
 		end
-		return ami_error(msg, exitCode, options)
+		return ami_error(msg, exit_code, options)
 	end
 	return true
 end

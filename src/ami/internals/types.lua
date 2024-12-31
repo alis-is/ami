@@ -12,7 +12,7 @@
 ---@field id string | nil
 ---@field title string | nil
 ---@field commandRequired boolean
----@field includeOptionsInUsage boolean
+---@field include_options_in_usage boolean
 ---@field action fun(_options: any, _command: any, _args: any, _cli: AmiCli)?
 
 ---@class AmiCli : AmiCliBase
@@ -22,23 +22,23 @@
 ---@field options table<string, AmiCliOption>?
 ---@field commands table<string, AmiCli>?
 ---@field validate fun(optionList: any, _command: any, _cli: AmiCli)|nil
----@field type '"default"' | '"external"' | '"raw"' | '"no-command"' | nil
+---@field type '"default"' | '"external"' | '"raw"' | '"namespace"' | nil
 ---@field stdio ActionStdioType
----@field stopOnNonOption boolean?
+---@field stop_on_non_option boolean?
 ---@field exec string?
----@field injectArgs string[]?
----@field injectArgsAfter string[]?
----@field customHelp boolean?
+---@field inject_args string[]?
+---@field inject_args_after string[]?
+---@field custom_help boolean?
 ---@field help_message string|fun(cli:AmiCli)|nil
 ---@field environment table<string, string>?
 
 ---@class RootAmiCli: AmiCli
 ---@field title string
----@field includeOptionsInUsage boolean | nil
+---@field include_options_in_usage boolean | nil
 
 ---@class ExecutableAmiCli: AmiCli
----@field __rootCliId string
----@field __commandStack string[]
+---@field __root_cli_id string
+---@field __command_stack string[]
 
 ---@class AmiCliGeneratorOptions
----@field isAppAmiLoaded boolean?
+---@field is_app_ami_loaded boolean?

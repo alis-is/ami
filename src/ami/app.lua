@@ -14,8 +14,8 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ---@diagnostic disable-next-line: different-requires
-local _amiPkg = require "ami.internals.pkg"
-local _amiTpl = require "ami.internals.tpl"
+local ami_pkg = require "ami.internals.pkg"
+local ami_tpl = require "ami.internals.tpl"
 
 am.app = {}
 
@@ -23,18 +23,18 @@ am.app = {}
 local __APP = {}
 ---@type table
 local __model = {}
-local isLoaded = false
-local isModeLoaded = false
+local is_loaded = false
+local is_model_loaded = false
 
 ---Returns true of app configuration is loaded
 ---@return boolean
 function am.app.__is_loaded()
-	return isLoaded
+	return is_loaded
 end
 
 ---Normalizes pkg type
 ---@param pkg table
-local function _normalize_app_pkg_type(pkg)
+local function normalize_app_pkg_type(pkg)
 	if not pkg.type then
 		return
 	end
@@ -45,10 +45,10 @@ local function _normalize_app_pkg_type(pkg)
 			version = "latest"
 		}
 	end
-	local _type = pkg.type
-	ami_assert(type(_type) == "table", "Invalid pkg type!", EXIT_PKG_INVALID_TYPE)
-	if type(_type.repository) ~= "string" then
-		_type.repository = am.options.DEFAULT_REPOSITORY_URL
+	local pkg_type = pkg.type
+	ami_assert(type(pkg_type) == "table", "Invalid pkg type!", EXIT_PKG_INVALID_TYPE)
+	if type(pkg_type.repository) ~= "string" then
+		pkg_type.repository = am.options.DEFAULT_REPOSITORY_URL
 	end
 end
 
@@ -56,8 +56,8 @@ end
 ---@param app table
 local function __set(app)
 	__APP = app
-	_normalize_app_pkg_type(__APP)
-	isLoaded = true
+	normalize_app_pkg_type(__APP)
+	is_loaded = true
 end
 
 
@@ -65,8 +65,8 @@ if TEST_MODE then
 	---Sets internal state of app configuration being loaded
 	---@param value boolean
 	function am.app.__set_loaded(value)
-		isLoaded = value
-		isModeLoaded = value
+		is_loaded = value
+		is_model_loaded = value
 	end
 
 	---Returns loaded APP
@@ -84,57 +84,57 @@ end
 
 ---@param candidates string[]
 ---@return boolean, string|table
-local function _find_and_load_configuration(candidates)
-	local _ok, _configContent
-	for _, _cfgCandidate in ipairs(candidates) do
-		_ok, _configContent = fs.safe_read_file(_cfgCandidate)
-		if _ok then
-			local _ok, _config = hjson.safe_parse(_configContent)
-			return _ok, _config
+local function find_and_load_configuration(candidates)
+	local ok, config_content
+	for _, config_candidate in ipairs(candidates) do
+		ok, config_content = fs.safe_read_file(config_candidate)
+		if ok then
+			local ok, config = hjson.safe_parse(config_content)
+			return ok, config
 		end
 	end
-	return false, _configContent
+	return false, config_content
 end
 
 ---loads configuration and env configuration if available
 ---@param path string?
 ---@return string
-local function _load_configuration_content(path)
-	local _predefinedPath = path or am.options.APP_CONFIGURATION_PATH
-	if type(_predefinedPath) == "string" then
-		local _ok, _configContent = fs.safe_read_file(_predefinedPath)
-		ami_assert(_ok, "Failed to load app.h/json - " .. tostring(_configContent), EXIT_INVALID_CONFIGURATION)
-		return _configContent
+local function load_configuration_content(path)
+	local predefined_path = path or am.options.APP_CONFIGURATION_PATH
+	if type(predefined_path) == "string" then
+		local ok, config_content = fs.safe_read_file(predefined_path)
+		ami_assert(ok, "Failed to load app.h/json - " .. tostring(config_content), EXIT_INVALID_CONFIGURATION)
+		return config_content
 	end
 
-	local _envOk, _envConfig
-	local _defaultOk, _defaultConfig = _find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
+	local env_ok, env_config
+	local default_ok, default_config = find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
 	if am.options.ENVIRONMENT then
-		local _candidates = table.map(am.options.APP_CONFIGURATION_ENVIRONMENT_CANDIDATES, function(v)
-			local _result = string.interpolate(v, { environment = am.options.ENVIRONMENT });
-			return _result;
+		local candidates = table.map(am.options.APP_CONFIGURATION_ENVIRONMENT_CANDIDATES, function(v)
+			local result = string.interpolate(v, { environment = am.options.ENVIRONMENT })
+			return result
 		end)
-		_envOk, _envConfig = _find_and_load_configuration(_candidates)
-		if not _envOk then log_warn("Failed to load environment configuration - " .. tostring(_envConfig)) end
+		env_ok, env_config = find_and_load_configuration(candidates)
+		if not env_ok then log_warn("Failed to load environment configuration - " .. tostring(env_config)) end
 	end
 
-	ami_assert(_defaultOk or _envOk, "Failed to load app.h/json - " .. tostring(_defaultConfig), EXIT_INVALID_CONFIGURATION)
-	if not _defaultOk then log_warn("Failed to load default configuration - " .. tostring(_defaultConfig)) end
-	return hjson.stringify_to_json(util.merge_tables(_defaultOk and _defaultConfig --[[@as table]] or {}, _envOk and _envConfig --[[@as table]] or {},
+	ami_assert(default_ok or env_ok, "Failed to load app.h/json - " .. tostring(default_config), EXIT_INVALID_CONFIGURATION)
+	if not default_ok then log_warn("Failed to load default configuration - " .. tostring(default_config)) end
+	return hjson.stringify_to_json(util.merge_tables(default_ok and default_config --[[@as table]] or {}, env_ok and env_config --[[@as table]] or {},
 		true), { indent = false })
 end
 
-local function _load_configuration(path)
-	local _configContent = _load_configuration_content(path)
-	local _ok, _app = hjson.safe_parse(_configContent)
-	ami_assert(_ok, "Failed to parse app.h/json - " .. tostring(_app), EXIT_INVALID_CONFIGURATION)
+local function load_configuration(path)
+	local config_content = load_configuration_content(path)
+	local ok, app = hjson.safe_parse(config_content)
+	ami_assert(ok, "Failed to parse app.h/json - " .. tostring(app), EXIT_INVALID_CONFIGURATION)
 
-	__set(_app)
-	local _variables = am.app.get("variables", {})
-	local _options = am.app.get("options", {})
-	_variables = util.merge_tables(_variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
-	_configContent = am.util.replace_variables(_configContent, _variables, _options)
-	__set(hjson.parse(_configContent))
+	__set(app)
+	local variables = am.app.get("variables", {})
+	local options = am.app.get("options", {})
+	variables = util.merge_tables(variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
+	config_content = am.util.replace_variables(config_content, variables, options)
+	__set(hjson.parse(config_content))
 end
 
 
@@ -145,8 +145,8 @@ end
 ---@param default any?
 ---@return any
 function am.app.get(path, default)
-	if not isLoaded then
-		_load_configuration()
+	if not is_loaded then
+		load_configuration()
 	end
 	return table.get(__APP, path, default)
 end
@@ -158,17 +158,17 @@ end
 ---@param default any?
 ---@return any
 function am.app.get_configuration(path, default)
-	if not isLoaded then
-		_load_configuration()
+	if not is_loaded then
+		load_configuration()
 	end
 	if path ~= nil then
 		return table.get(am.app.get("configuration"), path, default)
 	end
-	local _result = am.app.get("configuration")
-	if _result == nil then
+	local result = am.app.get("configuration")
+	if result == nil then
 		return default
 	end
-	return _result
+	return result
 end
 
 ---#DES am.app.get_config
@@ -186,16 +186,16 @@ end
 ---
 ---Loads app model from model.lua
 function am.app.load_model()
-	local _path = "model.lua"
+	local path = "model.lua"
 	log_trace("Loading application model...")
-	if not fs.exists(_path) then
+	if not fs.exists(path) then
 		return
 	end
-	isModeLoaded = true -- without this we would be caught in infinite recursion of loading model on demand
-	local _ok, _error = pcall(dofile, _path)
-	if not _ok then
-		isModeLoaded = false
-		ami_error("Failed to load app model - " .. _error, EXIT_APP_INVALID_MODEL)
+	is_model_loaded = true -- without this we would be caught in infinite recursion of loading model on demand
+	local ok, err = pcall(dofile, path)
+	if not ok then
+		is_model_loaded = false
+		ami_error("Failed to load app model - " .. err, EXIT_APP_INVALID_MODEL)
 	end
 end
 
@@ -206,7 +206,7 @@ end
 ---@param default any?
 ---@return any
 function am.app.get_model(path, default)
-	if not isModeLoaded then
+	if not is_model_loaded then
 		am.app.load_model()
 	end
 	if path ~= nil then
@@ -229,7 +229,7 @@ end
 ---@param path (string|string[]|SetModelOptions)?
 ---@param options SetModelOptions?
 function am.app.set_model(value, path, options)
-	if not isModeLoaded then
+	if not is_model_loaded then
 		am.app.load_model()
 	end
 
@@ -248,9 +248,9 @@ function am.app.set_model(value, path, options)
 			__model = value
 		end
 	else
-		local _original = table.get(__model, path)
-		if options.merge and type(_original) == "table" and type(value) == "table" then
-			value = util.merge_tables(_original, value, options.overwrite)
+		local original = table.get(__model, path)
+		if options.merge and type(original) == "table" and type(value) == "table" then
+			value = util.merge_tables(original, value, options.overwrite)
 		end
 		table.set(__model, path--[[@as string|string[] ]] , value)
 	end
@@ -261,7 +261,7 @@ end
 ---Loads APP from path
 ---@param path string?
 function am.app.load_configuration(path)
-	_load_configuration(path)
+	load_configuration(path)
 end
 
 ---#DES am.app.prepare
@@ -269,30 +269,30 @@ end
 ---Prepares app environment - extracts layers and builds model.
 function am.app.prepare()
 	log_info("Preparing the application...")
-	local _fileList, _modelInfo, _verTree, _tmpPkgs = _amiPkg.prepare_pkg(am.app.get("type"))
+	local file_list, model_info, version_tree, tmp_pkgs = ami_pkg.prepare_pkg(am.app.get("type"))
 
-	_amiPkg.unpack_layers(_fileList)
-	_amiPkg.generate_model(_modelInfo)
-	for _, v in ipairs(_tmpPkgs) do
+	ami_pkg.unpack_layers(file_list)
+	ami_pkg.generate_model(model_info)
+	for _, v in ipairs(tmp_pkgs) do
 		fs.safe_remove(v)
 	end
-	fs.write_file(".version-tree.json", hjson.stringify_to_json(_verTree))
+	fs.write_file(".version-tree.json", hjson.stringify_to_json(version_tree))
 
-	isModeLoaded = false -- force mode load on next access
+	is_model_loaded = false -- force mode load on next access
 	am.app.load_configuration()
 end
 
 ---#DES am.app.render
 ---
 ---Renders app templates.
-am.app.render = _amiTpl.render_templates
+am.app.render = ami_tpl.render_templates
 
 ---#DES am.app.__are_templates_generated
 ---
 ---Returns true if templates were generated already
 ---@return boolean
 function am.app.__are_templates_generated()
-	return _amiTpl.__templatesGenerated
+	return ami_tpl.__templates_generated
 end
 
 ---#DES am.app.is_update_available
@@ -300,21 +300,21 @@ end
 ---Returns true if there is update available for any of related packages
 ---@return boolean
 function am.app.is_update_available()
-	local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json")
-	if _ok then
-		local _ok, _verTree = hjson.safe_parse(_verTreeJson)
-		if _ok then
+	local ok, version_tree_raw = fs.safe_read_file(".version-tree.json")
+	if ok then
+		local ok, version_tree = hjson.safe_parse(version_tree_raw)
+		if ok then
 			log_trace("Using .version-tree.json for update availability check.")
-			return _amiPkg.is_pkg_update_available(_verTree)
+			return ami_pkg.is_pkg_update_available(version_tree)
 		end
 	end
 
 	log_warn("Version tree not found. Running update check against specs...")
-	local _ok, _specsFile = fs.safe_read_file("specs.json")
-	ami_assert(_ok, "Failed to load app specs.json", EXIT_APP_UPDATE_ERROR)
-	local _ok, _specs = hjson.parse(_specsFile)
-	ami_assert(_ok, "Failed to parse app specs.json", EXIT_APP_UPDATE_ERROR)
-	return _amiPkg.is_pkg_update_available(am.app.get("type"), _specs and _specs.version)
+	local ok, specs_raw = fs.safe_read_file("specs.json")
+	ami_assert(ok, "Failed to load app specs.json", EXIT_APP_UPDATE_ERROR)
+	local ok, specs = hjson.parse(specs_raw)
+	ami_assert(ok, "Failed to parse app specs.json", EXIT_APP_UPDATE_ERROR)
+	return ami_pkg.is_pkg_update_available(am.app.get("type"), specs and specs.version)
 end
 
 ---#DES am.app.get_version
@@ -322,11 +322,11 @@ end
 ---Returns app version
 ---@return string|'"unknown"'
 function am.app.get_version()
-	local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json")
-	if _ok then
-		local _ok, _verTree = hjson.safe_parse(_verTreeJson)
-		if _ok then
-			return _verTree.version
+	local ok, version_tree_raw = fs.safe_read_file(".version-tree.json")
+	if ok then
+		local ok, version_tree = hjson.safe_parse(version_tree_raw)
+		if ok then
+			return version_tree.version
 		end
 	end
 	log_warn("Version tree not found. Can not get the version...")
@@ -342,16 +342,16 @@ function am.app.get_type()
 		return am.app.get("type")
 	end
 	-- we want to get app type nicely formatted
-	local _result = am.app.get({"type", "id"})
+	local result = am.app.get({"type", "id"})
 	local version = am.app.get({"type", "version"})
 	if type(version) == "string" then
-		_result = _result .. "@" .. version
+		result = result .. "@" .. version
 	end
 	local repository = am.app.get({"type", "repository"})
 	if type(repository) == "string" and repository ~= am.options.DEFAULT_REPOSITORY_URL then
-		_result = _result .. "[" .. repository .. "]"
+		result = result .. "[" .. repository .. "]"
 	end
-	return _result
+	return result
 end
 
 ---#DES am.app.remove_data
@@ -359,33 +359,33 @@ end
 ---Removes content of app data directory
 ---@param keep (string[]|fun(string):boolean?)?
 function am.app.remove_data(keep)
-	local _protectedFiles = {}
+	local protected_files = {}
 	if type(keep) == "table" then
 		-- inject keep files into protected files
 		table.reduce(keep, function(acc, v)
 			acc[path.normalize(v, "unix", { endsep = "leave" })] = true
 			return acc
-		end, _protectedFiles)
+		end, protected_files)
 	end
 
-	local _ok, _error = fs.safe_remove("data", { recurse = true, content_only = true, keep = function(p, _)
-		local _np = path.normalize(p, "unix", { endsep = "leave" })
-		if _protectedFiles[_np] then
+	local ok, err = fs.safe_remove("data", { recurse = true, content_only = true, keep = function(p, _)
+		local normalized_path = path.normalize(p, "unix", { endsep = "leave" })
+		if protected_files[normalized_path] then
 			return true
 		end
 		if type(keep) == "function" then
 			return keep(p)
 		end
 	end })
-	ami_assert(_ok, "Failed to remove app data - " .. tostring(_error) .. "!", EXIT_RM_DATA_ERROR)
+	ami_assert(ok, "Failed to remove app data - " .. tostring(err) .. "!", EXIT_RM_DATA_ERROR)
 end
 
-local function _get_protected_files()
-	local _protectedFiles = {}
-	for _, configCandidate in ipairs(am.options.APP_CONFIGURATION_CANDIDATES) do
-		_protectedFiles[configCandidate] = true
+local function get_protected_files()
+	local protected_files = {}
+	for _, config_candidate in ipairs(am.options.APP_CONFIGURATION_CANDIDATES) do
+		protected_files[config_candidate] = true
 	end
-	return _protectedFiles
+	return protected_files
 end
 
 ---#DES am.app.remove
@@ -393,36 +393,36 @@ end
 ---Removes all app related files except app.h/json
 ---@param keep (string[]|fun(string, string):boolean?)?
 function am.app.remove(keep)
-	local _protectedFiles = _get_protected_files()
+	local protected_files = get_protected_files()
 	if type(keep) == "table" then
 		-- inject keep files into protected files
 		table.reduce(keep, function(acc, v)
 			acc[path.normalize(v, "unix", { endsep = "leave" })] = true
 			return acc
-		end, _protectedFiles)
+		end, protected_files)
 	end
 
-	local _ok, _error = fs.safe_remove(".", { recurse = true, content_only = true, keep = function(p, fp)
-		local _np = path.normalize(p, "unix", { endsep = "leave" })
-		if _protectedFiles[_np] then
+	local ok, err = fs.safe_remove(".", { recurse = true, content_only = true, keep = function(p, fp)
+		local normalized_path = path.normalize(p, "unix", { endsep = "leave" })
+		if protected_files[normalized_path] then
 			return true
 		end
 		if type(keep) == "function" then
 			return keep(p, fp)
 		end
 	end })
-	ami_assert(_ok, "Failed to remove app - " .. tostring(_error) .. "!", EXIT_RM_ERROR)
+	ami_assert(ok, "Failed to remove app - " .. tostring(err) .. "!", EXIT_RM_ERROR)
 end
 ---#DES am.app.remove
 ---
 ---Checks whether app is installed based on app.h/json and .version-tree.json
 ---@return boolean
 function am.app.is_installed()
-	local _ok, _verTreeJson = fs.safe_read_file(".version-tree.json")
-	if not _ok then return false end
-	local _ok, _verTree = hjson.safe_parse(_verTreeJson)
-	if not _ok then return false end
+	local ok, version_tree_json = fs.safe_read_file(".version-tree.json")
+	if not ok then return false end
+	local ok, version_tree = hjson.safe_parse(version_tree_json)
+	if not ok then return false end
 
 	local version = am.app.get({"type", "version"})
-	return am.app.get({"type", "id"}) == _verTree.id and (version == "latest" or version == _verTree.version)
+	return am.app.get({"type", "id"}) == version_tree.id and (version == "latest" or version == version_tree.version)
 end

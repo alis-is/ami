@@ -13,9 +13,9 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _interface = {}
+local interface = {}
 
-local _kindMap = {
+local kind_map = {
 	base = require "ami.internals.interface.base",
 	app = require "ami.internals.interface.app",
 	tool = require "ami.internals.interface.tool",
@@ -25,37 +25,37 @@ local _kindMap = {
 ---@param kind string
 ---@param options AmiCliGeneratorOptions?
 ---@return ExecutableAmiCli
-function _interface.new(kind, options)
-	local _base = _kindMap[kind]
-	if _base ~= nil then
-		return _kindMap[kind].new(options)
+function interface.new(kind, options)
+	local base = kind_map[kind]
+	if base ~= nil then
+		return kind_map[kind].new(options)
 	end
 	-- try load from path if not cached
-	local _new_base, _error = loadfile(kind)
-	ami_assert(_new_base, "Base interface " .. (kind or "undefined") .. "not found or can not be loaded (Error: '" .. (_error or "") .. "')!",
+	local new_base, err = loadfile(kind)
+	ami_assert(new_base, "Base interface " .. (kind or "undefined") .. "not found or can not be loaded (Error: '" .. (err or "") .. "')!",
 		EXIT_INVALID_AMI_BASE_INTERFACE)
-	local _ok, _base = pcall(_new_base--[[@as function]] , options)
-	ami_assert(_ok, "Failed to load base interface - " .. (kind or "undefined") .. "!", EXIT_INVALID_AMI_BASE_INTERFACE)
+	local ok, base = pcall(new_base--[[@as function]] , options)
+	ami_assert(ok, "Failed to load base interface - " .. (kind or "undefined") .. "!", EXIT_INVALID_AMI_BASE_INTERFACE)
 	-- recursively match all nested interfaces
-	if type(_base.base) == "string" then
-		_base = util.merge_tables(_interface.new(_base.base, options), _base, true)
+	if type(base.base) == "string" then
+		base = util.merge_tables(interface.new(base.base, options), base, true)
 	end
-	return _base
+	return base
 end
 
 ---Finds and returns ami entrypoint
 ---@return boolean, ExecutableAmiCli|string, string?
-function _interface.find_entrypoint()
-	---@alias LoaderFn fun(content: string): boolean, ExecutableAmiCli
+function interface.find_entrypoint()
+	---@alias LoaderFn fun(content: string): boolean, ExecutableAmiCli|string
 
 	---@type table<string, LoaderFn>
-	local _candidates = {
+	local candidates = {
 		["ami.lua"] = function(content)
-			local _ok, _subAmiFn, _err = pcall(load, content)
-			if not _ok or type(_subAmiFn) ~= "function" then return false, _err end
-			local _ok, _subAmi = pcall(_subAmiFn)
-			if not _ok then return false, _subAmi end
-			return true, _subAmi
+			local ok, sub_ami_fn, err = pcall(load, content)
+			if not ok or type(sub_ami_fn) ~= "function" then return false, err or "uknown internal error" end
+			local ok, sub_ami = pcall(sub_ami_fn)
+			if not ok then return false, sub_ami end
+			return true, sub_ami
 		end,
 		["ami.json"] = function(content)
 			return hjson.safe_parse(content)
@@ -65,62 +65,62 @@ function _interface.find_entrypoint()
 		end
 	}
 
-	for candidate, loader in pairs(_candidates) do
-		local _ok, _subAmiContent = fs.safe_read_file(candidate)
-		if _ok then
+	for candidate, loader in pairs(candidates) do
+		local ok, sub_ami_content = fs.safe_read_file(candidate)
+		if ok then
 			log_trace(candidate .. " found loading...")
-			local _ok, _ami = loader(_subAmiContent)
-			return _ok, _ami, candidate
+			local ok, ami = loader(sub_ami_content)
+			return ok, ami, candidate
 		end
 	end
 	return false, "Entrypoint interface not found (ami.lua/ami.json/ami.hjson missing)!", nil
 end
 
 ---Loads ExecutableAmiCli from ami.lua using specified base of interfaceKind
----@param interfaceKind string
+---@param interface_kind string
 ---@param shallow boolean?
 ---@return boolean, ExecutableAmiCli
-function _interface.load(interfaceKind, shallow)
+function interface.load(interface_kind, shallow)
 	log_trace("Loading app specific ami...")
-	local _subAmi
+	local sub_ami
 	if not shallow then
-		local _ok, _subAmiContent = fs.safe_read_file("ami.json")
-		if _ok then
+		local ok, sub_ami_raw = fs.safe_read_file("ami.json")
+		if ok then
 			log_trace("ami.json found loading...")
-			_ok, _subAmi = hjson.safe_parse(_subAmiContent)
-			log_trace("ami.json load " .. (_ok and "successful" or "failed") .. "...")
-			if not _ok then
-				log_warn("ami.json load failed - " .. tostring(_subAmi))
+			ok, sub_ami = hjson.safe_parse(sub_ami_raw)
+			log_trace("ami.json load " .. (ok and "successful" or "failed") .. "...")
+			if not ok then
+				log_warn("ami.json load failed - " .. tostring(sub_ami))
 			else
 				log_trace "ami.json loaded"
 			end
 		end
 
-		if not _ok then
-			_ok, _subAmiContent = fs.safe_read_file("ami.hjson")
-			if _ok then
+		if not ok then
+			ok, sub_ami_raw = fs.safe_read_file("ami.hjson")
+			if ok then
 				log_trace("ami.hjson found loading...")
-				_ok, _subAmi = hjson.safe_parse(_subAmiContent)
-				if not _ok then
-					log_warn("ami.hjson load failed - " .. tostring(_subAmi))
+				ok, sub_ami = hjson.safe_parse(sub_ami_raw)
+				if not ok then
+					log_warn("ami.hjson load failed - " .. tostring(sub_ami))
 				else
 					log_trace "ami.hjson loaded"
 				end
 			end
 		end
 
-		if not _ok then
-			_ok, _subAmiContent = fs.safe_read_file("ami.lua")
-			if _ok then
+		if not ok then
+			ok, sub_ami_raw = fs.safe_read_file("ami.lua")
+			if ok then
 				log_trace("ami.lua found, loading...")
 				local _err
-				_ok, _subAmi, _err = pcall(load, _subAmiContent)
-				if _ok and type(_subAmi) == "function" then
-					_ok, _subAmi = pcall(_subAmi)
-					if _ok then
+				ok, sub_ami, _err = pcall(load, sub_ami_raw)
+				if ok and type(sub_ami) == "function" then
+					ok, sub_ami = pcall(sub_ami)
+					if ok then
 						log_trace("ami.lua loaded")
 					else
-						log_warn("ami.lua load failed - " .. tostring(_subAmi))
+						log_warn("ami.lua load failed - " .. tostring(sub_ami))
 					end
 				else
 					log_warn("ami.lua load failed - " .. tostring(_err))
@@ -129,28 +129,28 @@ function _interface.load(interfaceKind, shallow)
 		end
 	end
 
-	local _baseInterface
+	local base_interface
 
-	if type(_subAmi) ~= "table" then
-		_baseInterface = _interface.new(interfaceKind or "app", { isAppAmiLoaded = false })
+	if type(sub_ami) ~= "table" then
+		base_interface = interface.new(interface_kind or "app", { is_app_ami_loaded = false })
 		if not shallow then
 			log_warn("App specific ami not found!")
 		end
-		return false, _baseInterface
+		return false, base_interface
 	else
-		_baseInterface = _interface.new(_subAmi.base or interfaceKind or "app", { isAppAmiLoaded = true })
+		base_interface = interface.new(sub_ami.base or interface_kind or "app", { is_app_ami_loaded = true })
 	end
 
-	local _id = _baseInterface.id
-	local _title = _subAmi.title
-	if _subAmi.customTitle ~= true then
-		_title = string.join_strings(" - ", "AMI", _subAmi.title)
+	local id = base_interface.id
+	local title = sub_ami.title
+	if sub_ami.use_custom_title ~= true then
+		title = string.join_strings(" - ", "AMI", sub_ami.title)
 	end
 
-	local _result = util.merge_tables(_baseInterface, _subAmi, true)
-	_result.id = _id
-	_result.title = _title
-	return true, _result
+	local result = util.merge_tables(base_interface, sub_ami, true)
+	result.id = id
+	result.title = title
+	return true, result
 end
 
-return _interface
+return interface

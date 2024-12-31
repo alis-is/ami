@@ -12,38 +12,38 @@
 
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
-local cacheOpts = {}
+local cache_options = {}
 
 local CACHE_DIR = nil
-local _options = {
+local options = {
 	CACHE_EXPIRATION_TIME = 86400
 }
 
-local _members = {}
-for k, _ in pairs(_options) do
-	_members[k] = true
+local members = {}
+for k, _ in pairs(options) do
+	members[k] = true
 end
 
-local _computed = {
+local computed = {
 }
 
-function cacheOpts.index(t, k)
+function cache_options.index(t, k)
 	if k == "CACHE_DIR" then
 		return true, CACHE_DIR
 	end
 
-	if _members[k] then
-		return true, _options[k]
+	if members[k] then
+		return true, options[k]
 	end
 
-	local _getter = _computed[k]
-	if type(_getter) == "function" then
-		return true, _getter(t)
+	local getter = computed[k]
+	if type(getter) == "function" then
+		return true, getter(t)
 	end
 	return false, nil
 end
 
-function cacheOpts.newindex(t, k, v)
+function cache_options.newindex(t, k, v)
 	if v == nil then return end
 	if k == "CACHE_DIR" then
 		if v == "false" then
@@ -61,12 +61,12 @@ function cacheOpts.newindex(t, k, v)
 		return true
 	end
 
-	if _members[k] then
-		_options[k] = v
+	if members[k] then
+		options[k] = v
 		return true
 	end
 
 	return false
 end
 
-return cacheOpts --[[@as AmiOptionsPlugin]]
+return cache_options --[[@as AmiOptionsPlugin]]

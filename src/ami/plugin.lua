@@ -13,17 +13,17 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _util = require "ami.internals.util"
+local ami_util = require "ami.internals.util"
 
 am.plugin = {}
 
-local _PLUGIN_IN_MEM_CACHE = {}
+local PLUGIN_IN_MEM_CACHE = {}
 
 if TEST_MODE then
 	---Erases plugin in mem cache
 	function am.plugin.__erase_cache()
-		for k, _ in pairs(_PLUGIN_IN_MEM_CACHE) do
-			_PLUGIN_IN_MEM_CACHE[k] = nil
+		for k, _ in pairs(PLUGIN_IN_MEM_CACHE) do
+			PLUGIN_IN_MEM_CACHE[k] = nil
 		end
 	end
 
@@ -34,60 +34,60 @@ if TEST_MODE then
 		if type(version) ~= "string" then
 			version = "latest"
 		end
-		local _pluginId = id .. '@' .. version
-		_PLUGIN_IN_MEM_CACHE[_pluginId] = nil
+		local plugin_id = id .. '@' .. version
+		PLUGIN_IN_MEM_CACHE[plugin_id] = nil
 	end
 end
 
 local function _get_plugin_def(name, version)
-	local _pluginId = name .. "@" .. version
+	local plugin_id = name .. "@" .. version
 
-	local _defUrl
+	local definition_url
 	if version == "latest" then
-		_defUrl = _util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, version .. ".json")
+		definition_url = ami_util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, version .. ".json")
 	else
-		_defUrl = _util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, "v", version .. ".json")
+		definition_url = ami_util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, "v", version .. ".json")
 	end
 
 	if am.options.CACHE_DISABLED ~= true then
-		local _ok, _pluginDefJson = am.cache.get("plugin-definition", _pluginId)
-		if _ok then
-			local _ok, _pluginDef = hjson.safe_parse(_pluginDefJson)
-			if _ok and
-			(version ~= "latest" or (type(_pluginDef.lastAmiCheck) == "number" and _pluginDef.lastAmiCheck + am.options.CACHE_EXPIRATION_TIME > os.time())) then
-				return _pluginDef
+		local ok, plugin_definition_rw = am.cache.get("plugin-definition", plugin_id)
+		if ok then
+			local ok, plugin_definition = hjson.safe_parse(plugin_definition_rw)
+			if ok and
+			(version ~= "latest" or (type(plugin_definition.last_ami_check) == "number" and plugin_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
+				return plugin_definition
 			end
 		end
 	end
 
-	local _ok, _pluginDefJson, status = net.safe_download_string(_defUrl)
+	local ok, plugin_definition_raw, status = net.safe_download_string(definition_url)
 	ami_assert(
-		_ok and status / 100 == 2,
-		string.join_strings("", "Failed to download ", _pluginId, " definition: ", _pluginDefJson),
+		ok and status / 100 == 2,
+		string.join_strings("", "Failed to download ", plugin_id, " definition: ", plugin_definition_raw),
 		EXIT_PLUGIN_INVALID_DEFINITION
 	)
-	local _ok, _pluginDef = hjson.safe_parse(_pluginDefJson)
+	local ok, plugin_definition = hjson.safe_parse(plugin_definition_raw)
 	ami_assert(
-		_ok,
-		string.join_strings("", "Failed to parse ", _pluginId, " definition: ", _pluginDef),
+		ok,
+		string.join_strings("", "Failed to parse ", plugin_id, " definition: ", plugin_definition),
 		EXIT_PLUGIN_INVALID_DEFINITION
 	)
 
 	if am.options.CACHE_DISABLED ~= true then
-		local _cachedDef = util.merge_tables(_pluginDef, { lastAmiCheck = os.time() })
-		local _ok, _pluginDefJson = hjson.safe_stringify(_cachedDef)
+		local cached_definition = util.merge_tables(plugin_definition, { last_ami_check = os.time() })
+		local ok, plugin_definition_raw = hjson.safe_stringify(cached_definition)
 
-		_ok = _ok and am.cache.put(_pluginDefJson, "plugin-definition", _pluginId)
-		if _ok then
-			log_trace("Local copy of " .. _pluginId .. " definition saved into cache")
+		ok = ok and am.cache.put(plugin_definition_raw, "plugin-definition", plugin_id)
+		if ok then
+			log_trace("Local copy of " .. plugin_id .. " definition saved into cache")
 		else
 			-- it is not necessary to save definition locally as we hold version in memory already
-			log_trace("Failed to create local copy of " .. _pluginId .. " definition!")
+			log_trace("Failed to create local copy of " .. plugin_id .. " definition!")
 		end
 	end
 
-	log_trace("Successfully parsed " .. _pluginId .. " definition.")
-	return _pluginDef
+	log_trace("Successfully parsed " .. plugin_id .. " definition.")
+	return plugin_definition
 end
 
 ---@class AmiGetPluginOptions: AmiErrorOptions
@@ -105,126 +105,126 @@ function am.plugin.get(name, options)
 		options = {}
 	end
 
-	local _version = "latest"
+	local version = "latest"
 	if type(options.version) == "string" then
-		_version = options.version
+		version = options.version
 	end
 
-	local _boundPackages = am.app.__is_loaded() and am.app.get("dependency override")
-	if type(name) == "string" and type(_boundPackages) == "table" and type(_boundPackages["plugin." .. name]) == "string" then
-		_version = _boundPackages["plugin." .. name]
-		log_warn("Using overriden plugin version " .. _version .. " of " .. name .. "!")
+	local bound_packages = am.app.__is_loaded() and am.app.get("dependency override")
+	if type(name) == "string" and type(bound_packages) == "table" and type(bound_packages["plugin." .. name]) == "string" then
+		version = bound_packages["plugin." .. name]
+		log_warn("Using overriden plugin version " .. version .. " of " .. name .. "!")
 	end
 
-	local _pluginId = name .. "@" .. _version
-	if type(_PLUGIN_IN_MEM_CACHE[_pluginId]) == "table" then
+	local plugin_id = name .. "@" .. version
+	if type(PLUGIN_IN_MEM_CACHE[plugin_id]) == "table" then
 		log_trace("Loading plugin from cache...")
 		if options.safe then
-			return true, _PLUGIN_IN_MEM_CACHE[_pluginId]
+			return true, PLUGIN_IN_MEM_CACHE[plugin_id]
 		end
-		return _PLUGIN_IN_MEM_CACHE[_pluginId]
+		return PLUGIN_IN_MEM_CACHE[plugin_id]
 	end
 	log_trace("Plugin not loaded, loading...")
-	local _loadDir
-	local _removeLoadDir = true
-	local _entrypoint
+	local load_dir
+	local remove_load_dir = true
+	local entrypoint
 
 	if type(SOURCES) == "table" and SOURCES["plugin." .. name] then
-		local _pluginDef = SOURCES["plugin." .. name]
-		_loadDir = table.get(_pluginDef, "directory")
-		if not ami_assert(_loadDir, "'directory' property has to be specified in case of plugin", EXIT_PKG_LOAD_ERROR, options) then
+		local plugin_definition = SOURCES["plugin." .. name]
+		load_dir = table.get(plugin_definition, "directory")
+		if not ami_assert(load_dir, "'directory' property has to be specified in case of plugin", EXIT_PKG_LOAD_ERROR, options) then
 			return false, nil
 		end
-		_removeLoadDir = false
-		_entrypoint = table.get(_pluginDef, "entrypoint", name .. ".lua")
-		log_trace("Loading local plugin from path " .. _loadDir)
+		remove_load_dir = false
+		entrypoint = table.get(plugin_definition, "entrypoint", name .. ".lua")
+		log_trace("Loading local plugin from path " .. load_dir)
 	else
-		local _pluginDefinition = _get_plugin_def(name, _version)
-		local _archivePath = os.tmpname()
+		local plugin_definition = _get_plugin_def(name, version)
+		local archive_path = os.tmpname()
 
-		local _ok, _ = am.cache.get_to_file("plugin-archive", _pluginId, _archivePath, { sha256 = _pluginDefinition.sha256 })
-		local _downloadRequired = not _ok
-		log_trace(not _downloadRequired and "Plugin package found..." or "Plugin package not found or verification failed, downloading... ")
+		local ok, _ = am.cache.get_to_file("plugin-archive", plugin_id, archive_path, { sha256 = plugin_definition.sha256 })
+		local download_required = not ok
+		log_trace(not download_required and "Plugin package found..." or "Plugin package not found or verification failed, downloading... ")
 
-		if _downloadRequired then
-			local _ok = net.safe_download_file(_pluginDefinition.source, _archivePath, { follow_redirects = true, show_default_progress = false })
-			local _ok2, _hash = fs.safe_hash_file(_archivePath, { hex = true, type = "sha256" })
-			if not _ok or not _ok2 or not hash.equals(_hash, _pluginDefinition.sha256, true) then
-				fs.safe_remove(_archivePath)
-				ami_error("Failed to verify package integrity - " .. _pluginId .. "!", EXIT_PLUGIN_DOWNLOAD_ERROR, options)
+		if download_required then
+			local ok = net.safe_download_file(plugin_definition.source, archive_path, { follow_redirects = true, show_default_progress = false })
+			local ok2, file_hash = fs.safe_hash_file(archive_path, { hex = true, type = "sha256" })
+			if not ok or not ok2 or not hash.equals(file_hash, plugin_definition.sha256, true) then
+				fs.safe_remove(archive_path)
+				ami_error("Failed to verify package integrity - " .. plugin_id .. "!", EXIT_PLUGIN_DOWNLOAD_ERROR, options)
 				return false, nil
 			end
 		end
 
 		local tmpfile = os.tmpname()
 		os.remove(tmpfile)
-		_loadDir = tmpfile .. "_dir"
+		load_dir = tmpfile .. "_dir"
 
-		local _ok, _error = fs.safe_mkdirp(_loadDir)
-		if not _ok then
-			fs.safe_remove(_archivePath)
-			ami_error(string.join_strings("", "Failed to create directory for plugin: ", _pluginId, " - ", _error), EXIT_PLUGIN_LOAD_ERROR, options)
+		local ok, err = fs.safe_mkdirp(load_dir)
+		if not ok then
+			fs.safe_remove(archive_path)
+			ami_error(string.join_strings("", "Failed to create directory for plugin: ", plugin_id, " - ", err), EXIT_PLUGIN_LOAD_ERROR, options)
 			return false, nil
 		end
 
-		local _ok, _error = zip.safe_extract(_archivePath, _loadDir, { flatten_root_dir = true })
-		if not _ok then
-			fs.safe_remove(_archivePath)
-			ami_error(string.join_strings("", "Failed to extract plugin package: ", _pluginId, " - ", _error), EXIT_PLUGIN_LOAD_ERROR, options)
+		local ok, err = zip.safe_extract(archive_path, load_dir, { flatten_root_dir = true })
+		if not ok then
+			fs.safe_remove(archive_path)
+			ami_error(string.join_strings("", "Failed to extract plugin package: ", plugin_id, " - ", err), EXIT_PLUGIN_LOAD_ERROR, options)
 			return false, nil
 		end
 
-		local _ok, _error = am.cache.put_from_file(_archivePath, "plugin-archive", _pluginId)
-		fs.safe_remove(_archivePath)
-		if not _ok then
-			log_trace("Failed to cache plugin archive - " .. tostring(_error) .. "!")
+		local ok, err = am.cache.put_from_file(archive_path, "plugin-archive", plugin_id)
+		fs.safe_remove(archive_path)
+		if not ok then
+			log_trace("Failed to cache plugin archive - " .. tostring(err) .. "!")
 		end
 
-		_entrypoint = name .. ".lua"
-		local _ok, _pluginSpecsJson = fs.safe_read_file(path.combine(_loadDir, "specs.json"))
-		if not _ok then
-			_ok, _pluginSpecsJson = fs.safe_read_file(path.combine(_loadDir, "specs.hjson"))
+		entrypoint = name .. ".lua"
+		local ok, plugin_specs_raw = fs.safe_read_file(path.combine(load_dir, "specs.json"))
+		if not ok then
+			ok, plugin_specs_raw = fs.safe_read_file(path.combine(load_dir, "specs.hjson"))
 		end
 
-		if _ok then
-			local _ok, _pluginSpecs = hjson.safe_parse(_pluginSpecsJson)
-			if _ok and type(_pluginSpecs.entrypoint) == "string" then
-				_entrypoint = _pluginSpecs.entrypoint
+		if ok then
+			local ok, plugin_specs = hjson.safe_parse(plugin_specs_raw)
+			if ok and type(plugin_specs.entrypoint) == "string" then
+				entrypoint = plugin_specs.entrypoint
 			end
 		end
 	end
 
-	local _originalCwd = ""
+	local original_cwd = ""
 
 	-- plugins used in non EOS env should be used compiled as single lue file. Requiring sub files from plugin dir wont be available.
 	-- NOTE: use amalg.lua
 	if os.EOS then
-		_originalCwd = os.cwd() or ""
-		os.chdir(_loadDir)
+		original_cwd = os.cwd() or ""
+		os.chdir(load_dir)
 	end
-	local _ok, _result = pcall(dofile, _entrypoint)
-	if _removeLoadDir then
-		fs.safe_remove(_loadDir, { recurse = true })
+	local ok, result = pcall(dofile, entrypoint)
+	if remove_load_dir then
+		fs.safe_remove(load_dir, { recurse = true })
 	end
-	if not _ok then
-		ami_error("Failed to require plugin: " .. _pluginId .. " - " .. (type(_result) == "string" and _result or ""),
+	if not ok then
+		ami_error("Failed to require plugin: " .. plugin_id .. " - " .. (type(result) == "string" and result or ""),
 			EXIT_PLUGIN_LOAD_ERROR, options
 		)
 		return false, nil
 	end
 
 	if os.EOS then
-		local _ok = os.chdir(_originalCwd)
-		if not _ok then
+		local ok = os.chdir(original_cwd)
+		if not ok then
 			ami_error("Failed to chdir after plugin load", EXIT_PLUGIN_LOAD_ERROR, options)
 			return false, nil
 		end
 	end
-	_PLUGIN_IN_MEM_CACHE[_pluginId] = _result
+	PLUGIN_IN_MEM_CACHE[plugin_id] = result
 	if options.safe then
-		return true, _result
+		return true, result
 	end
-	return _result
+	return result
 end
 
 ---#DES am.plugin.safe_get

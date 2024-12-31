@@ -13,7 +13,7 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _util = require "ami.internals.util"
+local ami_util = require "ami.internals.util"
 
 ---@class AmiPackage
 ---@field id string
@@ -41,291 +41,291 @@ local _util = require "ami.internals.util"
 
 ---@class AmiPackageModelOrigin
 ---@field source string
----@field pkgId string
+---@field pkg_id string
 
 ---@class AmiPackageModelDef
 ---@field model AmiPackageModelOrigin|nil
 ---@field extensions AmiPackageModelOrigin[]
 
-local _pkg = {}
+local pkg = {}
 
 ---Normalizes package type
----@param pkgType AmiPackageType | AmiPackage
-local function _normalize_pkg_type(pkgType)
-	local _boundPackages = am.app.__is_loaded() and am.app.get("dependency override")
-	if type(pkgType.id) == "string" and type(_boundPackages) == "table" and type(_boundPackages[pkgType.id]) == "string" then
-		pkgType.version = _boundPackages[pkgType.id]
-		log_warn("Using overriden version " .. pkgType.version .. " of " .. pkgType.id .. "!")
+---@param pkg_type AmiPackageType | AmiPackage
+local function normalize_pkg_type(pkg_type)
+	local bound_packages = am.app.__is_loaded() and am.app.get("dependency override")
+	if type(pkg_type.id) == "string" and type(bound_packages) == "table" and type(bound_packages[pkg_type.id]) == "string" then
+		pkg_type.version = bound_packages[pkg_type.id]
+		log_warn("Using overriden version " .. pkg_type.version .. " of " .. pkg_type.id .. "!")
 	end
-	if pkgType.version == nil then
-		pkgType.version = "latest"
+	if pkg_type.version == nil then
+		pkg_type.version = "latest"
 	end
-	ami_assert(type(pkgType.version) == "string", "Invalid pkg version", EXIT_PKG_INVALID_VERSION)
-	if type(pkgType.repository) ~= "string" then
-		pkgType.repository = am.options.DEFAULT_REPOSITORY_URL
+	ami_assert(type(pkg_type.version) == "string", "Invalid pkg version", EXIT_PKG_INVALID_VERSION)
+	if type(pkg_type.repository) ~= "string" then
+		pkg_type.repository = am.options.DEFAULT_REPOSITORY_URL
 	end
 end
 
 if TEST_MODE then
-	_pkg.normalize_pkg_type = _normalize_pkg_type
+	pkg.normalize_pkg_type = normalize_pkg_type
 end
 
----@param appType table
+---@param app_type table
 ---@param channel string?
 ---@return boolean, AmiPackageDef|string, number?
-local function _download_pkg_def(appType, channel)
-	local _pkgId = appType.id:gsub("%.", "/")
+local function download_pkg_def(app_type, channel)
+	local pkg_id = app_type.id:gsub("%.", "/")
 
-	local version = appType.version == "latest" and appType.version or "v/" .. appType.version
-	local _channel = type(channel) == "string" and channel ~= "" and "-" .. channel or ""
+	local version = app_type.version == "latest" and app_type.version or "v/" .. app_type.version
+	local channel = type(channel) == "string" and channel ~= "" and "-" .. channel or ""
 
 	-- e.g.: /test/app/latest_beta.json
-	local _defUrl = _util.append_to_url(appType.repository, "definition", _pkgId, version .. _channel .. ".json")
+	local definition_url = ami_util.append_to_url(app_type.repository, "definition", pkg_id, version .. channel .. ".json")
 	-- e.g.: test.app@latest_beta
-	local _fullPkgId = appType.id .. "@" .. appType.version .. _channel
+	local full_pkg_id = app_type.id .. "@" .. app_type.version .. channel
 
 	if am.options.CACHE_DISABLED ~= true then
-		local _ok, _pkgDefJson = am.cache.get("package-definition", _fullPkgId)
-		if _ok then
-			local _ok, _pkgDef = hjson.safe_parse(_pkgDefJson)
-			if _ok and
-			(appType.version ~= "latest" or (type(_pkgDef.lastAmiCheck) == "number" and _pkgDef.lastAmiCheck + am.options.CACHE_EXPIRATION_TIME > os.time())) then
-				return true, _pkgDef
+		local ok, pkg_definition_raw = am.cache.get("package-definition", full_pkg_id)
+		if ok then
+			local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
+			if ok and
+			(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
+				return true, pkg_definition
 			end
 		end
 	end
 
-	local _ok, _pkgDefJson, status = net.safe_download_string(_defUrl)
-	if not _ok or status / 100 ~= 2 then
-		return false, "Failed to download package definition - " .. tostring(_pkgDefJson), EXIT_PKG_INVALID_DEFINITION
+	local ok, pkg_definition_raw, status = net.safe_download_string(definition_url)
+	if not ok or status / 100 ~= 2 then
+		return false, "failed to download package definition - " .. tostring(pkg_definition_raw), EXIT_PKG_INVALID_DEFINITION
 	end
 
-	local _ok, _pkgDef = hjson.safe_parse(_pkgDefJson)
-	if not _ok then
-		return _ok, "Failed to parse package definition - " .. appType.id, EXIT_PKG_INVALID_DEFINITION
+	local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
+	if not ok then
+		return ok, "failed to parse package definition - " .. app_type.id, EXIT_PKG_INVALID_DEFINITION
 	end
 
 	if am.options.CACHE_DISABLED ~= true then
-		local _cachedDef = util.merge_tables(_pkgDef, { lastAmiCheck = os.time() })
-		local _ok, _pkgDefJson = hjson.safe_stringify(_cachedDef)
-		_ok = _ok and am.cache.put(_pkgDefJson, "package-definition", _fullPkgId)
-		if _ok then
-			log_trace("Local copy of " .. appType.id .. " definition saved into " .. _fullPkgId)
+		local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
+		local ok, cached_definition_raw = hjson.safe_stringify(cached_definition)
+		ok = ok and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
+		if ok then
+			log_trace("Local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
 		else
 			-- it is not necessary to save definition locally as we hold version in memory already
-			log_trace("Failed to cache " .. appType.id .. " definition!")
+			log_trace("Failed to cache " .. app_type.id .. " definition!")
 		end
 	end
 
-	return true, _pkgDef
+	return true, pkg_definition
 end
 
 ---Downloads app package definition from repository.
----@param appType AmiPackage|AmiPackageType
+---@param app_type AmiPackage|AmiPackageType
 ---@return boolean, AmiPackageDef
-local function _get_pkg_def(appType)
+local function get_pkg_def(app_type)
 	-- try to download based on app channel
-	local _ok, _pkgDef = _download_pkg_def(appType, appType.channel)
+	local ok, package_definition = download_pkg_def(app_type, app_type.channel)
 	-- if we failed to download channel and we werent downloading default already, try download default
-	if not _ok and type(appType.channel) == "string" and appType.channel ~= "" then
-		log_trace("Failed to obtain package definition from channel " .. appType.channel .. "! Retrying with default...")
-		local _pkgDefOrError, _exitCode
-		_ok, _pkgDefOrError, _exitCode = _download_pkg_def(appType, nil)
-		ami_assert(_ok, _pkgDefOrError--[[@as string]] , _exitCode)
-		_pkgDef = _pkgDefOrError
+	if not ok and type(app_type.channel) == "string" and app_type.channel ~= "" then
+		log_trace("Failed to obtain package definition from channel " .. app_type.channel .. "! Retrying with default...")
+		local package_definition_or_error, exit_code
+		ok, package_definition_or_error, exit_code = download_pkg_def(app_type, nil)
+		ami_assert(ok, package_definition_or_error--[[@as string]] , exit_code)
+		package_definition = package_definition_or_error
 	end
-	if _ok then
-		log_trace("Successfully parsed " .. appType.id .. " definition.")
+	if ok then
+		log_trace("Successfully parsed " .. app_type.id .. " definition.")
 	end
-	return _ok, _pkgDef --[[@as AmiPackageDef]]
+	return ok, package_definition --[[@as AmiPackageDef]]
 end
 
 ---Downloads app package and returns its path.
----@param pkgDef AmiPackageDef
+---@param package_definition AmiPackageDef
 ---@return string, string
-local function _get_pkg(pkgDef)
-	local _pkgId = pkgDef.sha256 or pkgDef.sha512
-	local _tmpPkgPath = os.tmpname()
+local function get_pkg(package_definition)
+	local pkg_id = package_definition.sha256 or package_definition.sha512
+	local tmp_pkg_path = os.tmpname()
 	if am.options.CACHE_DISABLED ~= true then
-		local _ok, _err = am.cache.get_to_file("package-archive", _pkgId, _tmpPkgPath,
-			{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and pkgDef.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and pkgDef.sha512 or nil })
-		if _ok then
-			log_trace("Using cached version of " .. _pkgId)
-			return _pkgId, _tmpPkgPath
+		local ok, err = am.cache.get_to_file("package-archive", pkg_id, tmp_pkg_path,
+			{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha512 or nil })
+		if ok then
+			log_trace("Using cached version of " .. pkg_id)
+			return pkg_id, tmp_pkg_path
 		else
-			log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(_err))
+			log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
 		end
 	end
 
-	local _ok, _error = net.safe_download_file(pkgDef.source, _tmpPkgPath, { follow_redirects = true, show_default_progress = false })
-	if not _ok then
-		ami_error("Failed to get package " .. tostring(_error) .. " - " .. tostring(pkgDef.id or _pkgId), EXIT_PKG_DOWNLOAD_ERROR)
+	local ok, err = net.safe_download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
+	if not ok then
+		ami_error("Failed to get package " .. tostring(err) .. " - " .. tostring(package_definition.id or pkg_id), EXIT_PKG_DOWNLOAD_ERROR)
 	end
-	local _ok, _hash = fs.safe_hash_file(_tmpPkgPath, { hex = true, type = pkgDef.sha512 and "sha512" or nil })
-	ami_assert(_ok and _hash == _pkgId, "Failed to verify package integrity - " .. _pkgId .. "!", EXIT_PKG_INTEGRITY_CHECK_ERROR)
-	log_trace("Integrity checks of " .. _pkgId .. " successful.")
-	local _ok, _error = am.cache.put_from_file(_tmpPkgPath, "package-archive", _pkgId)
-	if not _ok then
-		log_trace("Failed to cache package " .. _pkgId .. " - " .. tostring(_error))
+	local ok, hash = fs.safe_hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
+	ami_assert(ok and hash == pkg_id, "Failed to verify package integrity - " .. pkg_id .. "!", EXIT_PKG_INTEGRITY_CHECK_ERROR)
+	log_trace("Integrity checks of " .. pkg_id .. " successful.")
+	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_id)
+	if not ok then
+		log_trace("Failed to cache package " .. pkg_id .. " - " .. tostring(err))
 	end
-	return _pkgId, _tmpPkgPath
+	return pkg_id, tmp_pkg_path
 end
 
 ---Extracts package specs from package archive and returns it
----@param pkgPath string
+---@param pkg_path string
 ---@return table
-local function _get_pkg_specs(pkgPath)
-	local _ok, _specsJson = zip.safe_extract_string(pkgPath, "specs.json", { flatten_root_dir = true })
+local function get_pkg_specs(pkg_path)
+	local ok, specs_raw = zip.safe_extract_string(pkg_path, "specs.json", { flatten_root_dir = true })
 
-	ami_assert(_ok, "Failed to extract " .. pkgPath .. "", EXIT_PKG_LOAD_ERROR)
-	if _specsJson == nil then
+	ami_assert(ok, "Failed to extract " .. pkg_path .. "", EXIT_PKG_LOAD_ERROR)
+	if specs_raw == nil then
 		-- no specs, standalone package
 		return {}
 	end
-	log_trace("Analyzing " .. pkgPath .. " specs...")
+	log_trace("Analyzing " .. pkg_path .. " specs...")
 
-	local _ok, _specs = hjson.safe_parse(_specsJson)
-	if not _ok then
-		ami_error("Failed to parse package specification - " .. pkgPath .. " " .. _specs, EXIT_PKG_LOAD_ERROR)
+	local ok, specs = hjson.safe_parse(specs_raw)
+	if not ok then
+		ami_error("Failed to parse package specification - " .. pkg_path .. " " .. specs, EXIT_PKG_LOAD_ERROR)
 	end
-	log_trace("Successfully parsed " .. pkgPath .. " specification.")
-	return _specs
+	log_trace("Successfully parsed " .. pkg_path .. " specification.")
+	return specs
 end
 
 ---Generates structures necessary for package setup and version tree of all packages required
----@param appType AmiPackageType
+---@param app_type AmiPackageType
 ---@return table<string, AmiPackageFile>
 ---@return AmiPackageModelDef
 ---@return AmiPackage
 ---@return string[]
-function _pkg.prepare_pkg(appType)
-	if type(appType.id) ~= "string" then
+function pkg.prepare_pkg(app_type)
+	if type(app_type.id) ~= "string" then
 		ami_error("Invalid pkg specification or definition!", EXIT_PKG_INVALID_DEFINITION)
 	end
-	log_debug("Preparation of " .. appType.id .. " started ...")
-	_normalize_pkg_type(appType)
+	log_debug("Preparation of " .. app_type.id .. " started ...")
+	normalize_pkg_type(app_type)
 
-	local _ok
-	local _pkgDef
-	if type(SOURCES) == "table" and SOURCES[appType.id] then
-		local _localSource = SOURCES[appType.id]
-		log_trace("Loading local package from path " .. _localSource)
-		local _tmp = os.tmpname()
-		local _ok, _error = zip.safe_compress(_localSource, _tmp, { recurse = true, overwrite = true })
-		if not _ok then
-			fs.safe_remove(_tmp)
-			ami_error("Failed to compress local source directory: " .. (_error or ""), EXIT_PKG_LOAD_ERROR)
+	local ok
+	local package_definition
+	if type(SOURCES) == "table" and SOURCES[app_type.id] then
+		local local_source = SOURCES[app_type.id].directory
+		log_trace("Loading local package from path " .. local_source)
+		local tmp_path = os.tmpname()
+		local ok, err = zip.safe_compress(local_source, tmp_path, { recurse = true, overwrite = true })
+		if not ok then
+			fs.safe_remove(tmp_path)
+			ami_error("Failed to compress local source directory: " .. (err or ""), EXIT_PKG_LOAD_ERROR)
 		end
-		local _ok, _hash = fs.safe_hash_file(_tmp, { hex = true, type = "sha256" })
-		if not _ok then
-			fs.safe_remove(_tmp)
+		local ok, hash = fs.safe_hash_file(tmp_path, { hex = true, type = "sha256" })
+		if not ok then
+			fs.safe_remove(tmp_path)
 			ami_error("Failed to load package from local sources", EXIT_PKG_INTEGRITY_CHECK_ERROR)
 		end
-		am.cache.put_from_file(_tmp, "package-archive",  _hash)
-		fs.safe_remove(_tmp)
-		_pkgDef = { sha256 = _hash, id = "debug-dir-pkg" }
+		am.cache.put_from_file(tmp_path, "package-archive",  hash)
+		fs.safe_remove(tmp_path)
+		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
-		_ok, _pkgDef = _get_pkg_def(appType)
-		ami_assert(_ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+		ok, package_definition = get_pkg_def(app_type)
+		ami_assert(ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
 	end
 
-	local _pkgId, _pkgArchivePath = _get_pkg(_pkgDef)
-	local _specs = _get_pkg_specs(_pkgArchivePath)
+	local pkg_id, package_archive_path = get_pkg(package_definition)
+	local specs = get_pkg_specs(package_archive_path)
 
 	---@type table<string, AmiPackageFile>
-	local _res = {}
+	local result = {}
 	---@type AmiPackage
-	local _verTree = {
-		id = appType.id,
-		version = _pkgDef.version,
-		wanted_version = appType.version,
-		channel = appType.channel,
-		repository = appType.repository,
+	local version_tree = {
+		id = app_type.id,
+		version = package_definition.version,
+		wanted_version = app_type.version,
+		channel = app_type.channel,
+		repository = app_type.repository,
 		dependencies = {}
 	}
 
-	local _model = {
+	local model = {
 		model = nil,
 		extensions = {}
 	}
 
-	local _tmpPkgSources = { _pkgArchivePath }
+	local tmp_package_sources = { package_archive_path }
 
-	if util.is_array(_specs.dependencies) then
-		log_trace("Collection " .. appType.id .. " dependencies...")
-		for _, dependency in pairs(_specs.dependencies) do
+	if util.is_array(specs.dependencies) then
+		log_trace("Collection " .. app_type.id .. " dependencies...")
+		for _, dependency in pairs(specs.dependencies) do
 			log_trace("Collecting dependency " .. (type(dependency) == "table" and dependency.id or "n." .. _) .. "...")
 
-			local _subRes, _subModel, _subVerTree, _subPkgSources = _pkg.prepare_pkg(dependency)
-			_tmpPkgSources = util.merge_arrays(_tmpPkgSources, _subPkgSources) --[[@as string[] ]]
-			if type(_subModel.model) == "table" then
+			local sub_result, sub_model, sub_version_tree, sub_package_sources = pkg.prepare_pkg(dependency)
+			tmp_package_sources = util.merge_arrays(tmp_package_sources, sub_package_sources) --[[@as string[] ]]
+			if type(sub_model.model) == "table" then
 				-- we overwrite entire model with extension if we didnt get extensions only
-				_model = _subModel
+				model = sub_model
 			else
-				_model = util.merge_tables(_model, _subModel, true)
+				model = util.merge_tables(model, sub_model, true)
 			end
-			_res = util.merge_tables(_res, _subRes, true)
-			table.insert(_verTree.dependencies, _subVerTree)
+			result = util.merge_tables(result, sub_result, true)
+			table.insert(version_tree.dependencies, sub_version_tree)
 		end
-		log_trace("Dependcies of " .. appType.id .. " successfully collected.")
+		log_trace("Dependcies of " .. app_type.id .. " successfully collected.")
 	else
-		log_trace("No dependencies specified by " .. appType.id .. " specification.")
+		log_trace("No dependencies specified by " .. app_type.id .. " specification.")
 	end
 
-	log_trace("Preparing " .. appType.id .. " files...")
-	local files = zip.get_files(_pkgArchivePath, { flatten_root_dir = true })
+	log_trace("Preparing " .. app_type.id .. " files...")
+	local files = zip.get_files(package_archive_path, { flatten_root_dir = true })
 	local _filter = function(_, v) -- ignore directories
 		return type(v) == "string" and #v > 0 and not v:match("/$")
 	end
 
-	local _modelFound = false
+	local is_model_found = false
 	for _, file in ipairs(table.filter(files, _filter)) do
 		-- assign file source
 		if     file == "model.lua" then
-			_modelFound = true
+			is_model_found = true
 			---@type AmiPackageModelOrigin
-			_model.model = { source = _pkgArchivePath, pkgId = _pkgId }
-			_model.extensions = {}
+			model.model = { source = package_archive_path, pkg_id = pkg_id }
+			model.extensions = {}
 		elseif file == "model.ext.lua" then
-			if not _modelFound then -- we ignore extensions in same layer
-				table.insert(_model.extensions, { source = _pkgArchivePath, pkgId = _pkgId })
+			if not is_model_found then -- we ignore extensions in same layer
+				table.insert(model.extensions, { source = package_archive_path, pkg_id = pkg_id })
 			end
 		elseif file ~= "model.ext.lua.template" and "model.ext.template.lua" then
 			-- we do not accept templates for model as model is used to render templates :)
-			_res[file] = { source = _pkgArchivePath, id = appType.id, file = file, pkgId = _pkgId }
+			result[file] = { source = package_archive_path, id = app_type.id, file = file, pkg_id = pkg_id }
 		end
 	end
-	log_trace("Preparation of " .. appType.id .. " complete.")
-	return _res, _model, _verTree, _tmpPkgSources
+	log_trace("Preparation of " .. app_type.id .. " complete.")
+	return result, model, version_tree, tmp_package_sources
 end
 
 ---Extracts files from package archives
----@param fileList table<string, AmiPackageFile>
-function _pkg.unpack_layers(fileList)
-	local _unpackMap = {}
-	local _unpackIdMap = {}
-	for file, unpackInfo in pairs(fileList) do
-		if type(_unpackMap[unpackInfo.source]) ~= "table" then
-			_unpackMap[unpackInfo.source] = { [file] = unpackInfo.file }
+---@param file_list table<string, AmiPackageFile>
+function pkg.unpack_layers(file_list)
+	local unpack_map = {}
+	local unpack_id_map = {}
+	for file, unpack_info in pairs(file_list) do
+		if type(unpack_map[unpack_info.source]) ~= "table" then
+			unpack_map[unpack_info.source] = { [file] = unpack_info.file }
 		else
-			_unpackMap[unpackInfo.source][file] = unpackInfo.file
+			unpack_map[unpack_info.source][file] = unpack_info.file
 		end
-		_unpackIdMap[unpackInfo.source] = unpackInfo.id
+		unpack_id_map[unpack_info.source] = unpack_info.id
 	end
 
-	for source, files in pairs(_unpackMap) do
-		log_debug("Extracting (" .. source .. ") " .. _unpackIdMap[source])
-		local _filter = function(f)
+	for source, files in pairs(unpack_map) do
+		log_debug("Extracting (" .. source .. ") " .. unpack_id_map[source])
+		local filter = function(f)
 			return files[f]
 		end
 
-		local _transform = function(f, destination)
-			local _name, _ext = path.nameext(f)
-			if _ext == "template" then
+		local transform = function(f, destination)
+			local name, extension = path.nameext(f)
+			if extension == "template" then
 				destination = path.combine(destination, ".ami-templates")
 			else
-				local _, _ext = path.nameext(_name)
-				if _ext == "template" then
+				local _, extension = path.nameext(name)
+				if extension == "template" then
 					destination = path.combine(destination, ".ami-templates")
 				end
 			end
@@ -333,70 +333,70 @@ function _pkg.unpack_layers(fileList)
 			return path.combine(destination, files[f])
 		end
 
-		local _options = { flatten_root_dir = true, filter = _filter, transform_path = _transform }
-		local _ok, _error = zip.safe_extract(source, ".", _options)
-		ami_assert(_ok, _error or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
-		log_trace("(" .. source .. ") " .. _unpackIdMap[source] .. " extracted.")
+		local options = { flatten_root_dir = true, filter = filter, transform_path = transform }
+		local ok, err = zip.safe_extract(source, ".", options)
+		ami_assert(ok, err or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
+		log_trace("(" .. source .. ") " .. unpack_id_map[source] .. " extracted.")
 	end
 end
 
 ---Generates app model from model definition
----@param modelDef AmiPackageModelDef
-function _pkg.generate_model(modelDef)
-	if type(modelDef.model) ~= "table" or type(modelDef.model.source) ~= "string" then
+---@param model_definition AmiPackageModelDef
+function pkg.generate_model(model_definition)
+	if type(model_definition.model) ~= "table" or type(model_definition.model.source) ~= "string" then
 		log_trace("No model found. Skipping model generation ...")
 		return
 	end
 	log_trace("Generating app model...")
-	local _ok, _model = zip.safe_extract_string(modelDef.model.source, "model.lua", { flatten_root_dir = true })
-	if not _ok then
-		ami_error("Failed to extract app model - " .. _model .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
+	local ok, model = zip.safe_extract_string(model_definition.model.source, "model.lua", { flatten_root_dir = true })
+	if not ok then
+		ami_error("Failed to extract app model - " .. model .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
 	end
-	for _, ext in ipairs(modelDef.extensions) do
-		local _ok, _ext = zip.safe_extract_string(ext.source, "model.ext.lua", { flatten_root_dir = true })
-		if not _ok then
-			ami_error("Failed to extract app model extension - " .. _ext .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
+	for _, model_extension in ipairs(model_definition.extensions) do
+		local ok, extension_content_or_error = zip.safe_extract_string(model_extension.source, "model.ext.lua", { flatten_root_dir = true })
+		if not ok then
+			ami_error("Failed to extract app model extension - " .. extension_content_or_error .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
 		end
-		_model = _model .. "\n\n----------- injected ----------- \n--\t" .. ext.pkgId .. "/model.ext.lua\n-------------------------------- \n\n" .. _ext
+		model = model .. "\n\n----------- injected ----------- \n--\t" .. model_extension.pkg_id .. "/model.ext.lua\n-------------------------------- \n\n" .. extension_content_or_error
 	end
-	local _ok = fs.safe_write_file("model.lua", _model)
-	ami_assert(_ok, "Failed to write model.lua!", EXIT_PKG_MODEL_GENERATION_ERROR)
+	local ok = fs.safe_write_file("model.lua", model)
+	ami_assert(ok, "Failed to write model.lua!", EXIT_PKG_MODEL_GENERATION_ERROR)
 end
 
 ---Check whether there is new version of specified pkg.
 ---If new version is found returns true, pkg.id and new version
----@param pkg AmiPackage | AmiPackageType
----@param currentVer string | nil
+---@param package AmiPackage | AmiPackageType
+---@param current_version string | nil
 ---@return boolean, string|nil, string|nil
-function _pkg.is_pkg_update_available(pkg, currentVer)
-	if type(currentVer) ~= "string" then
-		currentVer = pkg.version
+function pkg.is_pkg_update_available(package, current_version)
+	if type(current_version) ~= "string" then
+		current_version = package.version
 	end
-	log_trace("Checking update availability of " .. pkg.id)
-	_normalize_pkg_type(pkg)
+	log_trace("Checking update availability of " .. package.id)
+	normalize_pkg_type(package)
 
-	if pkg.wanted_version ~= "latest" and pkg.wanted_version ~= nil then
+	if package.wanted_version ~= "latest" and package.wanted_version ~= nil then
 		log_trace("Static version detected, update suppressed.")
 		return false
 	end
-	pkg.version = pkg.wanted_version
+	package.version = package.wanted_version
 
-	local _ok, _pkgDef = _get_pkg_def(pkg)
-	ami_assert(_ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+	local ok, package_definition = get_pkg_def(package)
+	ami_assert(ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
 
-	if type(currentVer) ~= "string" then
+	if type(current_version) ~= "string" then
 		log_trace("New version available...")
-		return true, pkg.id, _pkgDef.version
+		return true, package.id, package_definition.version
 	end
 
-	if ver.compare(_pkgDef.version, currentVer) > 0 then
+	if ver.compare(package_definition.version, current_version) > 0 then
 		log_trace("New version available...")
-		return true, pkg.id, _pkgDef.version
+		return true, package.id, package_definition.version
 	end
 
-	if util.is_array(pkg.dependencies) then
-		for _, dep in ipairs(pkg.dependencies) do
-			local _available, _id, _ver = _pkg.is_pkg_update_available(dep, dep.version)
+	if util.is_array(package.dependencies) then
+		for _, dep in ipairs(package.dependencies) do
+			local _available, _id, _ver = pkg.is_pkg_update_available(dep, dep.version)
 			if _available then
 				log_trace("New version of child package found...")
 				return true, _id, _ver
@@ -407,4 +407,4 @@ function _pkg.is_pkg_update_available(pkg, currentVer)
 	return false
 end
 
-return _pkg
+return pkg

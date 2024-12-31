@@ -15,12 +15,11 @@
 
 ---Generates AmiBaseInterface
 ---@return AmiCliBase
-local function _new()
+local function new()
 	return {
 		id = "ami",
 		title = "AMI",
-		commandRequired = false,
-		includeOptionsInUsage = true,
+		include_options_in_usage = true,
 		options = {
 			path = {
 				index = 1,
@@ -124,12 +123,12 @@ local function _new()
 				hidden = true -- for now we do not want to show this in help. For now intent is to use this in hypothetical ami wrappers
 			}
 		},
-		action = function(_, _command, _args)
-			am.execute(_command, _args)
+		action = function(_, command, args)
+			am.execute(command, args)
 		end
 	}
 end
 
 return {
-	new = _new
+	new = new
 }

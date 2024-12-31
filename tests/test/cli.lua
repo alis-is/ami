@@ -279,7 +279,7 @@ test["process cli (external)"] = function()
 				exec =  _isUnixLike and "sh" or "cmd",
 				description = "test cli test command",
 				type = "external",
-				shouldReturn = true
+				should_return = true
 			}
 		},
 		action = function(_, command, args, _)
@@ -358,11 +358,11 @@ test["process cli (external - custom env)"] = function()
 	os.exit = osExit
 end
 
-test["process cli (no-command)"] = function()
+test["process cli (namespace)"] = function()
 	local _cli = {
 		title = "test cli2",
 		description = "test cli description",
-		type = "no-command",
+		type = "namespace",
 		options = {
 			follow = {
 				aliases = { "f" }
@@ -396,11 +396,11 @@ test["process cli (no-command)"] = function()
 	test.assert(_ok)
 end
 
-test["process cli (no-command & stopOnNonOption)"] = function()
+test["process cli (namespace & stop_on_non_option)"] = function()
 	local _cli = {
 		title = "test cli2",
 		description = "test cli description",
-		type = "no-command",
+		type = "namespace",
 		options = {
 			follow = {
 				aliases = { "f" }
@@ -409,7 +409,7 @@ test["process cli (no-command & stopOnNonOption)"] = function()
 				aliases = { "t" }
 			}
 		},
-		stopOnNonOption = true,
+		stop_on_non_option = true,
 		commands = {
 			test = {
 				action = "sh",
@@ -495,7 +495,7 @@ test["show cli help"] = function()
 	test.assert(_result:match("%[%-%-to%] %[%-%-to2%]") and _result:match("Usage:"))
 end
 
-test["show cli help (includeOptionsInUsage = false)"] = function()
+test["show cli help (include_options_in_usage = false)"] = function()
 	local _cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -527,7 +527,7 @@ test["show cli help (includeOptionsInUsage = false)"] = function()
 	local _ok, _result =
 	_collect_printout(
 		function()
-			am.print_help(_cli, { includeOptionsInUsage = false })
+			am.print_help(_cli, { include_options_in_usage = false })
 		end
 	)
 	test.assert(_ok and not _result:match("%[%-%-to%] %[%-%-to2%]") and _result:match("Usage:"))
@@ -667,11 +667,11 @@ test["show cli help (custom help message)"] = function()
 	test.assert(_ok and _cli.help_message .. "\n" == _result)
 end
 
-test["show cli help (no-command)"] = function()
+test["show cli help (namespace)"] = function()
 	local _cli = {
 		title = "test cli2",
 		description = "test cli description",
-		type = "no-command",
+		type = "namespace",
 		options = {
 			follow = {
 				aliases = { "f" }

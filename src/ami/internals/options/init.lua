@@ -13,8 +13,8 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local _cacheOptHooks = require "ami.internals.options.cache"
-local _repOptHooks = require "ami.internals.options.repository"
+local cache_options_hooks = require "ami.internals.options.cache"
+local repository_options_hooks = require "ami.internals.options.repository"
 
 ---@alias AmiOptionsIndexHook fun(t: table, k: any): any
 ---@alias AmiOptionsNewIndexHook fun(t: table, k: any, v:any): boolean
@@ -24,38 +24,38 @@ local _repOptHooks = require "ami.internals.options.repository"
 ---@field newindex fun(t: table, k: any, v:any): boolean
 
 ---@type AmiOptionsIndexHook[]
-local _indexHooks = {}
+local index_hooks = {}
 
 ---@type AmiOptionsNewIndexHook[]
-local _newindexHooks = {}
+local newindex_hooks = {}
 
 ---@type AmiOptionsPlugin[]
-local optPlugins = { _cacheOptHooks, _repOptHooks }
+local option_plugins = { cache_options_hooks, repository_options_hooks }
 
-for _, v in ipairs(optPlugins) do
+for _, v in ipairs(option_plugins) do
 	if type(v) == "table" then
 		if type(v.index) == "function" then
-			table.insert(_indexHooks, v.index)
+			table.insert(index_hooks, v.index)
 		end
 		if type(v.newindex) == "function" then
-			table.insert(_newindexHooks, v.newindex)
+			table.insert(newindex_hooks, v.newindex)
 		end
 	end
 end
 
-local _optionsMeta = {
+local options_metatable = {
 	__index = function(t, k)
-		for _, hook in ipairs(_indexHooks) do
-			local _ok, v = hook(t, k)
-			if _ok then return v end
+		for _, hook in ipairs(index_hooks) do
+			local ok, v = hook(t, k)
+			if ok then return v end
 		end
 		return nil
 	end,
 	__newindex = function(t, k, v)
 		if v == nil then return end
-		for _, hook in ipairs(_newindexHooks) do
-			local _ok = hook(t, k, v)
-			if _ok then return end
+		for _, hook in ipairs(newindex_hooks) do
+			local ok = hook(t, k, v)
+			if ok then return end
 		end
 		rawset(t, k, v)
 	end
@@ -66,6 +66,6 @@ local _optionsMeta = {
 ---@param options T
 ---@return T
 return function(options)
-	setmetatable(options, _optionsMeta)
+	setmetatable(options, options_metatable)
 	return options
 end

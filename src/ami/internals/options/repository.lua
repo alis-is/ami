@@ -13,35 +13,35 @@
 -- You should have received a copy of the GNU Affero General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-local repOpts = {}
+local repository_options = {}
 
-local _mirrors = {
+local mirrors = {
 	"https://air.alis.is/ami/",
 	"https://raw.githubusercontent.com/alis-is/air/main/ami/"
 }
 
 local DEFAULT_REPOSITORY_URL
-for _, _candidate in ipairs(_mirrors) do
-	local _ok, _, status = net.safe_download_string(_candidate .. "TEST", { follow_redirects = true })
-	if _ok and status / 100 == 2 then
-		DEFAULT_REPOSITORY_URL = _candidate
+for _, candidate in ipairs(mirrors) do
+	local ok, _, status = net.safe_download_string(candidate .. "TEST", { follow_redirects = true })
+	if ok and status / 100 == 2 then
+		DEFAULT_REPOSITORY_URL = candidate
 		break
 	end
 end
 
 if not DEFAULT_REPOSITORY_URL then
 	log_warn("No default repository available. Please check your internet connection. I will try to use the first mirror in the list.")
-	DEFAULT_REPOSITORY_URL = _mirrors[1]
+	DEFAULT_REPOSITORY_URL = mirrors[1]
 end
 
-function repOpts.index(t, k)
+function repository_options.index(t, k)
 	if k == "DEFAULT_REPOSITORY_URL" then
 		return true, DEFAULT_REPOSITORY_URL
 	end
 	return false, nil
 end
 
-function repOpts.newindex(t, k, v)
+function repository_options.newindex(t, k, v)
 	if v == nil then return end
 	if k == "DEFAULT_REPOSITORY_URL" then
 		DEFAULT_REPOSITORY_URL = v
@@ -52,4 +52,4 @@ function repOpts.newindex(t, k, v)
 	return false
 end
 
-return repOpts --[[@as AmiOptionsPlugin]]
+return repository_options --[[@as AmiOptionsPlugin]]

@@ -22,33 +22,33 @@ am.cache = {}
 ---@field sha512 string?
 
 -- // TODO: locks when writing to cache?
-local function _get_cache_sub_dir(subDir)
+local function get_cache_sub_dir(sub_dir)
 	return function()
-		return path.combine(am.options.CACHE_DIR --[[@as string?]] or "", subDir)
+		return path.combine(am.options.CACHE_DIR --[[@as string?]] or "", sub_dir)
 	end
 end
 
-function am.cache.__get_package_cache_sub_dir(subDir)
+function am.cache.__get_package_cache_sub_dir(sub_dir)
 	return function(id)
-		local _result = path.combine(_get_cache_sub_dir("package")(), subDir)
+		local result = path.combine(get_cache_sub_dir("package")(), sub_dir)
 		if type(id) == "string" and id ~= "" then
-			return path.combine(_result, id)
+			return path.combine(result, id)
 		end
-		return _result
+		return result
 	end
 end
 
-function am.cache.__get_plugin_cache_sub_dir(subDir)
+function am.cache.__get_plugin_cache_sub_dir(sub_dir)
 	return function(id)
-		local _result = path.combine(_get_cache_sub_dir("plugin")(), subDir)
+		local result = path.combine(get_cache_sub_dir("plugin")(), sub_dir)
 		if type(id) == "string" and id ~= "" then
-			return path.combine(_result, id)
+			return path.combine(result, id)
 		end
-		return _result
+		return result
 	end
 end
 
-local _cacheDirMapping = {
+local cache_dir_mapping = {
 	["plugin-definition"] = am.cache.__get_plugin_cache_sub_dir("definition"),
 	["plugin-archive"] = am.cache.__get_plugin_cache_sub_dir("archive"),
 	["package-definition"] = am.cache.__get_package_cache_sub_dir("definition"),
@@ -59,37 +59,37 @@ local _cacheDirMapping = {
 ---@param id string?
 ---@return string
 function am.cache.__get_item_kind_cache_path(kind, id)
-	return _cacheDirMapping[kind](id)
+	return cache_dir_mapping[kind](id)
 end
 
 ---@param kind CachedItemKind
 ---@param id string
 ---@param options CacheAccessOptions?
 ---@return boolean, string | file*
-local function _internal_cache_get(kind, id, options)
+local function internal_cache_get(kind, id, options)
 	if type(options) ~= "table" then
 		options = {}
 	end
 
-	local _f, _err = io.open(am.cache.__get_item_kind_cache_path(kind, id), "rb")
-	if not _f then return false, (_err or "unknown error") end
+	local file, err = io.open(am.cache.__get_item_kind_cache_path(kind, id), "rb")
+	if not file then return false, (err or "unknown error") end
 
 	if type(options.sha256) == "string" and options.sha256 ~= "" then
-		local _ok, _hash = fs.safe_hash_file(_f, { hex = true, type = "sha256" })
-		if not _ok or not hash.equals(_hash, options.sha256, true) then
+		local ok, file_hash = fs.safe_hash_file(file, { hex = true, type = "sha256" })
+		if not ok or not hash.equals(file_hash, options.sha256, true) then
 			return false, "invalid hash"
 		end
-		_f:seek("set")
+		file:seek("set")
 	end
 
 	if type(options.sha512) == "string" and options.sha512 ~= "" then
-		local _ok, _hash = fs.safe_hash_file(_f, { hex = true, type = "sha512" })
-		if not _ok or not hash.equals(_hash, options.sha512, true) then
+		local ok, file_hash = fs.safe_hash_file(file, { hex = true, type = "sha512" })
+		if not ok or not hash.equals(file_hash, options.sha512, true) then
 			return false, "invalid hash"
 		end
-		_f:seek("set")
+		file:seek("set")
 	end
-	return true, _f
+	return true, file
 end
 
 ---#DES am.cache.get
@@ -104,12 +104,12 @@ function am.cache.get(kind, id, options)
 		options = {}
 	end
 
-	local _ok, _result = _internal_cache_get(kind, id, options)
-	if not _ok then return _ok, _result end
+	local ok, result = internal_cache_get(kind, id, options)
+	if not ok then return ok, result end
 
-	local file = _result --[[@as file*]]
+	local file = result --[[@as file*]]
 
-	return _ok, file:read("a")
+	return ok, file:read("a")
 end
 
 ---#DES am.cache.get_to_file
@@ -117,19 +117,19 @@ end
 ---Gets content of package cache
 ---@param kind CachedItemKind
 ---@param id string
----@param targetPath string
+---@param target_path string
 ---@param options CacheAccessOptions?
 ---@returns bool, string?
-function am.cache.get_to_file(kind, id, targetPath, options)
+function am.cache.get_to_file(kind, id, target_path, options)
 	if type(options) ~= "table" then
 		options = {}
 	end
 
-	local _ok, _result = _internal_cache_get(kind, id, options)
-	if not _ok then return _ok, _result end
+	local ok, result = internal_cache_get(kind, id, options)
+	if not ok then return ok, result end
 
-	local _ok, _err = fs.safe_copy_file(_result, targetPath)
-	return _ok, _err
+	local ok, err = fs.safe_copy_file(result, target_path)
+	return ok, err
 end
 
 ---#DES am.cache.put
@@ -139,24 +139,24 @@ end
 ---@param id string
 ---@returns boolean, string?
 function am.cache.put(content, kind, id)
-	local _ok, _err = fs.write_file(am.cache.__get_item_kind_cache_path(kind, id), content)
-	return _ok, _err
+	local ok, err = fs.write_file(am.cache.__get_item_kind_cache_path(kind, id), content)
+	return ok, err
 end
 
 ---#DES am.cache.put_from_file
 ---
 ---Gets content of package cache
----@param sourcePath string
+---@param source_path string
 ---@param kind CachedItemKind
 ---@param id string
 ---@returns boolean, string?
-function am.cache.put_from_file(sourcePath, kind, id)
-	local _ok, _err = fs.copy_file(sourcePath, am.cache.__get_item_kind_cache_path(kind, id))
-	return _ok, _err
+function am.cache.put_from_file(source_path, kind, id)
+	local ok, err = fs.copy_file(source_path, am.cache.__get_item_kind_cache_path(kind, id))
+	return ok, err
 end
 
 function am.cache.init()
-	for _, v in pairs(_cacheDirMapping) do
+	for _, v in pairs(cache_dir_mapping) do
 		fs.mkdirp(v())
 	end
 end

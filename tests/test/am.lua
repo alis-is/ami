@@ -87,7 +87,7 @@ test["execute_extension (failure)"] = function()
 				type = "raw",
 				--  raw args
 				action = function(...)
-					am.execute_extension("tests/assets/extensions/am_test_extension_fail.lua", { ... }, { contextFailExitCode = 75 })
+					am.execute_extension("tests/assets/extensions/am_test_extension_fail.lua", { ... }, { context_fail_exit_code = 75 })
 				end
 			}
 		},

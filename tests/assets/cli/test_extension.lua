@@ -1,5 +1,5 @@
-local optionList, command, _, _ = ...
+local option_list, command, _, _ = ...
 
 if type(command) == "table" and command.id == "return" then
-    return optionList.value
+    return option_list.value
 end
