@@ -50,10 +50,10 @@ end
 
 test["load_model"] = function()
     am.app.__set_loaded(false)
-    local _cwd = os.cwd()
+    local cwd = os.cwd()
     os.chdir("tests/assets/models/load_model")
     test.assert(am.app.get_model("DATA_DIR") == "test")
-    os.chdir(_cwd)
+    os.chdir(cwd)
 end
 
 test["set_model"] = function()

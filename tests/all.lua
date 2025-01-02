@@ -1,5 +1,5 @@
-local _test = require"tests.vendor.u-test"
-TEST = _test
+local test = require"tests.vendor.u-test"
+TEST = test
 
 require"tests.test_init"
 
@@ -15,5 +15,5 @@ require"tests.test.cache"
 require"tests.test.ami"
 require"tests.test.interfaces"
 
-local _ntests, _nfailed = _test.result()
-_test.summary()
+local ntests, nfailed = test.result()
+test.summary()

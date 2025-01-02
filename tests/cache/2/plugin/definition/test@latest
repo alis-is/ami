@@ -2,5 +2,5 @@
     source: https://github.com/alis-is/ami-plugins/releases/download/0.1.0/test-0.1.0.zip
     sha256: 21b54abcab8d34b8328d89d72f194d5c2da9c9534377988cf02d9f1699f67cfb
     version: 0.1.0
-    last_ami_check: 1735651370
+    last_ami_check: 9999999999
 }
