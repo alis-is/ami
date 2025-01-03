@@ -130,7 +130,7 @@ function am.plugin.get(name, options)
 	local entrypoint
 
 	if type(SOURCES) == "table" and SOURCES["plugin." .. name] then
-		local plugin_definition = SOURCES["plugin." .. name]
+		local plugin_definition = SOURCES["plugin." .. name] --[[ @as table ]]
 		load_dir = table.get(plugin_definition, "directory")
 		if not ami_assert(load_dir, "'directory' property has to be specified in case of plugin", EXIT_PKG_LOAD_ERROR, options) then
 			return false, nil

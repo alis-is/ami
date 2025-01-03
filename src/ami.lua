@@ -19,6 +19,9 @@ am.__args = { ... }
 
 local parsed_options, _, remaining_args = am.__parse_base_args({ ... })
 
+---@type table<string, string | table> | nil
+SOURCES = nil
+
 if parsed_options["local-sources"] then
 	local ok, local_sources_raw = fs.safe_read_file(tostring(parsed_options["local-sources"]))
 	ami_assert(ok, "failed to read local sources file " .. parsed_options["local-sources"], EXIT_INVALID_SOURCES_FILE)

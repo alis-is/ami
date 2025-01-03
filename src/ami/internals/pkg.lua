@@ -208,7 +208,7 @@ function pkg.prepare_pkg(app_type)
 	local ok
 	local package_definition
 	if type(SOURCES) == "table" and SOURCES[app_type.id] then
-		local local_source = SOURCES[app_type.id].directory
+		local local_source = SOURCES[app_type.id]
 		log_trace("Loading local package from path " .. local_source)
 		local tmp_path = os.tmpname()
 		local ok, err = zip.safe_compress(local_source, tmp_path, { recurse = true, overwrite = true })
