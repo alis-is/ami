@@ -12,6 +12,54 @@ if not defaultCwd then
 	return
 end
 
+test["pack app (light)"] = function ()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/app_details/1")
+	local _, _ = pcall(am.app.load_configuration)
+	local app = am.app.__get()
+	app.type.repository = nil
+	os.chdir(defaultCwd)
+	test.assert(util.equals(am.app.__get(), {
+		configuration = {
+			TEST_CONFIGURATION = {
+				bool = true,
+				bool2 = false,
+				key = "value",
+				number = 15
+			}
+		},
+		id = "test1",
+		type = {
+			id = "test.app",
+			version = "latest",
+		}
+	}, true))
+end
+
+test["pack app (full)"] = function()
+    -- // TODO: Implement
+end
+
+test["pack app (whitelist)"] = function()
+    -- // TODO: Implement
+end
+
+test["pack app (blacklist)"] = function()
+    -- // TODO: Implement
+end
+
+test["pack app (glob)"] = function()
+    -- // TODO: Implement
+end
+
+test["pack app (lua-pattern)"] = function()
+    -- // TODO: Implement
+end
+
+test["unpack app"] = function()
+    -- // TODO: Implement
+end
+
 test["load app details (json)"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/app_details/1")
