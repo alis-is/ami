@@ -78,7 +78,7 @@ function am.execute_action(cmd, options, command, args)
 	local interface = get_interface(cmd)
 	ami_assert(type(interface) == "table", "no valid command provided", EXIT_CLI_CMD_UNKNOWN)
 	local action = interface.action
-	if type(action) ~= "table" then
+	if type(action) ~= "function" then
 		ami_error("no valid action provided", EXIT_CLI_CMD_UNKNOWN)
 		return -- just to make linter happy
 	end
@@ -211,3 +211,11 @@ am.execute_extension = exec.native_action
 ---@param inject_args ExternalActionOptions?
 ---@return integer
 am.execute_external = exec.external_action
+
+
+---#DES am.unpack_app()
+---
+---Unpacks application from zip archive
+---@diagnostic disable-next-line: undefined-doc-param
+---@param source string 
+am.unpack_app = am.app.unpack

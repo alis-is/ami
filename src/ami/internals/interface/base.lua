@@ -89,6 +89,12 @@ local function new()
 				description = "Prints this help message"
 			},
 			-- hidden
+			unpack = {
+				index = 97,
+				type = "string",
+				description = "Unpacks app from provided path",
+				hidden = true
+			},
 			["dry-run"] = {
 				index = 95,
 				type = "boolean",
@@ -122,7 +128,7 @@ local function new()
 				type = "string",
 				description = "Uses provided <base> as base interface for further execution",
 				hidden = true -- for now we do not want to show this in help. For now intent is to use this in hypothetical ami wrappers
-			}
+			},
 		},
 		action = function(_, command, args)
 			am.execute(command, args)

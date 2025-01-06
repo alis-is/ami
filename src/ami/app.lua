@@ -123,8 +123,9 @@ local function load_configuration_content(path)
 		EXIT_INVALID_CONFIGURATION)
 	if not default_ok then log_warn("Failed to load default configuration - " .. tostring(default_config)) end
 	return hjson.stringify_to_json(
-	util.merge_tables(default_ok and default_config --[[@as table]] or {}, env_ok and env_config --[[@as table]] or {},
-		true), { indent = false })
+		util.merge_tables(default_ok and default_config --[[@as table]] or {},
+			env_ok and env_config --[[@as table]] or {},
+			true), { indent = false })
 end
 
 local function load_configuration(path)
@@ -382,7 +383,7 @@ function am.app.remove_data(keep)
 			if type(keep) == "function" then
 				return keep(p)
 			end
-		end
+		end,
 	})
 	ami_assert(ok, "Failed to remove app data - " .. tostring(err) .. "!", EXIT_RM_DATA_ERROR)
 end
@@ -420,7 +421,7 @@ function am.app.remove(keep)
 			if type(keep) == "function" then
 				return keep(p, fp)
 			end
-		end
+		end,
 	})
 	ami_assert(ok, "Failed to remove app - " .. tostring(err) .. "!", EXIT_RM_ERROR)
 end
@@ -467,16 +468,16 @@ end
 local DEFAULT_PATHS = {
 	["full"] = {
 		["whitelist"] = {},
-		["blacklist"] = { "data" },
+		["blacklist"] = {},
 	},
 	["light"] = {
 		["whitelist"] = {},
-		["blacklist"] = { "data" },
+		["blacklist"] = { "data/**" },
 	},
 }
 
 local REQUIRED_PATHS = {
-	ami_internals_util.glob_to_lua_pattern("app.?json")
+	ami_internals_util.glob_to_lua_pattern"app.?json",
 }
 
 ---@param path string
@@ -484,17 +485,26 @@ local REQUIRED_PATHS = {
 ---@param mode PathMatchingMode
 local function path_matches(path, patterns, mode)
 	for _, pattern in ipairs(patterns) do
+		local matched = false
 		if mode == "plain" then
-			return path == pattern
+			matched = path == pattern
 		elseif mode == "glob" then
 			pattern = ami_internals_util.glob_to_lua_pattern(pattern)
-			return string.match(path, pattern)
+			matched = string.match(path, pattern)
 		elseif mode == "lua-pattern" then
-			return string.match(path, pattern)
+			matched = string.match(path, pattern)
+		end
+
+		if matched then
+			return true
 		end
 	end
+	return false
 end
 
+---#DES am.app.pack
+---
+---Packs the app into a zip archive for easy migration
 ---@param options PackOptions
 function am.app.pack(options)
 	if type(options) ~= "table" then
@@ -502,11 +512,14 @@ function am.app.pack(options)
 	end
 
 	local mode = options.mode or "light"
-	ami_assert(table.includes({ "full", "light" }, mode), "invalid mode - " .. tostring(mode), EXIT_CLI_ARG_VALIDATION_ERROR)
+	ami_assert(table.includes({ "full", "light" }, mode), "invalid mode - " .. tostring(mode),
+		EXIT_CLI_ARG_VALIDATION_ERROR)
 	local path_filtering_mode = options.path_filtering_mode or "blacklist"
-	ami_assert(table.includes({ "whitelist", "blacklist" }, path_filtering_mode), "invalid path filtering mode - " .. tostring(path_filtering_mode), EXIT_CLI_ARG_VALIDATION_ERROR)
+	ami_assert(table.includes({ "whitelist", "blacklist" }, path_filtering_mode),
+		"invalid path filtering mode - " .. tostring(path_filtering_mode), EXIT_CLI_ARG_VALIDATION_ERROR)
 	local path_matching_mode = options.path_matching_mode or "glob"
-	ami_assert(table.includes({ "plain", "glob", "lua-pattern" }, path_matching_mode), "invalid path matching mode - " .. tostring(path_matching_mode), EXIT_CLI_ARG_VALIDATION_ERROR)
+	ami_assert(table.includes({ "plain", "glob", "lua-pattern" }, path_matching_mode),
+		"invalid path matching mode - " .. tostring(path_matching_mode), EXIT_CLI_ARG_VALIDATION_ERROR)
 
 	local paths = options.paths or DEFAULT_PATHS[mode][path_filtering_mode]
 
@@ -515,6 +528,7 @@ function am.app.pack(options)
 	end
 
 	local destination_path = options.destination or "app.zip"
+	log_info("packing app into archive '" .. destination_path .. "'...")
 
 	zip.compress(os.cwd() or ".", destination_path, {
 		recurse = true,
@@ -533,7 +547,8 @@ function am.app.pack(options)
 				return not path_matches(p, paths, path_matching_mode)
 			end
 			return false
-		end
+		end,
+		content_only = true,
 	})
 	-- add __ami_packed_metadata.json
 	local archive = zip.open_archive(destination_path)
@@ -545,7 +560,7 @@ function am.app.pack(options)
 				"path_filtering_mode",
 				"path_matching_mode",
 			}, k) -- only save options that are not related to paths
-		end)
+		end),
 	})
 	---@diagnostic disable-next-line: undefined-field
 	archive:close()
@@ -553,9 +568,11 @@ function am.app.pack(options)
 	log_success("app packed successfully into '" .. destination_path .. "'")
 end
 
----@param path string
-function am.app.unpack(path)
-	local ok, metadata = zip.safe_extract_string(path, PACKER_METADATA_FILE)
+---@param source string
+function am.app.unpack(source)
+	log_info("unpacking app from archive '" .. source .. "'...")
+
+	local ok, metadata = zip.safe_extract_string(source, PACKER_METADATA_FILE)
 	ami_assert(ok, "failed to extract metadata from packed app - " .. tostring(metadata), EXIT_INVALID_AMI_ARCHIVE)
 
 	local ok, metadata = hjson.safe_parse(metadata)
@@ -564,11 +581,11 @@ function am.app.unpack(path)
 	ami_assert(metadata.VERSION == PACKER_VERSION, "packed app version mismatch - " .. tostring(metadata.VERSION),
 		EXIT_INVALID_AMI_ARCHIVE)
 
-	-- extract 
-	zip.extract(path, os.cwd() or ".", {
+	-- extract
+	zip.extract(source, os.cwd() or ".", {
 		filter = function (p)
 			return not path_matches(p, { PACKER_METADATA_FILE }, "plain")
-		end
+		end,
 	})
 
 	-- call unpack entrypoint
