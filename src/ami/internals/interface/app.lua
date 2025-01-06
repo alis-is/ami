@@ -163,6 +163,35 @@ local function new(options)
             summary = implementation_status .. " Prints informations about app",
             -- (options, command, args, cli)
             action = violation_fallback
+        },
+        pack = {
+            description = "ami 'pack' sub command",
+            summary = "Packs the app into a zip archive for easy migration",
+            options = {
+                output = {
+                    index = 1,
+                    aliases = {"o"},
+                    description = "Output path for the archive"
+                },
+                light = {
+                    index = 2,
+                    description = "If used the archive will not include application data"
+                }
+            },
+            action = function (options)
+                am.app.pack({
+                    destination = options.output,
+                    mode = options.light and "light" or "full"
+                })
+            end
+        },
+        unpack = {
+            description = "ami 'unpack' sub command",
+            summary = "Unpacks the app from a zip archive",
+            hidden = true, -- should not be used by end user
+            action = function (options)
+                log_success("application unpacked")
+            end
         }
     }
     return base 

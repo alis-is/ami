@@ -1,0 +1,11 @@
+ItemID,ItemName,Quantity,Price
+1,Apple,50,0.50
+2,Banana,30,0.20
+3,Orange,20,0.30
+4,Milk,10,1.50
+5,Bread,15,2.00
+6,Butter,5,3.00
+7,Cheese,8,4.00
+8,Chicken,12,5.00
+9,Beef,7,7.00
+10,Carrot,25,0.10

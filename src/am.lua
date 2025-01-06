@@ -41,6 +41,7 @@ am.options = initialize_options(get_default_options())
 
 ---@param cmd string|string[]|AmiCli
 ---@param args string[] | nil
+---@return AmiCli, string[]
 local function get_interface(cmd, args)
 	local interface = cmd
 	if util.is_array(cmd) then
@@ -51,7 +52,7 @@ local function get_interface(cmd, args)
 		local commands = table.get(am, { "__interface", "commands" }, {})
 		interface = commands[cmd] or interface
 	end
-	return interface, args
+	return interface --[[@as AmiCli]], args or {}
 end
 
 ---#DES am.execute
@@ -64,6 +65,24 @@ function am.execute(cmd, args)
 	local interface, args = get_interface(cmd, args)
 	ami_assert(type(interface) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
 	return cli.process(interface, args)
+end
+
+---#DES am.execute_action
+---
+---Executes action of specifed cmd with specified options, command and args
+---@param cmd string|string[]|AmiCli
+---@param options table<string, any>?
+---@param command string?
+---@param args string[]?
+function am.execute_action(cmd, options, command, args)
+	local interface = get_interface(cmd)
+	ami_assert(type(interface) == "table", "no valid command provided", EXIT_CLI_CMD_UNKNOWN)
+	local action = interface.action
+	if type(action) ~= "function" then
+		ami_error("no valid action provided", EXIT_CLI_CMD_UNKNOWN)
+		return -- just to make linter happy
+	end
+	return action(options, command, args, interface)
 end
 
 ---@type string[]
@@ -192,3 +211,11 @@ am.execute_extension = exec.native_action
 ---@param inject_args ExternalActionOptions?
 ---@return integer
 am.execute_external = exec.external_action
+
+
+---#DES am.unpack_app()
+---
+---Unpacks application from zip archive
+---@diagnostic disable-next-line: undefined-doc-param
+---@param source string 
+am.unpack_app = am.app.unpack

@@ -38,7 +38,7 @@ if parsed_options.path then
 	else
 		log_error("Option 'path' provided, but chdir not supported.")
 		log_info("HINT: Run ami without path parameter from path you supplied to 'path' option.")
-		os.exit(1)
+		return os.exit(1)
 	end
 end
 
@@ -77,31 +77,36 @@ end
 if parsed_options["base"] then
 	if type(parsed_options["base"]) ~= "string" then
 		log_error("Invalid base interface: " .. tostring(parsed_options["base"]))
-		os.exit(EXIT_INVALID_AMI_BASE_INTERFACE)
+		return os.exit(EXIT_INVALID_AMI_BASE_INTERFACE)
 	end
 	am.options.BASE_INTERFACE = parsed_options["base"] --[[@as string]]
 end
 
+local unpack_path = parsed_options["unpack"]
+if type(unpack_path) == "string" and unpack_path ~= "" then
+	am.unpack_app(unpack_path)
+	return os.exit(0)
+end
 
 -- expose default options
 if parsed_options.version then
 	print(am.VERSION)
-	os.exit(0)
+	return os.exit(0)
 end
 
 if parsed_options["is-app-installed"] then
 	local is_installed = am.app.is_installed()
 	print(is_installed)
-	os.exit(is_installed and 0 or EXIT_NOT_INSTALLED)
+	return os.exit(is_installed and 0 or EXIT_NOT_INSTALLED)
 end
 if parsed_options.about then
 	print(am.ABOUT)
-	os.exit(0)
+	return os.exit(0)
 end
 if parsed_options["erase-cache"] then
 	am.cache.erase()
 	log_success("Cache succesfully erased.")
-	os.exit(0)
+	return os.exit(0)
 end
 
 if parsed_options["dry-run"] then
@@ -114,7 +119,7 @@ if parsed_options["dry-run"] then
 		end
 	end
 	am.execute_extension(tostring(remaining_args[1].value), ...)
-	os.exit(0)
+	return os.exit(0)
 end
 
 am.__reload_interface(am.options.SHALLOW)

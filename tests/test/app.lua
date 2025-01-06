@@ -4,8 +4,8 @@ require "tests.test_init"
 
 local stringify = require "hjson".stringify
 
-local defaultCwd = os.cwd()
-if not defaultCwd then
+local default_cwd = os.cwd()
+if not default_cwd then
 	test["get cwd"] = function()
 		test.assert(false)
 	end
@@ -18,7 +18,7 @@ test["load app details (json)"] = function()
 	local _, _ = pcall(am.app.load_configuration)
 	local app = am.app.__get()
 	app.type.repository = nil
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(util.equals(am.app.__get(), {
 		configuration = {
 			TEST_CONFIGURATION = {
@@ -43,7 +43,7 @@ test["load app details (hjson)"] = function()
 
 	local app = am.app.__get()
 	app.type.repository = nil
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(util.equals(app, {
 		configuration = {
 			TEST_CONFIGURATION = {
@@ -65,7 +65,7 @@ test["load app details (variables - json)"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/app_details/4")
 	local ok = pcall(am.app.load_configuration)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(am.app.get_configuration({ "TEST_CONFIGURATION", "key" }) == "test-key2")
 end
 
@@ -73,7 +73,7 @@ test["load app details (variables - hjson)"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.hjson"
 	os.chdir("tests/app/app_details/4")
 	local ok = pcall(am.app.load_configuration)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(am.app.get_configuration({ "TEST_CONFIGURATION", "key" }) == "test-key")
 end
 
@@ -86,7 +86,7 @@ test["load app details (dev env)"] = function()
 	local app = am.app.__get()
 	app.type.repository = nil
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(util.equals(app, {
 		configuration = {
 			TEST_CONFIGURATION = {
@@ -118,7 +118,7 @@ test["load app details missing default config (dev env)"] = function()
 	local app = am.app.__get()
 	app.type.repository = nil
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	log_warn = old_log_warn
 
 	test.assert(util.equals(app, {
@@ -151,7 +151,7 @@ test["load app details missing env config (dev env)"] = function()
 	local app = am.app.__get()
 	app.type.repository = nil
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	log_warn = old_log_warn
 
 	test.assert(util.equals(app, {
@@ -178,10 +178,10 @@ end
 
 test["load app details missing config (dev env)"] = function()
 	os.chdir("tests/app/app_details/7")
-	local errorCode = 0
+	local error_code = 0
 	local original_ami_error_fn = ami_error
 	ami_error = function(_, exitCode)
-		errorCode = errorCode ~= 0 and errorCode or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
 	end
 	local old_log_warn = log_warn
 	local log = ""
@@ -192,22 +192,22 @@ test["load app details missing config (dev env)"] = function()
 	am.options.APP_CONFIGURATION_PATH = nil
 	am.options.ENVIRONMENT = "dev"
 	local _ = pcall(am.app.load_configuration)
-	local devErrorCode = errorCode
+	local deverror_code = error_code
 	local devLog = log
 	-- test no env
-	errorCode = 0
+	error_code = 0
 	log = ""
 	am.options.APP_CONFIGURATION_PATH = nil
 	am.options.ENVIRONMENT = nil
 	local ok = pcall(am.app.load_configuration)
-	local defaultErrorCode = errorCode
+	local defaulterror_code = error_code
 	local defaultLog = log
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	ami_error = original_ami_error_fn
 	log_warn = old_log_warn
-	test.assert(defaultErrorCode == EXIT_INVALID_CONFIGURATION and not string.find(defaultLog, "app.dev.json", 0, true))
-	test.assert(devErrorCode == EXIT_INVALID_CONFIGURATION and string.find(devLog, "app.dev.json", 0, true))
+	test.assert(defaulterror_code == EXIT_INVALID_CONFIGURATION and not string.find(defaultLog, "app.dev.json", 0, true))
+	test.assert(deverror_code == EXIT_INVALID_CONFIGURATION and string.find(devLog, "app.dev.json", 0, true))
 end
 
 test["load app model"] = function()
@@ -215,7 +215,7 @@ test["load app model"] = function()
 	os.chdir("tests/app/app_details/2")
 	pcall(am.app.load_configuration)
 	local result = hash.sha256_sum(stringify(am.app.get_model(), { sortKeys = true, indent = " " }), true)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 	test.assert(result == "4042b5f3b3dd1463d55166db96f3b17ecfe08b187fecfc7fb53860a478ed0844")
 end
 
@@ -232,7 +232,7 @@ test["prepare app"] = function()
 	local ok, error = pcall(am.app.prepare)
 	test.assert(ok, error)
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["is app installed"] = function()
@@ -249,7 +249,7 @@ test["is app installed"] = function()
 	local ok = pcall(am.app.prepare)
 	test.assert(ok)
 	test.assert(am.app.is_installed() == true)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["get app version"] = function()
@@ -267,7 +267,7 @@ test["get app version"] = function()
 	local ok, version = pcall(am.app.get_version)
 	test.assert(ok and version == "0.1.0")
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app data"] = function()
@@ -291,7 +291,7 @@ test["remove app data"] = function()
 	local ok, entries = fs.safe_read_dir("data", { recurse = true })
 	test.assert(ok and #entries == 0)
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app data (list of protected files)"] = function()
@@ -315,7 +315,7 @@ test["remove app data (list of protected files)"] = function()
 	local ok, entries = fs.safe_read_dir("data", { recurse = true })
 	test.assert(ok and #entries == 1)
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app data (keep function)"] = function()
@@ -341,7 +341,7 @@ test["remove app data (keep function)"] = function()
 	local ok, entries = fs.safe_read_dir("data", { recurse = true })
 	test.assert(ok and #entries == 1)
 
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app"] = function()
@@ -370,7 +370,7 @@ test["remove app"] = function()
 		end
 	end
 	test.assert(ok and #entries == 1)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app (list of protected files)"] = function()
@@ -399,7 +399,7 @@ test["remove app (list of protected files)"] = function()
 		end
 	end
 	test.assert(ok and #entries == 3)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["remove app (keep function)"] = function()
@@ -430,7 +430,7 @@ test["remove app (keep function)"] = function()
 		end
 	end
 	test.assert(ok and #entries == 3)
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["is update available"] = function()
@@ -440,7 +440,7 @@ test["is update available"] = function()
 	os.chdir(test_dir)
 	local ok = pcall(am.app.load_configuration)
 	test.assert(am.app.is_update_available())
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["is update available (updated already)"] = function()
@@ -450,7 +450,7 @@ test["is update available (updated already)"] = function()
 	os.chdir(test_dir)
 	local ok = pcall(am.app.load_configuration)
 	test.assert(not am.app.is_update_available())
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
 end
 
 test["is update available alternative channel"] = function()
@@ -461,7 +461,340 @@ test["is update available alternative channel"] = function()
 	local ok = pcall(am.app.load_configuration)
 	local is_available, _, version = am.app.is_update_available()
 	test.assert(is_available and version == "0.0.3-beta")
-	os.chdir(defaultCwd)
+	os.chdir(default_cwd)
+end
+
+test["pack app (light)"] = function ()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ mode = "light", destination = destination })
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin/",
+		"ami.lua",
+		"data/",
+		"__ami_packed_metadata.json"
+	}
+
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	test.assert(packed_paths_count == 6 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (full)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ mode = "full", destination = destination })
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin/",
+		"ami.lua",
+		"data/database.txt",
+		"data/database2.txt",
+		"data/",
+		"__ami_packed_metadata.json",
+	}
+
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	test.assert(packed_paths_count == 8 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (whitelist)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ 
+		mode = "full",
+		destination = destination,
+		path_filtering_mode = "whitelist",
+		paths = {
+			"app.hjson",
+			"bin/**"
+		}
+	})
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"__ami_packed_metadata.json"
+	}
+
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	test.assert(packed_paths_count == 3 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (blacklist)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ 
+		mode = "full",
+		destination = destination,
+		path_filtering_mode = "blacklist",
+		paths = {
+			"bin/**",
+			"data/**"
+		}
+	})
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/",
+		"ami.lua",
+		"data/",
+		"__ami_packed_metadata.json"
+	}
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	util.print_table(paths_to_check)
+	test.assert(packed_paths_count == 5 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (glob)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ 
+		mode = "full",
+		destination = destination,
+		path_filtering_mode ="whitelist",
+		path_matching_mode = "glob",
+		paths = { "**" }
+	})
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin/",
+		"ami.lua",
+		"data/database.txt",
+		"data/database2.txt",
+		"data/",
+		"__ami_packed_metadata.json",
+	}
+
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	test.assert(packed_paths_count == 8 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (lua-pattern)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ 
+		mode = "full",
+		destination = destination,
+		path_filtering_mode ="whitelist",
+		path_matching_mode = "lua-pattern",
+		paths = { ".*" }
+	})
+	test.assert(error_code == 0)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin/",
+		"ami.lua",
+		"data/database.txt",
+		"data/database2.txt",
+		"data/",
+		"__ami_packed_metadata.json",
+	}
+
+	local packed_paths_count = 0
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			paths_to_check = table.filter(paths_to_check, function (_, v)
+				return path ~= v
+			end)
+
+			packed_paths_count = packed_paths_count + 1
+			return false
+		end
+	})
+	os.remove(destination)
+	test.assert(packed_paths_count == 8 and #paths_to_check == 0)
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["unpack app"] = function()
+    am.options.APP_CONFIGURATION_PATH = "app.json"
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+	local test_dir = path.combine(default_cwd, "tests/tmp/app_test_unpack_app")
+
+	os.chdir("tests/app/full/1")
+	fs.mkdirp(test_dir)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ mode = "light", destination = destination })
+	test.assert(error_code == 0)
+
+	os.chdir(test_dir)
+	am.app.unpack(destination)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin",
+		"ami.lua",
+		"data"
+	}
+
+	local packed_paths_count = 0
+
+	local unpacked_paths = fs.read_dir(".", { recurse = true })
+	for _, path in ipairs(unpacked_paths) do
+		paths_to_check = table.filter(paths_to_check, function (_, v)
+			return path ~= v
+		end)
+		packed_paths_count = packed_paths_count + 1
+	end
+
+	os.remove(destination)
+	test.assert(packed_paths_count == 5 and #paths_to_check == 0)
+	fs.remove(test_dir, { recurse = true, content_only = true })
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
 end
 
 if not TEST then

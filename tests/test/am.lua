@@ -277,6 +277,72 @@ test["configure_cache"] = function()
 	log_debug = original_log_debug
 end
 
+test["am.unpack_app"] = function()
+	local default_cwd = os.cwd() or "."
+	local unpack_hook_called = false
+
+	local interface = {
+		commands = {
+			unpack = {
+				label = "test",
+				action = function (options)
+					unpack_hook_called = true
+					log_success("Unpacked")
+				end
+			}
+		},
+		action = function(_, command, args)
+			am.execute(command, args)
+		end
+	}
+	am.__set_interface(interface)
+
+    am.options.APP_CONFIGURATION_PATH = "app.json"
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+	local test_dir = path.combine(default_cwd, "tests/tmp/app_test_unpack_app")
+
+	os.chdir("tests/app/full/1")
+	fs.mkdirp(test_dir)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	am.app.pack({ mode = "light", destination = destination })
+	test.assert(error_code == 0)
+
+	os.chdir(test_dir)
+	am.unpack_app(destination)
+
+	local paths_to_check = {
+		"app.hjson",
+		"bin/test.sh",
+		"bin",
+		"ami.lua",
+		"data"
+	}
+
+	local packed_paths_count = 0
+
+	local unpacked_paths = fs.read_dir(".", { recurse = true })
+	for _, path in ipairs(unpacked_paths) do
+		paths_to_check = table.filter(paths_to_check, function (_, v)
+			return path ~= v
+		end)
+		packed_paths_count = packed_paths_count + 1
+	end
+
+	os.remove(destination)
+	test.assert(packed_paths_count == 5 and #paths_to_check == 0 and unpack_hook_called)
+	fs.remove(test_dir, { recurse = true, content_only = true })
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
 if not TEST then
 	test.summary()
 end
