@@ -8,17 +8,22 @@
 
 1. Create directory for your application (it should not be part of user home folder structure, you can use for example `/apps/myapp`)
 2. Create `app.json` or `app.hjson` with app configuration you like, e.g.:
-```json
+```hjson
 {
-    "id": "etho1",
-    "type": {
-        "id": "etho.node"
-    },
-    "configuration": {
-        "NODE_TYPE" : "masternode",
-    },
-    "user": "test"
+  id: xtz-node
+  type: xtz.node
+  configuration:
+  {
+    NODE_TYPE: node
+    # RPC_ADDR: 0.0.0.0
+    CONFIG_FILE:
+    {
+      # ... raw content ...
+    }
+  }
+  user: ascend
 }
+
 ```
 
 3. Run `ami --path=<your app path> setup --app`
