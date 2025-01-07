@@ -214,7 +214,7 @@ test["load app model"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/app_details/2")
 	pcall(am.app.load_configuration)
-	local result = hash.sha256_sum(stringify(am.app.get_model(), { sortKeys = true, indent = " " }), true)
+	local result = hash.sha256_sum(stringify(am.app.get_model(), { sort_keys = true, indent = " " }), true)
 	os.chdir(default_cwd)
 	test.assert(result == "4042b5f3b3dd1463d55166db96f3b17ecfe08b187fecfc7fb53860a478ed0844")
 end

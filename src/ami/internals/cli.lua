@@ -432,7 +432,7 @@ function ami_cli.print_help(ami, options)
 		print(ami.help_message)
 	else
 		if am.options.OUTPUT_FORMAT == "json" then
-			print(require "hjson".stringify(ami.commands, { invalidObjectsAsType = true, indent = false }))
+			print(require "hjson".stringify(ami.commands, { invalid_objects_as_type = true, indent = false }))
 		else
 			-- collect and print help
 			if type(title) == "string" then
