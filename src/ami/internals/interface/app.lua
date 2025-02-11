@@ -189,7 +189,14 @@ local function new(options)
             description = "ami 'unpack' sub command",
             summary = "Unpacks the app from a zip archive",
             hidden = true, -- should not be used by end user
+            options = {
+                source = {
+                    index = 1,
+                    description = "Path to the archive"
+                }
+            },
             action = function (options)
+                am.app.unpack(options.source or "app.zip")
                 log_success("application unpacked")
             end
         }
