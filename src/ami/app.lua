@@ -571,6 +571,7 @@ end
 ---@class UnpackOptions
 ---@field source string
 ---@field __rerun boolean?
+---@field __do_not_reload_interface boolean?
 
 ---@param options UnpackOptions
 function am.app.unpack(options)
@@ -599,7 +600,9 @@ function am.app.unpack(options)
 	})
 
 	if options.__rerun then
-		am.__reload_interface()
+		if not options.__do_not_reload_interface then
+			am.__reload_interface()
+		end
 		-- call unpack entrypoint
 		local options = metadata.options
 		options.__rerun = false

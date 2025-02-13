@@ -769,7 +769,7 @@ test["unpack app"] = function()
 	test.assert(error_code == 0)
 
 	os.chdir(test_dir)
-	am.app.unpack(destination)
+	am.app.unpack({ source = destination })
 
 	local paths_to_check = {
 		"app.hjson",

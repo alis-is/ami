@@ -315,7 +315,11 @@ test["am.unpack_app"] = function()
 	test.assert(error_code == 0)
 
 	os.chdir(test_dir)
-	am.unpack_app(destination)
+	am.unpack_app({ 
+		source = destination,
+		__rerun = true,
+		__do_not_reload_interface = true -- we need to avoid reloading interface in this test
+	})
 
 	local paths_to_check = {
 		"app.hjson",
