@@ -31,9 +31,16 @@ jobs:
           eli ./build/build.lua
           cd .meta && zip ../meta.zip -r * && cd ..
 
-      - name: publish
-        uses: ncipollo/release-action@v1
+      - name: prepare assets
+        run: |
+          mkdir -p upload
+          mv bin/ami.lua upload/ami.lua
+          mv bin/exit-codes.json upload/exit-codes.json
+          mv meta.zip upload/meta.zip
+
+      - name: Upload files to a GitHub release
+        uses: svenstaro/upload-release-action@2.4.0
         with:
-          artifacts: "meta.zip,bin/ami.lua,bin/exit-codes.json"
-          tag: ${{ github.ref_name }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          file_glob: true
+          tag: ${{ github.ref }}
+          file: upload/*
