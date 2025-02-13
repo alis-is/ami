@@ -2,7 +2,7 @@ local version = ...
 
 assert(version, "no version provided")
 
-local VERSION_FILE = "constants/version.go"
+local VERSION_FILE = "src/version-info.lua"
 
 local file = fs.read_file(VERSION_FILE)
 

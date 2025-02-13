@@ -1,9 +1,9 @@
 name: release
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types:
+      - created
     
 jobs:
   build:
@@ -25,20 +25,7 @@ jobs:
         run: |
           eli ./tests/all.lua
 
-      - name: prep
-        id: prep
-        run: |
-          VERSION=$(eli -e "info = require'src.version-info'; io.write(info.VERSION)")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          if git tag -l "$VERSION" | grep "$VERSION"; then 
-            echo "Version $VERSION already exists";
-          else
-            echo "Found new version - $VERSION"
-            echo "NEEDS_RELEASE=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: build ami
-        if: ${{ steps.prep.outputs.NEEDS_RELEASE == 'true'}}
         run: |
           export ELI_PATH=$PWD/eli
           eli ./build/build.lua
@@ -46,8 +33,7 @@ jobs:
 
       - name: publish
         uses: ncipollo/release-action@v1
-        if: ${{ steps.prep.outputs.NEEDS_RELEASE == 'true'}}
         with:
           artifacts: "meta.zip,bin/ami.lua,bin/exit-codes.json"
-          tag: ${{ steps.prep.outputs.VERSION }}
+          tag: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
