@@ -209,7 +209,7 @@ test["ami remove --all"] = function()
     os.chdir(default_cwd)
 end
 
-test["ami --unpack=..."] = function()
+test["ami unpack ..."] = function()
     local destination = "/tmp/app.zip"
     os.remove(destination)
     local test_dir = path.combine(default_cwd, "tests/tmp/app_test_unpack_app")
@@ -229,9 +229,19 @@ test["ami --unpack=..."] = function()
     os.chdir(default_cwd)
     local original_exit = os.exit
     os.exit = function() end
-    ami("--unpack="..destination, "--path="..test_dir)
+
+    local old_print = print
+	local printed = ""
+	print = function(v)
+		printed = printed .. v
+	end
+    ami("--path="..test_dir, "unpack", "--source="..destination)
     os.exit = original_exit
     os.remove(destination)
+
+    print = old_print
+
+	test.assert(printed:match"internal unpack reached")
 
     local paths_to_check = {
 		"app.hjson",
@@ -252,7 +262,7 @@ test["ami --unpack=..."] = function()
 		packed_paths_count = packed_paths_count + 1
         ::continue::
 	end
-    
+
 	test.assert(packed_paths_count == 5 and #paths_to_check == 0)
 	fs.remove(test_dir, { recurse = true, content_only = true })
 

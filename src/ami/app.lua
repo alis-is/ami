@@ -568,8 +568,18 @@ function am.app.pack(options)
 	log_success("app packed successfully into '" .. destination_path .. "'")
 end
 
----@param source string
-function am.app.unpack(source)
+---@class UnpackOptions
+---@field source string
+---@field __rerun boolean?
+
+---@param options UnpackOptions
+function am.app.unpack(options)
+	if type(options) ~= "table" then
+		options = { source = "app.zip" }
+	end
+
+	local source = options.source or "app.zip"
+
 	log_info("unpacking app from archive '" .. source .. "'...")
 
 	local ok, metadata = zip.safe_extract_string(source, PACKER_METADATA_FILE)
@@ -588,8 +598,11 @@ function am.app.unpack(source)
 		end,
 	})
 
-	-- call unpack entrypoint
-	local options = metadata.options
-
-	am.execute_action("unpack", options)
+	if options.__rerun then
+		am.__reload_interface()
+		-- call unpack entrypoint
+		local options = metadata.options
+		options.__rerun = false
+		am.execute_action("unpack", options)
+	end
 end

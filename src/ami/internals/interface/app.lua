@@ -188,7 +188,7 @@ local function new(options)
         unpack = {
             description = "ami 'unpack' sub command",
             summary = "Unpacks the app from a zip archive",
-            hidden = true, -- should not be used by end user
+            hidden = options.is_app_ami_loaded, -- we hide this in case of app ami unless overridden
             options = {
                 source = {
                     index = 1,
@@ -196,7 +196,8 @@ local function new(options)
                 }
             },
             action = function (options)
-                am.app.unpack(options.source or "app.zip")
+                options.__rerun = table.get(options, "__rerun", true)
+                am.app.unpack(options)
                 log_success("application unpacked")
             end
         }

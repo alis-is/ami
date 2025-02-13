@@ -82,12 +82,6 @@ if parsed_options["base"] then
 	am.options.BASE_INTERFACE = parsed_options["base"] --[[@as string]]
 end
 
-local unpack_path = parsed_options["unpack"]
-if type(unpack_path) == "string" and unpack_path ~= "" then
-	am.unpack_app(unpack_path)
-	return os.exit(0)
-end
-
 -- expose default options
 if parsed_options.version then
 	print(am.VERSION)
