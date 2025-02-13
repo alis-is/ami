@@ -1,6 +1,6 @@
-local AM_VERSION = "0.31.2"
+local AMI_VERSION = "dev"
 
 return {
-	VERSION = AM_VERSION,
-	ABOUT = "AMI " .. AM_VERSION .. " (C) 2025 alis.is"
+	VERSION = AMI_VERSION,
+	ABOUT = "AMI " .. AMI_VERSION .. " (C) 2025 alis.is"
 }
