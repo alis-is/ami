@@ -34,47 +34,53 @@ fi
 # install eli
 echo "Downloading eli setup script..."
 if ! "$@" https://raw.githubusercontent.com/alis-is/eli/master/install.sh; then
-    echo "Failed to download eli, please retry ... "
+    echo "failed to download eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
 fi
 
 if ! sh "$TMP_NAME" $PRERELEASE_FLAG; then
-    echo "Failed to download eli, please retry ... "
+    echo "failed to download eli, please retry ... "
     rm "$TMP_NAME"
     exit 1
 fi
 rm "$TMP_NAME"
 
-if [ -f "/usr/sbin/ami" ]; then
-    rm -f /usr/sbin/ami # remove old ami
-fi
-
 if ami --version | grep "$LATEST"; then
-    echo "Latest ami already available."
+    echo "latest ami already available"
     exit 0
 fi
 
+BIN="ami"
+rm -f "/usr/local/bin/$BIN"
+rm -f "/usr/bin/$BIN"
+rm -f "/bin/$BIN"
+rm -f "/usr/local/sbin/$BIN"
+rm -f "/usr/sbin/$BIN"
+rm -f "/sbin/$BIN"
 # check destination folder
-if [ -d "/usr/bin" ]; then
-    DESTINATION="/usr/bin/ami"
+if [ -d "/usr/local/bin" ]; then
+    DESTINATION="/usr/local/bin/$BIN"
+elif [ -d "/usr/bin" ]; then
+    DESTINATION="/usr/bin/$BIN"
 elif [ -d "/bin" ]; then
-    DESTINATION="/bin/ami"
-elif [ -d "/usr/local/bin" ]; then
-    DESTINATION="/usr/local/bin/ami"
+    DESTINATION="/bin/$BIN"
+elif [ -d "/usr/local/sbin" ]; then
+    DESTINATION="/usr/local/sbin/$BIN"
 elif [ -d "/usr/sbin" ]; then
-    DESTINATION="/usr/sbin/ami"
+    DESTINATION="/usr/sbin/$BIN"
+elif [ -d "/sbin" ]; then
+    DESTINATION="/sbin/$BIN"
 else
-    echo "No destination folder found." 1>&2
+    echo "no suitable destination folder found" 1>&2
     exit 1
 fi
-
 
 # install ami
 echo "Downloading ami $LATEST..."
 if "$@" "https://github.com/alis-is/ami/releases/download/$LATEST/ami.lua" &&
     cp "$TMP_NAME" "$DESTINATION" && rm "$TMP_NAME" && chmod +x "$DESTINATION"; then
-    echo "ami $LATEST successfuly installed."
+    echo "ami $LATEST successfuly installed"
 else
     rm "$TMP_NAME"
     echo "ami installation failed!" 1>&2
