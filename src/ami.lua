@@ -102,6 +102,10 @@ if parsed_options["erase-cache"] then
 	log_success("Cache succesfully erased.")
 	return os.exit(0)
 end
+if parsed_options["print-model"] then
+	local model = am.app.get_model()
+	print(hjson.stringify_to_json(model))
+end
 
 if parsed_options["dry-run"] then
 	if parsed_options["dry-run-config"] then

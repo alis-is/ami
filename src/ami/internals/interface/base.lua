@@ -83,6 +83,11 @@ local function new()
 				type = "boolean",
 				description = "Removes all plugins and packages from cache.",
 			},
+			["print-model"] = {
+				index = 51,
+				type = "boolean",
+				description = "Prints active model of the app",
+			},
 			help = {
 				index = 100,
 				aliases = { "h" },
