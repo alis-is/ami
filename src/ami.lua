@@ -105,6 +105,7 @@ end
 if parsed_options["print-model"] then
 	local model = am.app.get_model()
 	print(hjson.stringify_to_json(model))
+	return os.exit(0)
 end
 
 if parsed_options["dry-run"] then
