@@ -321,20 +321,41 @@ function am.app.is_update_available()
 	return ami_pkg.is_pkg_update_available(am.app.get"type", specs and specs.version)
 end
 
----#DES am.app.get_version
+---@class PackageVersion
+---@field id string
+---@field version string
+---@field repository string
+---@field wanted_version string
+---@field dependencies PackageVersion[]
+
+---#DES am.app.get_version_tree
 ---
 ---Returns app version
----@return string|'"unknown"'
-function am.app.get_version()
+---@return PackageVersion?, string?
+function am.app.get_version_tree()
 	local ok, version_tree_raw = fs.safe_read_file".version-tree.json"
 	if ok then
 		local ok, version_tree = hjson.safe_parse(version_tree_raw)
 		if ok then
-			return version_tree.version
+			return version_tree
 		end
+		return nil, "invalid version tree"
 	end
-	log_warn"Version tree not found. Can not get the version..."
-	return "unknown"
+	return nil, "version tree not found"
+end
+
+---#DES am.app.get_version
+---
+---Returns app version
+---@return string|'"unknown"', string?
+function am.app.get_version()
+	local version_tree, err = am.app.get_version_tree()
+
+	if version_tree ~= nil then
+		return version_tree.version
+	end
+
+	return "unknown", err or "version tree not found"
 end
 
 ---#DES am.app.get_type
