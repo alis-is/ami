@@ -84,14 +84,12 @@ local function download_pkg_def(app_type, channel)
 	-- e.g.: test.app@latest_beta
 	local full_pkg_id = app_type.id .. "@" .. app_type.version .. channel
 
-	if am.options.CACHE_DISABLED ~= true then
-		local ok, pkg_definition_raw = am.cache.get("package-definition", full_pkg_id)
-		if ok then
-			local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
-			if ok and
-			(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
-				return true, pkg_definition
-			end
+	local ok, pkg_definition_raw = am.cache.get("package-definition", full_pkg_id)
+	if ok then
+		local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
+		if ok and
+		(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
+			return true, pkg_definition
 		end
 	end
 
@@ -105,16 +103,14 @@ local function download_pkg_def(app_type, channel)
 		return ok, "failed to parse package definition - " .. app_type.id, EXIT_PKG_INVALID_DEFINITION
 	end
 
-	if am.options.CACHE_DISABLED ~= true then
-		local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
-		local ok, cached_definition_raw = hjson.safe_stringify(cached_definition)
-		ok = ok and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
-		if ok then
-			log_trace("Local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
-		else
-			-- it is not necessary to save definition locally as we hold version in memory already
-			log_trace("Failed to cache " .. app_type.id .. " definition!")
-		end
+	local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
+	local ok, cached_definition_raw = hjson.safe_stringify(cached_definition)
+	ok = ok and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
+	if ok then
+		log_trace("Local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
+	else
+		-- it is not necessary to save definition locally as we hold version in memory already
+		log_trace("Failed to cache " .. app_type.id .. " definition!")
 	end
 
 	return true, pkg_definition
@@ -146,15 +142,14 @@ end
 local function get_pkg(package_definition)
 	local pkg_id = package_definition.sha256 or package_definition.sha512
 	local tmp_pkg_path = os.tmpname()
-	if am.options.CACHE_DISABLED ~= true then
-		local ok, err = am.cache.get_to_file("package-archive", pkg_id, tmp_pkg_path,
-			{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha512 or nil })
-		if ok then
-			log_trace("Using cached version of " .. pkg_id)
-			return pkg_id, tmp_pkg_path
-		else
-			log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
-		end
+
+	local ok, err = am.cache.get_to_file("package-archive", pkg_id, tmp_pkg_path,
+		{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha512 or nil })
+	if ok then
+		log_trace("Using cached version of " .. pkg_id)
+		return pkg_id, tmp_pkg_path
+	else
+		log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
 	end
 
 	local ok, err = net.safe_download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
@@ -164,6 +159,7 @@ local function get_pkg(package_definition)
 	local ok, hash = fs.safe_hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
 	ami_assert(ok and hash == pkg_id, "Failed to verify package integrity - " .. pkg_id .. "!", EXIT_PKG_INTEGRITY_CHECK_ERROR)
 	log_trace("Integrity checks of " .. pkg_id .. " successful.")
+
 	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_id)
 	if not ok then
 		log_trace("Failed to cache package " .. pkg_id .. " - " .. tostring(err))

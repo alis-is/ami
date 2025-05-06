@@ -71,6 +71,10 @@ local function internal_cache_get(kind, id, options)
 		options = {}
 	end
 
+	if am.options.CACHE_DISABLED == true then
+		return false, "cache disabled"
+	end
+
 	local file, err = io.open(am.cache.__get_item_kind_cache_path(kind, id), "rb")
 	if not file then return false, (err or "unknown error") end
 
@@ -139,6 +143,10 @@ end
 ---@param id string
 ---@returns boolean, string?
 function am.cache.put(content, kind, id)
+	if am.options.CACHE_DISABLED == true then
+		return false, "cache disabled"
+	end
+
 	local ok, err = fs.write_file(am.cache.__get_item_kind_cache_path(kind, id), content)
 	return ok, err
 end
@@ -151,6 +159,10 @@ end
 ---@param id string
 ---@returns boolean, string?
 function am.cache.put_from_file(source_path, kind, id)
+	if am.options.CACHE_DISABLED == true then
+		return false, "cache disabled"
+	end
+
 	local ok, err = fs.copy_file(source_path, am.cache.__get_item_kind_cache_path(kind, id))
 	return ok, err
 end

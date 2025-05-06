@@ -49,14 +49,12 @@ local function _get_plugin_def(name, version)
 		definition_url = ami_util.append_to_url(am.options.DEFAULT_REPOSITORY_URL, "plugin", name, "v", version .. ".json")
 	end
 
-	if am.options.CACHE_DISABLED ~= true then
-		local ok, plugin_definition_rw = am.cache.get("plugin-definition", plugin_id)
-		if ok then
-			local ok, plugin_definition = hjson.safe_parse(plugin_definition_rw)
-			if ok and
-			(version ~= "latest" or (type(plugin_definition.last_ami_check) == "number" and plugin_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
-				return plugin_definition
-			end
+	local ok, plugin_definition_rw = am.cache.get("plugin-definition", plugin_id)
+	if ok then
+		local ok, plugin_definition = hjson.safe_parse(plugin_definition_rw)
+		if ok and
+		(version ~= "latest" or (type(plugin_definition.last_ami_check) == "number" and plugin_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
+			return plugin_definition
 		end
 	end
 
@@ -73,17 +71,15 @@ local function _get_plugin_def(name, version)
 		EXIT_PLUGIN_INVALID_DEFINITION
 	)
 
-	if am.options.CACHE_DISABLED ~= true then
-		local cached_definition = util.merge_tables(plugin_definition, { last_ami_check = os.time() })
-		local ok, plugin_definition_raw = hjson.safe_stringify(cached_definition)
+	local cached_definition = util.merge_tables(plugin_definition, { last_ami_check = os.time() })
+	local ok, plugin_definition_raw = hjson.safe_stringify(cached_definition)
 
-		ok = ok and am.cache.put(plugin_definition_raw, "plugin-definition", plugin_id)
-		if ok then
-			log_trace("Local copy of " .. plugin_id .. " definition saved into cache")
-		else
-			-- it is not necessary to save definition locally as we hold version in memory already
-			log_trace("Failed to create local copy of " .. plugin_id .. " definition!")
-		end
+	ok = ok and am.cache.put(plugin_definition_raw, "plugin-definition", plugin_id)
+	if ok then
+		log_trace("Local copy of " .. plugin_id .. " definition saved into cache")
+	else
+		-- it is not necessary to save definition locally as we hold version in memory already
+		log_trace("Failed to create local copy of " .. plugin_id .. " definition!")
 	end
 
 	log_trace("Successfully parsed " .. plugin_id .. " definition.")

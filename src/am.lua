@@ -126,7 +126,7 @@ function am.configure_cache(cache)
 		am.options.CACHE_DIR = cache
 	else
 		if cache ~= nil then
-			log_warn("Invalid cache directory: " .. tostring(cache))
+			log_warn("Invalid cache directory: '" .. tostring(cache) .. "'! Using default '/var/cache/ami'.")
 		end
 
 		local custom_cache_path = true
@@ -142,6 +142,11 @@ function am.configure_cache(cache)
 			local log = custom_cache_path and log_error or log_debug
 			log("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
 			am.options.CACHE_DIR = ".ami-cache"
+
+			if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+				am.options.CACHE_DIR = false
+				log_debug("Access to '" .. am.options.CACHE_DIR .. "' denied! Cache disabled.")
+			end
 		end
 	end
 end
