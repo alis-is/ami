@@ -46,7 +46,7 @@ end
 function cache_options.newindex(t, k, v)
 	if v == nil then return end
 	if k == "CACHE_DIR" then
-		if v == "false" then
+		if not v or v == "false" then -- we are supposed to matches false, 'false' and nil
 			rawset(t, "CACHE_DISABLED", true)
 			v = package.config:sub(1, 1) == '/' and "/tmp/" or '%TEMP%'
 			if not fs.exists(v) then
