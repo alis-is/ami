@@ -251,7 +251,7 @@ test["configure_cache"] = function()
 	-- Test Case 3: Invalid cache directory (non-string)
 	am.configure_cache(123)
 	test.assert(am.options.CACHE_DIR == "/var/cache/ami")
-	test.assert(#log_messages > 0 and log_messages[1] == "WARN: Invalid cache directory: 123")
+	test.assert(#log_messages > 0 and log_messages[1] == "WARN: Invalid cache directory: '123'! Using default '/var/cache/ami'.")
 
 	-- Test Case 4: Access to global cache
 	am.configure_cache(nil)
