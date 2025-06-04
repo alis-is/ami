@@ -114,7 +114,7 @@ function exec.native_action(action, args, options)
 	if type(action) == "string" then
 		local ext, err = loadfile(action)
 		if type(ext) ~= "function" then
-			ami_error("Failed to load extension from " .. action .. " - " .. err)
+			ami_error("failed to load extension from " .. action .. " - " .. err)
 			return
 		end
 		id = action

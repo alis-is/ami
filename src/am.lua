@@ -63,7 +63,7 @@ end
 ---@return any
 function am.execute(cmd, args)
 	local interface, args = get_interface(cmd, args)
-	ami_assert(type(interface) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
+	ami_assert(type(interface) == "table", "no valid command provided", EXIT_CLI_CMD_UNKNOWN)
 	return cli.process(interface, args)
 end
 

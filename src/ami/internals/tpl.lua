@@ -1,4 +1,4 @@
--- Copyright (C) 2024 alis.is
+-- Copyright (C) 2025 alis.is
 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU Affero General Public License as published
@@ -47,13 +47,14 @@ local function _to_renderable_data(source)
 end
 
 ---Renders template files in app directory
+---@return boolean, string?
 function tpl.render_templates()
 	log_info("Generating app templated files...")
 	---@type boolean, DirEntry[]|string
 	local ok, templates = fs.safe_read_dir(".ami-templates", { recurse = true, as_dir_entries = true })
 	if not ok or #templates == 0 then
 		log_trace("No template found, skipping...")
-		return
+		return true
 	end
 
 	-- transform model and configuration table to renderable data ( __ARRAY, __CLI_ARGS)
@@ -78,19 +79,23 @@ function tpl.render_templates()
 			log_trace("Rendering '" .. template_path .. "' to '" .. rendered_path .. "'...")
 
 			local _ok, _template = fs.safe_read_file(template_path)
-			ami_assert(_ok, "Read failed for " .. template_path .. " - " .. (_template or ""), EXIT_TPL_READ_ERROR)
+			if not _ok then
+				return false, "failed to read template file '" .. tostring(template_path) .. "' - " .. tostring(_template)
+			end
 			local _result = lustache:render(_template, vm)
 
 			local _ok, _error = fs.safe_mkdirp(path.dir(rendered_path))
 			if _ok then
 				_ok, _error = fs.safe_write_file(rendered_path, _result)
 			end
-
-			ami_assert(_ok, "Write failed for " .. template_path .. " - " .. (_error or ""), EXIT_TPL_WRITE_ERROR)
+			if not _ok then
+				return false, "failed to write rendered template file '" .. tostring(rendered_path) .. "' - " .. tostring(_error)
+			end
 			log_trace("'" .. rendered_path .. "' rendered successfully.")
 		end
 	end
 	tpl.__templates_generated = true
+	return true
 end
 
 return tpl

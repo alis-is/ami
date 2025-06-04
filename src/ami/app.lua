@@ -199,7 +199,7 @@ function am.app.load_model()
 	local ok, err = pcall(dofile, path)
 	if not ok then
 		is_model_loaded = false
-		ami_error("Failed to load app model - " .. err, EXIT_APP_INVALID_MODEL)
+		ami_error("failed to load app model - " .. err, EXIT_APP_INVALID_MODEL)
 	end
 end
 
@@ -289,7 +289,10 @@ end
 ---#DES am.app.render
 ---
 ---Renders app templates.
-am.app.render = ami_tpl.render_templates
+function am.app.render()
+	local ok, err = ami_tpl.render_templates()
+	ami_assert(ok, "app.render: " .. tostring(err), EXIT_TPL_RENDERING_ERROR)
+end
 
 ---#DES am.app.__are_templates_generated
 ---
@@ -527,6 +530,7 @@ end
 ---
 ---Packs the app into a zip archive for easy migration
 ---@param options PackOptions
+---@return boolean
 function am.app.pack(options)
 	if type(options) ~= "table" then
 		options = {}

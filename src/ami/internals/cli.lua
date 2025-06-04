@@ -35,36 +35,33 @@ local function _parse_value(value, _type)
 
 	local parse_map = {
 		boolean = function(v)
-			if     v == "true" or v == "TRUE" or v == "True" then
+			if     string.lower(v) == "true" or v == "1" then
 				return true
-			elseif v == "false" or v == "FALSE" or v == "False" then
+			elseif string.lower(v) == "false" or v == "0" then
 				return false
 			else
-				ami_error("Invalid value type! Boolean expected, got: " .. value .. "!", EXIT_CLI_INVALID_VALUE)
+				ami_error("invalid value type - boolean expected, got: " .. value, EXIT_CLI_INVALID_VALUE)
 			end
 		end,
 		number = function(v)
-			local _n = tonumber(v)
-			if _n ~= nil then
-				return _n
-			else
-				ami_error("Invalid value type! Number expected, got: " .. value .. "!", EXIT_CLI_INVALID_VALUE)
-			end
+			local n = tonumber(v)
+			ami_assert(n ~= nil, "invalid value type - number expected, got: " .. value, EXIT_CLI_INVALID_VALUE)
+			return n
 		end,
 		string = function(v)
 			return v
 		end,
 		auto = function(v)
-			if     v == "true" or v == "TRUE" or v == "True" then
+			if     string.lower(v) == "true" then
 				return true
-			elseif v == "false" or v == "FALSE" or v == "False" then
+			elseif string.lower(v) == "false" then
 				return false
-			elseif v == "null" or v == "NULL" or v == "nil" then
+			elseif  string.lower(v) == "null" or string.lower(v) == "nil" then
 				return nil
 			else
-				local _n = tonumber(v)
-				if _n ~= nil then
-					return _n
+				local n = tonumber(v)
+				if n ~= nil then
+					return n
 				end
 			end
 			return v
@@ -155,7 +152,7 @@ function ami_cli.parse_args(args, scheme, options)
 		local arg = args[i]
 		if arg.type == "option" then
 			local cli_option_def = cli_options_map[arg.id]
-			ami_assert(type(cli_option_def) == "table", "Unknown option - '" .. arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
+			ami_assert(type(cli_option_def) == "table", "unknown option - '" .. arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
 			cli_options_list[cli_option_def.id] = _parse_value(tostring(arg.value), cli_option_def.type)
 		elseif options.stop_on_non_option then
 			-- we stop collecting if stop_on_non_option enabled to return everything remaining
@@ -168,7 +165,7 @@ function ami_cli.parse_args(args, scheme, options)
 		else
 			-- default mode - we try to identify underlying command
 			cli_cmd = cli_cmd_map[arg.arg]
-			ami_assert(type(cli_cmd) == "table", "Unknown command '" .. (arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
+			ami_assert(type(cli_cmd) == "table", "unknown command '" .. (arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
 			last_index = i + 1
 			break
 		end
