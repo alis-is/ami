@@ -138,14 +138,16 @@ function am.configure_cache(cache)
 		am.options.CACHE_DIR = cache_path
 
 		--fallback to local dir in case we have no access to global one
-		if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+		local ok, err = fs.write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "")
+		if not ok then
 			local log = custom_cache_path and log_error or log_debug
-			log("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
+			log("access to '" .. am.options.CACHE_DIR .. "' denied (error: " .. tostring(err) ..") - using local '.ami-cache' directory")
 			am.options.CACHE_DIR = ".ami-cache"
 
-			if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+			local ok, err = fs.write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "")
+			if not ok then
 				am.options.CACHE_DIR = false
-				log_debug("Access to '" .. am.options.CACHE_DIR .. "' denied! Cache disabled.")
+				log_debug("access to '" .. am.options.CACHE_DIR .. "' denied - ".. tostring(err) .." - cache disabled.")
 			end
 		end
 	end

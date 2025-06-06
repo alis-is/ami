@@ -134,7 +134,7 @@ test["load app details missing default config (dev env)"] = function()
 			version = "latest"
 		}
 	}, true))
-	test.assert(string.find(log, "Failed to load default configuration", 0, true))
+	test.assert(string.find(log, "failed to load default configuration", 0, true))
 end
 
 test["load app details missing env config (dev env)"] = function()
@@ -173,7 +173,7 @@ test["load app details missing env config (dev env)"] = function()
 			number = 15
 		}
 	}, true))
-	test.assert(string.find(log, "Failed to load environment configuration", 0, true))
+	test.assert(string.find(log, "failed to load environment configuration", 0, true))
 end
 
 test["load app details missing config (dev env)"] = function()
@@ -206,8 +206,8 @@ test["load app details missing config (dev env)"] = function()
 	os.chdir(default_cwd)
 	ami_error = original_ami_error_fn
 	log_warn = old_log_warn
-	test.assert(defaulterror_code == EXIT_INVALID_CONFIGURATION and not string.find(defaultLog, "app.dev.json", 0, true))
-	test.assert(deverror_code == EXIT_INVALID_CONFIGURATION and string.find(devLog, "app.dev.json", 0, true))
+	test.assert(defaulterror_code == EXIT_INVALID_CONFIGURATION and not string.find(defaultLog, "dev", 0, true))
+	test.assert(deverror_code == EXIT_INVALID_CONFIGURATION and string.find(devLog, "dev", 0, true))
 end
 
 test["load app model"] = function()
@@ -225,7 +225,7 @@ test["prepare app"] = function()
 	fs.mkdirp(test_dir)
 	fs.remove(test_dir, { recurse = true, content_only = true })
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -241,7 +241,7 @@ test["is app installed"] = function()
 	fs.mkdirp(test_dir)
 	fs.remove(test_dir, { recurse = true, content_only = true })
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -258,7 +258,7 @@ test["get app version"] = function()
 	fs.mkdirp(test_dir)
 	fs.remove(test_dir, { recurse = true, content_only = true })
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -278,9 +278,9 @@ test["remove app data"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -288,8 +288,8 @@ test["remove app data"] = function()
 	test.assert(ok)
 	local ok = pcall(am.app.remove_data)
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir("data", { recurse = true })
-	test.assert(ok and #entries == 0)
+	local entries, _ = fs.read_dir("data", { recurse = true })
+	test.assert(entries and #entries == 0)
 
 	os.chdir(default_cwd)
 end
@@ -302,9 +302,9 @@ test["remove app data (list of protected files)"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -312,8 +312,8 @@ test["remove app data (list of protected files)"] = function()
 	test.assert(ok)
 	local ok = pcall(am.app.remove_data, { "app.json" })
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir("data", { recurse = true })
-	test.assert(ok and #entries == 1)
+	local entries = fs.read_dir("data", { recurse = true })
+	test.assert(entries and #entries == 1)
 
 	os.chdir(default_cwd)
 end
@@ -326,9 +326,9 @@ test["remove app data (keep function)"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -338,8 +338,8 @@ test["remove app data (keep function)"] = function()
 		return p == "app.json"
 	end)
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir("data", { recurse = true })
-	test.assert(ok and #entries == 1)
+	local entries = fs.read_dir("data", { recurse = true })
+	test.assert(entries and #entries == 1)
 
 	os.chdir(default_cwd)
 end
@@ -352,9 +352,9 @@ test["remove app"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -362,14 +362,14 @@ test["remove app"] = function()
 	test.assert(ok)
 	local ok = pcall(am.app.remove)
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir(".", { recurse = true })
+	local entries = fs.read_dir(".", { recurse = true })
 	local non_data_entries = {}
 	for _, v in ipairs(entries) do
 		if type(v) == "string" and not v:match("data/.*") then
 			table.insert(non_data_entries, v)
 		end
 	end
-	test.assert(ok and #entries == 1)
+	test.assert(entries and #entries == 1)
 	os.chdir(default_cwd)
 end
 
@@ -381,9 +381,9 @@ test["remove app (list of protected files)"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -391,14 +391,14 @@ test["remove app (list of protected files)"] = function()
 	test.assert(ok)
 	local ok, err = pcall(am.app.remove, { "data/app.json" })
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir(".", { recurse = true })
+	local entries = fs.read_dir(".", { recurse = true })
 	local non_data_entries = {}
 	for _, v in ipairs(entries) do
 		if type(v) == "string" and not v:match("data/.*") then
 			table.insert(non_data_entries, v)
 		end
 	end
-	test.assert(ok and #entries == 3)
+	test.assert(entries and #entries == 3)
 	os.chdir(default_cwd)
 end
 
@@ -410,9 +410,9 @@ test["remove app (keep function)"] = function()
 	local data_dir = path.combine(test_dir, "data")
 	fs.mkdirp(data_dir)
 
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
-	local ok = fs.safe_copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
+	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(data_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
 
@@ -422,14 +422,14 @@ test["remove app (keep function)"] = function()
 		return path.normalize(p, "unix", { endsep = "leave"}) == "data/app.json"
 	end)
 	test.assert(ok)
-	local ok, entries = fs.safe_read_dir(".", { recurse = true })
+	local entries = fs.read_dir(".", { recurse = true })
 	local non_data_entries = {}
 	for _, v in ipairs(entries) do
 		if type(v) == "string" and not v:match("data/.*") then
 			table.insert(non_data_entries, v)
 		end
 	end
-	test.assert(ok and #entries == 3)
+	test.assert(entries and #entries == 3)
 	os.chdir(default_cwd)
 end
 

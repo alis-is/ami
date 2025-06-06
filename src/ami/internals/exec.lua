@@ -63,8 +63,8 @@ function exec.external_action(cmd, args, options)
 			if require_quoting then arg = arg:gsub('"', '\\"') end
 			exec_args = exec_args .. ' ' .. quote .. arg .. quote -- add qouted string
 		end
-		local ok, result = proc.safe_exec(cmd .. " " .. exec_args)
-		ami_assert(ok, "Failed to execute external action - " .. tostring(result) .. "!")
+		local result, err = proc.exec(cmd .. " " .. exec_args)
+		ami_assert(result, "Failed to execute external action - " .. tostring(err) .. "!")
 		if options.should_return then
 			return result.exit_code
 		end
@@ -76,8 +76,8 @@ function exec.external_action(cmd, args, options)
 		desired_stdio = options.stdio
 	end
 
-	local ok, result = proc.safe_spawn(cmd, raw_args, { wait = true, stdio = desired_stdio, env = options.environment })
-	ami_assert(ok, "Failed to execute external action - " .. tostring(result) .. "!")
+	local result, err = proc.spawn(cmd, raw_args, { wait = true, stdio = desired_stdio, env = options.environment })
+	ami_assert(result, "Failed to execute external action - " .. tostring(err) .. "!")
 	if options.should_return then
 		return result.exit_code
 	end

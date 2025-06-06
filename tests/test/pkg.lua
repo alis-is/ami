@@ -213,12 +213,12 @@ test["unpack layers"] = function()
     local result = pcall(ami_pkg.unpack_layers, file_list)
     test.assert(result)
 
-    local ok, test_hash = fs.safe_hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
-    test.assert(ok and test_hash == "c2881a3b33316d5ba77075715601114092f50962d1935582db93bb20828fdae5")
-    local ok, test2_hash = fs.safe_hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
-    test.assert(ok and test2_hash == "172fb97f3321e9e3616ada32fb5f9202b3917f5adcf4b67957a098a847e2f12c")
-    local ok, specs_hash = fs.safe_hash_file("specs.json", {hex = true})
-    test.assert(ok and specs_hash == "3aaa99ed2b16ed97e85d9fb7e0666986b230e5dcbe2e04e513b99e7f9dc8810a")
+    local test_hash = fs.hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
+    test.assert(test_hash == "c2881a3b33316d5ba77075715601114092f50962d1935582db93bb20828fdae5")
+    local test2_hash = fs.hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
+    test.assert(test2_hash == "172fb97f3321e9e3616ada32fb5f9202b3917f5adcf4b67957a098a847e2f12c")
+    local specs_hash = fs.hash_file("specs.json", {hex = true})
+    test.assert(specs_hash == "3aaa99ed2b16ed97e85d9fb7e0666986b230e5dcbe2e04e513b99e7f9dc8810a")
 
     os.chdir(default_cwd)
 end
@@ -238,11 +238,11 @@ test["generate model"] = function()
     local result, _, model_info, _ = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
 
-    local result = pcall(ami_pkg.generate_model, model_info)
+    local result, _ = pcall(ami_pkg.generate_model, model_info)
     test.assert(result)
 
-    local ok, model_hash = fs.safe_hash_file("model.lua", {hex = true})
-    test.assert(ok and model_hash == "58517f9f584336674cea455165cd9b1d7d8bccfc49bc7a1aad870e5d402aef9a") 
+    local model_hash = fs.hash_file("model.lua", {hex = true})
+    test.assert(model_hash == "58517f9f584336674cea455165cd9b1d7d8bccfc49bc7a1aad870e5d402aef9a") 
 
     os.chdir(default_cwd)
 end

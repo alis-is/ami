@@ -54,30 +54,30 @@ local function _get_plugin_def(name, version)
 
 	local ok, plugin_definition_rw = am.cache.get("plugin-definition", plugin_id)
 	if ok then
-		local ok, plugin_definition = hjson.safe_parse(plugin_definition_rw)
-		if ok and
+		local plugin_definition, err = hjson.parse(plugin_definition_rw)
+		if plugin_definition and
 		(version ~= "latest" or (type(plugin_definition.last_ami_check) == "number" and plugin_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
 			return plugin_definition
 		end
 	end
 
-	local ok, plugin_definition_raw, status = net.safe_download_string(definition_url)
-	if not ok or status / 100 ~= 2 then
-		if status and status / 100 == 404 then
+	local plugin_definition_raw, status = net.download_string(definition_url)
+	if not plugin_definition_raw or status / 100 ~= 2 then
+		if type(status) == "number" and status / 100 == 404 then
 			return nil, "plugin definition not found: " .. plugin_id
 		end
-		return nil, "failed to download plugin definition: " .. tostring(plugin_id) .. " - " .. tostring(plugin_definition_raw)
+		return nil, "failed to download plugin definition: " .. tostring(plugin_id) .. " - " .. tostring(status)
 	end
 
-	local ok, plugin_definition = hjson.safe_parse(plugin_definition_raw)
-	if not ok or type(plugin_definition) ~= "table" then
-		return nil, "failed to parse plugin definition: " .. tostring(plugin_id) .. " - " .. tostring(plugin_definition_raw)
+	local plugin_definition, err = hjson.parse(plugin_definition_raw)
+	if not plugin_definition or type(plugin_definition) ~= "table" then
+		return nil, "failed to parse plugin definition: " .. tostring(plugin_id) .. " - " .. tostring(err)
 	end
 
 	local cached_definition = util.merge_tables(plugin_definition, { last_ami_check = os.time() })
-	local ok, plugin_definition_raw = hjson.safe_stringify(cached_definition)
+	local plugin_definition_raw, _ = hjson.stringify(cached_definition)
 
-	ok = ok and am.cache.put(plugin_definition_raw, "plugin-definition", plugin_id)
+	local ok = plugin_definition_raw and am.cache.put(plugin_definition_raw, "plugin-definition", plugin_id)
 	if ok then
 		log_trace("Local copy of " .. plugin_id .. " definition saved into cache")
 	else
@@ -143,10 +143,10 @@ function am.plugin.get(name, options)
 		log_trace(not download_required and "Plugin package found..." or "Plugin package not found or verification failed, downloading... ")
 
 		if download_required then
-			local ok = net.safe_download_file(plugin_definition.source, archive_path, { follow_redirects = true, show_default_progress = false })
-			local ok2, file_hash = fs.safe_hash_file(archive_path, { hex = true, type = "sha256" })
-			if not ok or not ok2 or not hash.equals(file_hash, plugin_definition.sha256, true) then
-				fs.safe_remove(archive_path)
+			local ok = net.download_file(plugin_definition.source, archive_path, { follow_redirects = true, show_default_progress = false })
+			local file_hash, _ = fs.hash_file(archive_path, { hex = true, type = "sha256" })
+			if not ok or not file_hash or not hash.equals(file_hash, plugin_definition.sha256, true) then
+				fs.remove(archive_path)
 				return nil, "failed to verify package integrity - " .. tostring(plugin_id)
 			end
 		end
@@ -155,33 +155,33 @@ function am.plugin.get(name, options)
 		os.remove(tmpfile)
 		load_dir = tmpfile .. "_dir"
 
-		local ok, err = fs.safe_mkdirp(load_dir)
+		local ok, err = fs.mkdirp(load_dir)
 		if not ok then
-			fs.safe_remove(archive_path)
+			fs.remove(archive_path)
 			return nil, "failed to create directory for plugin: " .. tostring(plugin_id) .. " - " .. tostring(err)
 		end
 
-		local ok, err = zip.safe_extract(archive_path, load_dir, { flatten_root_dir = true })
+		local ok, err = zip.extract(archive_path, load_dir, { flatten_root_dir = true })
 		if not ok then
-			fs.safe_remove(archive_path)
+			fs.remove(archive_path)
 			return nil, "failed to extract plugin package: " .. tostring(plugin_id) .. " - " .. tostring(err)
 		end
 
 		local ok, err = am.cache.put_from_file(archive_path, "plugin-archive", plugin_id)
-		fs.safe_remove(archive_path)
+		fs.remove(archive_path)
 		if not ok then
 			log_trace("Failed to cache plugin archive - " .. tostring(err) .. "!")
 		end
 
 		entrypoint = name .. ".lua"
-		local ok, plugin_specs_raw = fs.safe_read_file(path.combine(load_dir, "specs.json"))
-		if not ok then
-			ok, plugin_specs_raw = fs.safe_read_file(path.combine(load_dir, "specs.hjson"))
+		local plugin_specs_raw, _ = fs.read_file(path.combine(load_dir, "specs.json"))
+		if not plugin_specs_raw  then
+			plugin_specs_raw, _ = fs.read_file(path.combine(load_dir, "specs.hjson"))
 		end
 
-		if ok then
-			local ok, plugin_specs = hjson.safe_parse(plugin_specs_raw)
-			if ok and type(plugin_specs.entrypoint) == "string" then
+		if plugin_specs_raw then
+			local plugin_specs, err = hjson.parse(plugin_specs_raw)
+			if plugin_specs and type(plugin_specs.entrypoint) == "string" then
 				entrypoint = plugin_specs.entrypoint
 			end
 		end
@@ -197,7 +197,7 @@ function am.plugin.get(name, options)
 	end
 	local ok, result = pcall(dofile, entrypoint)
 	if remove_load_dir then
-		fs.safe_remove(load_dir, { recurse = true })
+		fs.remove(load_dir, { recurse = true })
 	end
 	if not ok then
 		return nil, "failed to require plugin: " .. plugin_id .. " - " .. (type(result) == "string" and result or "")
@@ -208,15 +208,4 @@ function am.plugin.get(name, options)
 		return nil, "failed to restore working directory after plugin load"
 	end
 	return result
-end
-
----#DES am.plugin.safe_get
----
----Loads plugin by name and returns it.
----@deprecated Use `am.plugin.get`
----@param name string
----@param options AmiGetPluginOptions?
----@return any, any
-function am.plugin.safe_get(name, options)
-	return am.plugin.get(name, options)
 end

@@ -29,7 +29,7 @@ test["load invalid ami"] = function()
 	am.execute("about")
 	os.chdir(default_cwd)
 	print = default_print
-	test.assert(result:match("Failed to load entrypoint:"))
+	test.assert(result:match("failed to load entrypoint:"))
 end
 
 test["load valid ami violating app starndard"] = function()
@@ -43,7 +43,7 @@ test["load valid ami violating app starndard"] = function()
 	am.execute("about")
 	os.chdir(default_cwd)
 	print = default_print
-	test.assert(result:match("Violation of AMI@app standard!"))
+	test.assert(result:match("violation of ami@app standard"))
 end
 
 if not TEST then

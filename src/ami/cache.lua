@@ -79,16 +79,16 @@ local function internal_cache_get(kind, id, options)
 	if not file then return false, (err or "unknown error") end
 
 	if type(options.sha256) == "string" and options.sha256 ~= "" then
-		local ok, file_hash = fs.safe_hash_file(file, { hex = true, type = "sha256" })
-		if not ok or not hash.equals(file_hash, options.sha256, true) then
+		local file_hash, _= fs.hash_file(file, { hex = true, type = "sha256" })
+		if not file_hash or not hash.equals(file_hash, options.sha256, true) then
 			return false, "invalid hash"
 		end
 		file:seek("set")
 	end
 
 	if type(options.sha512) == "string" and options.sha512 ~= "" then
-		local ok, file_hash = fs.safe_hash_file(file, { hex = true, type = "sha512" })
-		if not ok or not hash.equals(file_hash, options.sha512, true) then
+		local file_hash, _ = fs.hash_file(file, { hex = true, type = "sha512" })
+		if not file_hash or not hash.equals(file_hash, options.sha512, true) then
 			return false, "invalid hash"
 		end
 		file:seek("set")
@@ -132,8 +132,7 @@ function am.cache.get_to_file(kind, id, target_path, options)
 	local ok, result = internal_cache_get(kind, id, options)
 	if not ok then return ok, result end
 
-	local ok, err = fs.safe_copy_file(result, target_path)
-	return ok, err
+	return fs.copy_file(result, target_path)
 end
 
 ---#DES am.cache.put
@@ -181,12 +180,6 @@ function am.cache.rm_pkgs()
 	fs.remove(am.cache.__get_package_cache_sub_dir("definition")(), { recurse = true, content_only = true })
 end
 
----#DES am.cache.safe_rm_pkgs
----
----Deletes content of package cache
----@return boolean
-function am.cache.safe_rm_pkgs() return pcall(am.cache.rm_pkgs) end
-
 ---#DES am.cache.rm_plugins
 ---
 ---Deletes content of plugin cache
@@ -198,12 +191,6 @@ function am.cache.rm_plugins()
 	fs.remove(am.cache.__get_plugin_cache_sub_dir("definition")(), { recurse = true, content_only = true })
 end
 
----#DES am.cache.safe_rm_plugins
----
----Deletes content of plugin cache
----@return boolean
-function am.cache.safe_rm_plugins() return pcall(am.cache.rm_plugins) end
-
 ---#DES am.cache.erase
 ---
 ---Deletes everything from cache
@@ -211,9 +198,3 @@ function am.cache.erase()
 	am.cache.rm_pkgs()
 	am.cache.rm_plugins()
 end
-
----#DES am.cache.safe_erase
----
----Deletes everything from cache
----@return boolean
-function am.cache.safe_erase() return pcall(am.cache.erase) end

@@ -46,34 +46,36 @@ end
 ---Finds and returns ami entrypoint
 ---@return boolean, ExecutableAmiCli|string, string?
 function interface.find_entrypoint()
-	---@alias LoaderFn fun(content: string): boolean, ExecutableAmiCli|string
+	---@alias LoaderFn fun(content: string): ExecutableAmiCli|string|nil, string?
 
 	---@type table<string, LoaderFn>
 	local candidates = {
 		["ami.lua"] = function(content)
-			local ok, sub_ami_fn, err = pcall(load, content)
-			if not ok or type(sub_ami_fn) ~= "function" then return false, err or "uknown internal error" end
-			local ok, sub_ami = pcall(sub_ami_fn)
-			if not ok then return false, sub_ami end
-			return true, sub_ami
+			local sub_ami_fn, err = load(content)
+			if not sub_ami_fn or type(sub_ami_fn) ~= "function" then return nil, err or "uknown internal error" end
+			local ok, sub_ami_or_error = pcall(sub_ami_fn)
+			if not ok then return sub_ami_or_error, nil end
+			return nil, sub_ami_or_error
 		end,
 		["ami.json"] = function(content)
-			return hjson.safe_parse(content)
+			return hjson.parse(content)
 		end,
 		["ami.hjson"] = function(content)
-			return hjson.safe_parse(content)
+			return hjson.parse(content)
 		end
 	}
-
+	
 	for candidate, loader in pairs(candidates) do
-		local ok, sub_ami_content = fs.safe_read_file(candidate)
-		if ok then
+		local sub_ami_content, err = fs.read_file(candidate)
+			print(sub_ami_content, candidate, os.cwd(), err)
+			print(fs.file_info(candidate))
+		if sub_ami_content then
 			log_trace(candidate .. " found loading...")
-			local ok, ami = loader(sub_ami_content)
-			return ok, ami, candidate
+			local ami, err = loader(sub_ami_content)
+			return ami ~= nil, ami or err, candidate
 		end
 	end
-	return false, "Entrypoint interface not found (ami.lua/ami.json/ami.hjson missing)!", nil
+	return false, "entrypoint interface not found (ami.lua/ami.json/ami.hjson missing)", nil
 end
 
 ---Loads ExecutableAmiCli from ami.lua using specified base of interfaceKind
@@ -84,46 +86,47 @@ function interface.load(interface_kind, shallow)
 	log_trace("Loading app specific ami...")
 	local sub_ami
 	if not shallow then
-		local ok, sub_ami_raw = fs.safe_read_file("ami.json")
-		if ok then
+		local sub_ami_raw, err = fs.read_file("ami.json")
+		if sub_ami_raw then
 			log_trace("ami.json found loading...")
-			ok, sub_ami = hjson.safe_parse(sub_ami_raw)
-			log_trace("ami.json load " .. (ok and "successful" or "failed") .. "...")
-			if not ok then
-				log_warn("ami.json load failed - " .. tostring(sub_ami))
+			sub_ami, err = hjson.parse(sub_ami_raw)
+			log_trace("ami.json load " .. (sub_ami and "successful" or "failed") .. "...")
+			if not sub_ami then
+				log_warn("ami.json load failed - " .. tostring(err))
 			else
 				log_trace "ami.json loaded"
 			end
 		end
 
-		if not ok then
-			ok, sub_ami_raw = fs.safe_read_file("ami.hjson")
-			if ok then
+		if not sub_ami_raw then
+			sub_ami_raw, err = fs.read_file("ami.hjson")
+			if sub_ami_raw then
 				log_trace("ami.hjson found loading...")
-				ok, sub_ami = hjson.safe_parse(sub_ami_raw)
-				if not ok then
-					log_warn("ami.hjson load failed - " .. tostring(sub_ami))
+				sub_ami, err = hjson.parse(sub_ami_raw)
+				if not sub_ami then
+					log_warn("ami.hjson load failed - " .. tostring(err))
 				else
 					log_trace "ami.hjson loaded"
 				end
 			end
 		end
 
-		if not ok then
-			ok, sub_ami_raw = fs.safe_read_file("ami.lua")
-			if ok then
+		if not sub_ami_raw then
+			sub_ami_raw, err = fs.read_file("ami.lua")
+			if sub_ami_raw then
 				log_trace("ami.lua found, loading...")
-				local _err
-				ok, sub_ami, _err = pcall(load, sub_ami_raw)
-				if ok and type(sub_ami) == "function" then
-					ok, sub_ami = pcall(sub_ami)
+				local err
+				sub_ami, err = load(sub_ami_raw)
+				if sub_ami and type(sub_ami) == "function" then
+					local ok, sub_ami_or_error = pcall(sub_ami)
 					if ok then
 						log_trace("ami.lua loaded")
+						sub_ami = sub_ami_or_error
 					else
 						log_warn("ami.lua load failed - " .. tostring(sub_ami))
 					end
 				else
-					log_warn("ami.lua load failed - " .. tostring(_err))
+					log_warn("ami.lua load failed - " .. tostring(err))
 				end
 			end
 		end

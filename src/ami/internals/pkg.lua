@@ -86,26 +86,26 @@ local function download_pkg_def(app_type, channel)
 
 	local ok, pkg_definition_raw = am.cache.get("package-definition", full_pkg_id)
 	if ok then
-		local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
-		if ok and
-		(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
+		local pkg_definition, _ = hjson.parse(pkg_definition_raw)
+		if pkg_definition and 
+			(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
 			return true, pkg_definition
 		end
 	end
 
-	local ok, pkg_definition_raw, status = net.safe_download_string(definition_url)
-	if not ok or status / 100 ~= 2 then
-		return false, "failed to download package definition - " .. tostring(pkg_definition_raw), EXIT_PKG_INVALID_DEFINITION
+	local pkg_definition_raw, status = net.download_string(definition_url)
+	if not pkg_definition_raw or status / 100 ~= 2 then
+		return false, "failed to download package definition - " .. tostring(status), EXIT_PKG_INVALID_DEFINITION
 	end
 
-	local ok, pkg_definition = hjson.safe_parse(pkg_definition_raw)
-	if not ok then
-		return ok, "failed to parse package definition - " .. app_type.id, EXIT_PKG_INVALID_DEFINITION
+	local pkg_definition, err = hjson.parse(pkg_definition_raw)
+	if not pkg_definition then
+		return ok, "failed to parse package definition of '" .. app_type.id .. "' - " .. tostring(err), EXIT_PKG_INVALID_DEFINITION
 	end
 
 	local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
-	local ok, cached_definition_raw = hjson.safe_stringify(cached_definition)
-	ok = ok and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
+	local cached_definition_raw, _ = hjson.stringify(cached_definition)
+	local ok = cached_definition_raw and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
 	if ok then
 		log_trace("Local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
 	else
@@ -152,12 +152,12 @@ local function get_pkg(package_definition)
 		log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
 	end
 
-	local ok, err = net.safe_download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
+	local ok, err = net.download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
 	if not ok then
 		ami_error("Failed to get package " .. tostring(err) .. " - " .. tostring(package_definition.id or pkg_id), EXIT_PKG_DOWNLOAD_ERROR)
 	end
-	local ok, hash = fs.safe_hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
-	ami_assert(ok and hash == pkg_id, "Failed to verify package integrity - " .. pkg_id .. "!", EXIT_PKG_INTEGRITY_CHECK_ERROR)
+	local hash, err = fs.hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
+	ami_assert(hash == pkg_id, "failed to verify package integrity of '" .. pkg_id .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
 	log_trace("Integrity checks of " .. pkg_id .. " successful.")
 
 	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_id)
@@ -171,20 +171,18 @@ end
 ---@param pkg_path string
 ---@return table
 local function get_pkg_specs(pkg_path)
-	local ok, specs_raw = zip.safe_extract_string(pkg_path, "specs.json", { flatten_root_dir = true })
+	local specs_raw, err = zip.extract_string(pkg_path, "specs.json", { flatten_root_dir = true })
 
-	ami_assert(ok, "Failed to extract " .. pkg_path .. "", EXIT_PKG_LOAD_ERROR)
+	ami_assert(specs_raw, "failed to extract '" .. pkg_path .. "' - " .. tostring(err), EXIT_PKG_LOAD_ERROR)
 	if specs_raw == nil then
 		-- no specs, standalone package
 		return {}
 	end
 	log_trace("Analyzing " .. pkg_path .. " specs...")
 
-	local ok, specs = hjson.safe_parse(specs_raw)
-	if not ok then
-		ami_error("Failed to parse package specification - " .. pkg_path .. " " .. specs, EXIT_PKG_LOAD_ERROR)
-	end
-	log_trace("Successfully parsed " .. pkg_path .. " specification.")
+	local specs, err = hjson.parse(specs_raw)
+	ami_assert(specs, "failed to parse package specification - " .. pkg_path .. " - " .. tostring(err), EXIT_PKG_LOAD_ERROR)
+	log_trace("Successfully parsed '" .. pkg_path .. "' specification")
 	return specs
 end
 
@@ -207,18 +205,18 @@ function pkg.prepare_pkg(app_type)
 		local local_source = SOURCES[app_type.id]
 		log_trace("Loading local package from path " .. local_source)
 		local tmp_path = os.tmpname()
-		local ok, err = zip.safe_compress(local_source, tmp_path, { recurse = true, overwrite = true })
+		local ok, err = zip.compress(local_source, tmp_path, { recurse = true, overwrite = true })
 		if not ok then
-			fs.safe_remove(tmp_path)
+			fs.remove(tmp_path)
 			ami_error("Failed to compress local source directory: " .. (err or ""), EXIT_PKG_LOAD_ERROR)
 		end
-		local ok, hash = fs.safe_hash_file(tmp_path, { hex = true, type = "sha256" })
+		local hash, err = fs.hash_file(tmp_path, { hex = true, type = "sha256" })
 		if not ok then
-			fs.safe_remove(tmp_path)
-			ami_error("Failed to load package from local sources", EXIT_PKG_INTEGRITY_CHECK_ERROR)
+			fs.remove(tmp_path)
+			ami_error("failed to load package '" .. app_type.id .. "' from local sources - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
 		end
 		am.cache.put_from_file(tmp_path, "package-archive",  hash)
-		fs.safe_remove(tmp_path)
+		fs.remove(tmp_path)
 		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
 		ok, package_definition = get_pkg_def(app_type)
@@ -330,7 +328,7 @@ function pkg.unpack_layers(file_list)
 		end
 
 		local options = { flatten_root_dir = true, filter = filter, transform_path = transform }
-		local ok, err = zip.safe_extract(source, ".", options)
+		local ok, err = zip.extract(source, ".", options)
 		ami_assert(ok, err or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
 		log_trace("(" .. source .. ") " .. unpack_id_map[source] .. " extracted.")
 	end
@@ -344,19 +342,15 @@ function pkg.generate_model(model_definition)
 		return
 	end
 	log_trace("Generating app model...")
-	local ok, model = zip.safe_extract_string(model_definition.model.source, "model.lua", { flatten_root_dir = true })
-	if not ok then
-		ami_error("Failed to extract app model - " .. model .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
-	end
+	local model, err = zip.extract_string(model_definition.model.source, "model.lua", { flatten_root_dir = true })
+	ami_assert(model, "failed to extract app model - " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
 	for _, model_extension in ipairs(model_definition.extensions) do
-		local ok, extension_content_or_error = zip.safe_extract_string(model_extension.source, "model.ext.lua", { flatten_root_dir = true })
-		if not ok then
-			ami_error("Failed to extract app model extension - " .. extension_content_or_error .. "!", EXIT_PKG_MODEL_GENERATION_ERROR)
-		end
-		model = model .. "\n\n----------- injected ----------- \n--\t" .. model_extension.pkg_id .. "/model.ext.lua\n-------------------------------- \n\n" .. extension_content_or_error
+		local extension_content, err = zip.extract_string(model_extension.source, "model.ext.lua", { flatten_root_dir = true })
+		ami_assert(extension_content, "failed to extract app model extension - " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+		model = model .. "\n\n----------- injected ----------- \n--\t" .. model_extension.pkg_id .. "/model.ext.lua\n-------------------------------- \n\n" .. extension_content
 	end
-	local ok = fs.safe_write_file("model.lua", model)
-	ami_assert(ok, "Failed to write model.lua!", EXIT_PKG_MODEL_GENERATION_ERROR)
+	local ok, err = fs.write_file("model.lua", model)
+	ami_assert(ok, "failed to write model.lua - ".. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
 end
 
 ---Check whether there is new version of specified pkg.

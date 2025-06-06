@@ -22,8 +22,8 @@ local mirrors = {
 
 local DEFAULT_REPOSITORY_URL
 for _, candidate in ipairs(mirrors) do
-	local ok, _, status = net.safe_download_string(candidate .. "TEST", { follow_redirects = true })
-	if ok and status / 100 == 2 then
+	local response, status = net.download_string(candidate .. "TEST", { follow_redirects = true })
+	if response and status / 100 == 2 then
 		DEFAULT_REPOSITORY_URL = candidate
 		break
 	end

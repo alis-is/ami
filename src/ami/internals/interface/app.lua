@@ -33,7 +33,7 @@ local function new(options)
             ami_error("failed to load entrypoint: " .. tostring(entrypoint), EXIT_INVALID_AMI_INTERFACE)
         end
         -- entrypoint found and loadable but required action undefined
-        ami_error("violation of ami@app standard! " .. implementation_status, implementation_error)
+        ami_error("violation of ami@app standard " .. implementation_status, implementation_error)
     end
 
     local base = ami_base.new() --[[@as ExecutableAmiCli]]
