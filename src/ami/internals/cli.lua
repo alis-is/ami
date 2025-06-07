@@ -27,44 +27,49 @@ local ami_cli = {}
 ---Parses value into required type if possible.
 ---@param value string
 ---@param _type string
----@return boolean|number|string|nil
-local function _parse_value(value, _type)
+---@return boolean|number|string|nil value
+---@return string? error_message
+---@return boolean success
+local function parse_value(value, _type)
 	if type(value) ~= "string" then
-		return value
+		return value, "invalid value type - string expected, got: " .. type(value), false
 	end
 
 	local parse_map = {
 		boolean = function(v)
 			if     string.lower(v) == "true" or v == "1" then
-				return true
+				return true, nil, true
 			elseif string.lower(v) == "false" or v == "0" then
-				return false
+				return false, nil, true
 			else
-				ami_error("invalid value type - boolean expected, got: " .. value, EXIT_CLI_INVALID_VALUE)
+				return nil, "invalid value type - boolean expected, got: " .. value, false
 			end
 		end,
 		number = function(v)
 			local n = tonumber(v)
-			ami_assert(n ~= nil, "invalid value type - number expected, got: " .. value, EXIT_CLI_INVALID_VALUE)
-			return n
+			if n == nil then
+				return nil, "invalid value type - number expected, got: " .. value, false
+			end
+			return n, nil, true
 		end,
 		string = function(v)
-			return v
+			return v, nil, true
 		end,
 		auto = function(v)
-			if     string.lower(v) == "true" then
-				return true
-			elseif string.lower(v) == "false" then
-				return false
-			elseif  string.lower(v) == "null" or string.lower(v) == "nil" then
-				return nil
+			local l = string.lower(v)
+			if     l == "true" then
+				return true, nil, true
+			elseif l == "false" then
+				return false, nil, true
+			elseif l == "null" or l == "nil" then
+				return nil, nil, true
 			else
 				local n = tonumber(v)
 				if n ~= nil then
-					return n
+					return n, nil, true
 				end
 			end
-			return v
+			return v, nil, true
 		end
 	}
 
@@ -153,7 +158,11 @@ function ami_cli.parse_args(args, scheme, options)
 		if arg.type == "option" then
 			local cli_option_def = cli_options_map[arg.id]
 			ami_assert(type(cli_option_def) == "table", "unknown option - '" .. arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
-			cli_options_list[cli_option_def.id] = _parse_value(tostring(arg.value), cli_option_def.type)
+			local arg_value, err, success = parse_value(tostring(arg.value), cli_option_def.type)
+			if not success then
+				ami_assert(false, err or "unknown error while parsing option value", EXIT_CLI_ARG_PARSE_ERROR)
+			end
+			cli_options_list[cli_option_def.id] = arg_value
 		elseif options.stop_on_non_option then
 			-- we stop collecting if stop_on_non_option enabled to return everything remaining
 			last_index = i
