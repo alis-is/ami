@@ -14,18 +14,17 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 local cache_options = {}
 
+local DEFAULT_EXPIRATION = 86400
+
 local CACHE_DIR = nil
 local options = {
-	CACHE_EXPIRATION_TIME = 86400
+	CACHE_EXPIRATION_TIME = DEFAULT_EXPIRATION,
 }
 
 local members = {}
 for k, _ in pairs(options) do
 	members[k] = true
 end
-
-local computed = {
-}
 
 function cache_options.index(t, k)
 	if k == "CACHE_DIR" then
@@ -36,10 +35,6 @@ function cache_options.index(t, k)
 		return true, options[k]
 	end
 
-	local getter = computed[k]
-	if type(getter) == "function" then
-		return true, getter(t)
-	end
 	return false, nil
 end
 
