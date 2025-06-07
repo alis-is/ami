@@ -207,18 +207,6 @@ local function default_validate_args(optionList, command, cli)
 	return true
 end
 
----Returns true if all values in table contains property hidden with value true
----@param t table
----@return boolean
-local function are_all_hidden(t)
-	for _, v in pairs(t) do
-		if not v.hidden then
-			return false
-		end
-	end
-	return true
-end
-
 ---Comparison function for arg/options sorting
 ---@param t table
 ---@param a number
