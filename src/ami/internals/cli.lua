@@ -19,7 +19,7 @@ local exec = require"ami.internals.exec"
 local HELP_OPTION = {
 	index = 100,
 	aliases = { "h" },
-	description = "Prints this help message"
+	description = "Prints this help message",
 }
 
 local ami_cli = {}
@@ -36,7 +36,7 @@ local function parse_value(value, _type)
 	end
 
 	local parse_map = {
-		boolean = function(v)
+		boolean = function (v)
 			if     string.lower(v) == "true" or v == "1" then
 				return true, nil, true
 			elseif string.lower(v) == "false" or v == "0" then
@@ -45,17 +45,17 @@ local function parse_value(value, _type)
 				return nil, "invalid value type - boolean expected, got: " .. value, false
 			end
 		end,
-		number = function(v)
+		number = function (v)
 			local n = tonumber(v)
 			if n == nil then
 				return nil, "invalid value type - number expected, got: " .. value, false
 			end
 			return n, nil, true
 		end,
-		string = function(v)
+		string = function (v)
 			return v, nil, true
 		end,
-		auto = function(v)
+		auto = function (v)
 			local l = string.lower(v)
 			if     l == "true" then
 				return true, nil, true
@@ -70,7 +70,7 @@ local function parse_value(value, _type)
 				end
 			end
 			return v, nil, true
-		end
+		end,
 	}
 
 	local parse_fn = parse_map[_type] or parse_map.auto
@@ -126,7 +126,7 @@ function ami_cli.parse_args(args, scheme, options)
 		cli_options.help = HELP_OPTION
 	end
 
-	local to_map = function(t)
+	local to_map = function (t)
 		local result = {}
 		for k, v in pairs(t) do
 			local def = util.merge_tables({ id = k }, v)
@@ -237,7 +237,7 @@ end
 ---@return string
 local function generate_usage(cli, include_options_in_usage)
 	local cli_id = cli.__root_cli_id or path.file(APP_ROOT_SCRIPT or "")
-	local usage_parts = {"Usage: ", cli_id}
+	local usage_parts = { "Usage: ", cli_id }
 
 	for _, v in ipairs(cli.__command_stack or {}) do
 		table.insert(usage_parts, " " .. v)
@@ -246,7 +246,7 @@ local function generate_usage(cli, include_options_in_usage)
 	local has_options = cli.options and next(cli.options) ~= nil
 	if has_options and include_options_in_usage then
 		local options = table.keys(cli.options)
-		local sort_function = function(a, b)
+		local sort_function = function (a, b)
 			return compare_args(cli.options, a, b)
 		end
 
@@ -292,7 +292,7 @@ local function generate_help_message(cli)
 		for k, v in pairs(tbl or {}) do
 			if not v.hidden then table.insert(keys, k) end
 		end
-		table.sort(keys, function(a, b) return compare_args(tbl, a, b) end)
+		table.sort(keys, function (a, b) return compare_args(tbl, a, b) end)
 		return keys
 	end
 
@@ -363,58 +363,50 @@ function ami_cli.print_help(ami, options)
 	if type(options) ~= "table" then
 		options = {}
 	end
-	local title = options.title or ami.title
-	local description = options.description or ami.description
-	local _summary = options.summary or ami.summary
+	local title                    = options.title or ami.title
+	local description              = options.description or ami.description
+	local summary                  = options.summary or ami.summary
+	local footer                   = options.footer
+	local print_usage              = options.print_usage
+	local output_fmt               = ami.options and ami.options.OUTPUT_FORMAT
+	local help_message             = ami.help_message
 
-	local include_options_in_usage = nil
-
-	if include_options_in_usage == nil and options.include_options_in_usage ~= nil then
-		include_options_in_usage = options.include_options_in_usage
-	end
-
-	if include_options_in_usage == nil and ami.include_options_in_usage ~= nil then
+	local include_options_in_usage = options.include_options_in_usage
+	if include_options_in_usage == nil then
 		include_options_in_usage = ami.include_options_in_usage
 	end
-
 	if include_options_in_usage == nil then
 		include_options_in_usage = true
 	end
 
-	local print_usage = options.printUsage
 	if print_usage == nil then
 		print_usage = true
 	end
 
-	local footer = options.footer
-
-	if     type(ami.help_message) == "function" then
-		print(ami.help_message(ami))
-	elseif type(ami.help_message) == "string" then
-		print(ami.help_message)
-	else
-		if am.options.OUTPUT_FORMAT == "json" then
-			print(require "hjson".stringify(ami.commands, { invalid_objects_as_type = true, indent = false }))
-		else
-			-- collect and print help
-			if type(title) == "string" then
-				print(title .. NEW_LINE)
-			end
-			if type(description) == "string" then
-				print(description .. NEW_LINE)
-			end
-			if type(_summary) == "string" then
-				print("- " .. _summary .. NEW_LINE)
-			end
-			if print_usage then
-				print(generate_usage(ami, include_options_in_usage) .. NEW_LINE)
-			end
-			print(generate_help_message(ami))
-			if type(footer) == "string" then
-				print(footer)
-			end
-		end
+	if type(help_message) == "function" then
+		print(help_message(ami))
+		return
+	elseif type(help_message) == "string" then
+		print(help_message)
+		return
 	end
+
+	if output_fmt == "json" then
+		print(require"hjson".stringify(ami.commands, { invalid_objects_as_type = true, indent = false }))
+		return
+	end
+	-- collect and print help
+	if type(title) == "string" and #title > 0 then print(title .. NEW_LINE) end
+	if type(description) == "string" and #description > 0 then print(description .. NEW_LINE) end
+	if type(summary) == "string" and #summary > 0 then print("- " .. summary .. NEW_LINE) end
+
+	if print_usage then
+		print(generate_usage(ami, include_options_in_usage) .. NEW_LINE)
+	end
+
+	print(generate_help_message(ami))
+
+	if type(footer) == "string" then print(footer) end
 end
 
 ---Processes args passed to cli and executes appropriate operation
@@ -435,14 +427,14 @@ function ami_cli.process(ami, args)
 	end
 
 	ami_assert(
-	type(action) == "table" or type(action) == "function" or type(action) == "string",
+		type(action) == "table" or type(action) == "function" or type(action) == "string",
 		"Action not specified properly or not found! " .. cli_id,
 		EXIT_CLI_ACTION_MISSING
 	)
 
 	if ami.type == "external" then
 		ami_assert(
-		type(action) == "string",
+			type(action) == "string",
 			"Action has to be string specifying path to external cli",
 			EXIT_CLI_INVALID_DEFINITION
 		)
@@ -459,7 +451,8 @@ function ami_cli.process(ami, args)
 		return exec.native_action(action, raw_args, ami)
 	end
 
-	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami, { is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
+	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami,
+		{ is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
 	local executable_command = command
 
 	local valid, err = validate(optionList, executable_command, ami)

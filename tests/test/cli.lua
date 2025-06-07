@@ -533,7 +533,7 @@ test["show cli help (include_options_in_usage = false)"] = function()
 	test.assert(ok and not result:match("%[%-%-to%] %[%-%-to2%]") and result:match("Usage:"))
 end
 
-test["show cli help (printUsage = false)"] = function()
+test["show cli help (print_usage = false)"] = function()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -565,7 +565,7 @@ test["show cli help (printUsage = false)"] = function()
 	local ok, result =
 	collect_printout(
 		function()
-			am.print_help(cli, { printUsage = false })
+			am.print_help(cli, { print_usage = false })
 		end
 	)
 	test.assert(ok and not result:match("%[%-%-to%] %[%-%-to2%]") and not result:match("Usage:"))
