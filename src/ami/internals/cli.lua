@@ -236,18 +236,14 @@ end
 ---@param include_options_in_usage boolean
 ---@return string
 local function generate_usage(cli, include_options_in_usage)
-	local has_commands = cli.commands and #table.keys(cli.commands)
-	local has_options = cli.options and #table.keys(cli.options)
-
 	local cli_id = cli.__root_cli_id or path.file(APP_ROOT_SCRIPT or "")
-	local usage = "Usage: " .. cli_id .. " "
-	local optional_begin = "["
-	local optional_end = "]"
+	local usage_parts = {"Usage: ", cli_id}
 
 	for _, v in ipairs(cli.__command_stack or {}) do
-		usage = usage .. v .. " "
+		table.insert(usage_parts, " " .. v)
 	end
 
+	local has_options = cli.options and next(cli.options) ~= nil
 	if has_options and include_options_in_usage then
 		local options = table.keys(cli.options)
 		local sort_function = function(a, b)
@@ -257,119 +253,107 @@ local function generate_usage(cli, include_options_in_usage)
 		table.sort(options, sort_function)
 		for _, k in ipairs(options) do
 			local v = cli.options[k]
-			if not v.hidden then
-				local usage_beginning = v.required and "" or optional_begin
-				local usage_ending = v.required and "" or optional_end
-				local option_alias = v.aliases and v.aliases[1] or k
-				if #option_alias == 1 then
-					option_alias = "-" .. option_alias
-				else
-					option_alias = "--" .. option_alias
-				end
-				usage = usage .. usage_beginning .. option_alias
-
-				if v.type == "boolean" or v.type == nil then
-					usage = usage .. usage_ending .. " "
-				else
-					usage = usage .. "=<" .. k .. ">" .. usage_ending .. " "
-				end
+			if v.hidden then
+				goto continue
 			end
+			local begin_bracket = v.required and "" or "["
+			local end_bracket = v.required and "" or "]"
+			local alias = v.aliases and v.aliases[1] or k
+			alias = (#alias == 1) and ("-" .. alias) or ("--" .. alias)
+			local option_usage
+			if v.type == "boolean" or v.type == nil then
+				option_usage = begin_bracket .. alias .. end_bracket
+			else
+				option_usage = begin_bracket .. alias .. "=<" .. k .. ">" .. end_bracket
+			end
+			table.insert(usage_parts, " " .. option_usage)
+			::continue::
 		end
 	end
 
+	local has_commands = cli.commands and next(cli.commands) ~= nil
 	if has_commands then
 		if cli.type == "namespace" then
-			usage = usage .. "[args...]" .. " "
+			table.insert(usage_parts, " [args...]")
 		elseif cli.expects_command then
-			usage = usage .. "<command>" .. " "
+			table.insert(usage_parts, " <command>")
 		else
-			usage = usage .. "[<command>]" .. " "
+			table.insert(usage_parts, " [<command>]")
 		end
 	end
-	return usage
+	return table.concat(usage_parts)
 end
 
 local function generate_help_message(cli)
-	local has_commands = cli.commands and #table.keys(cli.commands) and not are_all_hidden(cli.commands)
-
-	if not cli.custom_help then
-		if type(cli.options) ~= "table" then
-			cli.options = {}
-		end
-		cli.options.help = HELP_OPTION
-	end
-	local has_options = cli.options and #table.keys(cli.options) and not are_all_hidden(cli.options)
-
 	local rows = {}
-	if has_options then
-		table.insert(rows, { left = "Options: ", description = "" })
-		local options = table.keys(cli.options)
-		local sort_function = function(a, b)
-			return compare_args(cli.options, a, b)
-		end
-		table.sort(options, sort_function)
 
-		for _, k in ipairs(options) do
+	local function sorted_visible_keys(tbl)
+		local keys = {}
+		for k, v in pairs(tbl or {}) do
+			if not v.hidden then table.insert(keys, k) end
+		end
+		table.sort(keys, function(a, b) return compare_args(tbl, a, b) end)
+		return keys
+	end
+
+	if type(cli.options) ~= "table" then cli.options = {} end
+	if not cli.custom_help then cli.options.help = HELP_OPTION end
+
+	local options_keys = sorted_visible_keys(cli.options)
+	if #options_keys > 0 then
+		table.insert(rows, { left = "Options: ", description = "" })
+		for _, k in ipairs(options_keys) do
 			local v = cli.options[k]
-			local aliases = ""
-			if v.aliases and v.aliases[1] then
+
+			local parts = {}
+			if v.aliases then
 				for _, alias in ipairs(v.aliases) do
 					if #alias == 1 then
-						alias = "-" .. alias
+						table.insert(parts, "-" .. alias)
 					else
-						alias = "--" .. alias
+						table.insert(parts, "--" .. alias)
 					end
-					aliases = aliases .. alias .. "|"
 				end
+			end
 
-				aliases = aliases .. "--" .. k
-				if v.type == "boolean" or v.type == nil then
-					aliases = aliases .. " "
-				else
-					aliases = aliases .. "=<" .. k .. ">" .. " "
-				end
-			else
-				aliases = "--" .. k
+			table.insert(parts, "--" .. k)
+			-- Add value placeholder for non-boolean
+			local opt_usage = table.concat(parts, "|")
+			if v.type ~= "boolean" and v.type ~= nil then
+				opt_usage = opt_usage .. "=<" .. k .. ">"
 			end
-			if not v.hidden then
-				table.insert(rows, { left = aliases, description = v.description or "" })
-			end
+			table.insert(rows, { left = opt_usage, description = v.description or "" })
 		end
 	end
 
-	if has_commands then
-		table.insert(rows, { left = "", description = "" })
+	local command_keys = sorted_visible_keys(cli.commands)
+	if #command_keys > 0 then
+		if #rows > 0 then table.insert(rows, { left = "", description = "" }) end -- blank line
 		table.insert(rows, { left = "Commands: ", description = "" })
-		local commands = table.keys(cli.commands)
-		local sort_function = function(a, b)
-			return compare_args(cli.commands, a, b)
-		end
-		table.sort(commands, sort_function)
 
-		for _, k in ipairs(commands) do
+		for _, k in ipairs(command_keys) do
 			local v = cli.commands[k]
-			if not v.hidden then
-				table.insert(rows, { left = k, description = v.summary or v.description or "" })
-			end
+			table.insert(rows, { left = k, description = v.summary or v.description or "" })
 		end
 	end
 
 	local left_length = 0
 	for _, row in ipairs(rows) do
-		if #row.left > left_length then
-			left_length = #row.left
-		end
+		if #row.left > left_length then left_length = #row.left end
 	end
 
-	local msg = ""
+	local lines = {}
 	for _, row in ipairs(rows) do
 		if #row.left == 0 then
-			msg = msg .. NEW_LINE
+			table.insert(lines, "")
 		else
-			msg = msg .. row.left .. string.rep(" ", left_length - #row.left) .. "\t\t" .. row.description .. NEW_LINE
+			table.insert(
+				lines,
+				string.format("%-" .. left_length .. "s\t\t%s", row.left, row.description)
+			)
 		end
 	end
-	return msg
+	return table.concat(lines, NEW_LINE) .. NEW_LINE
 end
 
 ---Prints help for specified
