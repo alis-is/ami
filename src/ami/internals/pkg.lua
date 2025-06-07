@@ -220,7 +220,7 @@ function pkg.prepare_pkg(app_type)
 		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
 		ok, package_definition = get_pkg_def(app_type)
-		ami_assert(ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+		ami_assert(ok, "failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
 	end
 
 	local pkg_id, package_archive_path = get_pkg(package_definition)
@@ -372,7 +372,7 @@ function pkg.is_pkg_update_available(package, current_version)
 	package.version = package.wanted_version
 
 	local ok, package_definition = get_pkg_def(package)
-	ami_assert(ok, "Failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+	ami_assert(ok, "failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
 
 	if type(current_version) ~= "string" then
 		log_trace("New version available...")

@@ -38,6 +38,9 @@ end
 ---@param cmd string
 ---@param args CliArg[]
 ---@param options ExternalActionOptions
+---@return number? exit_code
+---@return string? error_message
+---@return boolean executed
 function exec.external_action(cmd, args, options)
 	local raw_args = {}
 	if type(options) ~= "table" then options = {} end
@@ -64,21 +67,19 @@ function exec.external_action(cmd, args, options)
 			exec_args = exec_args .. ' ' .. quote .. arg .. quote -- add qouted string
 		end
 		local result, err = proc.exec(cmd .. " " .. exec_args)
-		ami_assert(result, "Failed to execute external action - " .. tostring(err) .. "!")
-		if options.should_return then
-			return result.exit_code
+		if not result then
+			return nil, "failed to execute external action - " .. tostring(err), false
 		end
-		os.exit(result.exit_code)
+		return result.exit_code, nil, true
 	end
 
 	local desired_stdio = options.stdio ~= nil and options.stdio or "inherit"
 
 	local result, err = proc.spawn(cmd, raw_args, { wait = true, stdio = desired_stdio, env = options.environment })
-	ami_assert(result, "Failed to execute external action - " .. tostring(err) .. "!")
-	if options.should_return then
-		return result.exit_code
+	if not result then 
+		return nil, "failed to execute external action - " .. tostring(err), false
 	end
-	os.exit(result.exit_code)
+	return result.exit_code, nil, true
 end
 
 ---@class ExecNativeActionOptions
@@ -90,7 +91,9 @@ end
 ---@param action string|function
 ---@param args CliArg[]|string[]
 ---@param options ExecNativeActionOptions | nil
----@return any
+---@return any result
+---@return string? error_message
+---@return boolean executed
 function exec.native_action(action, args, options)
 	if type(action) ~= "string" and type(action) ~= "function" then
 		error("Unsupported action/extension type (" .. type(action) .. ")!")
@@ -111,8 +114,7 @@ function exec.native_action(action, args, options)
 	if type(action) == "string" then
 		local ext, err = loadfile(action)
 		if type(ext) ~= "function" then
-			ami_error("failed to load extension from " .. action .. " - " .. err)
-			return
+			return nil, "failed to load extension from " .. action .. " - " .. err, false
 		end
 		id = action
 		action = ext
@@ -126,10 +128,10 @@ function exec.native_action(action, args, options)
 		elseif type(options.partial_error_message) == "string" then
 			err_msg = options.partial_error_message .. " - " .. tostring(result)
 		end
-		ami_error(err_msg)
+		return nil, err_msg, false
 	end
 	AMI_CONTEXT_FAIL_EXIT_CODE = past_ctx_exit_code
-	return result
+	return result, nil, true
 end
 
 return exec

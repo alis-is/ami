@@ -426,7 +426,12 @@ function ami_cli.process(ami, args)
 			"Action has to be string specifying path to external cli",
 			EXIT_CLI_INVALID_DEFINITION
 		)
-		return exec.external_action(action, parsed_args, ami)
+		local result, err, executed = exec.external_action(action, parsed_args, ami)
+		ami_assert(result ~= nil, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+		if ami.should_return then 
+			return result
+		end
+		os.exit(result)
 	end
 
 	if ami.type == "raw" then
@@ -436,7 +441,9 @@ function ami_cli.process(ami, args)
 		end
 		--- we validate within native_action
 		---@diagnostic disable-next-line: param-type-mismatch
-		return exec.native_action(action, raw_args, ami)
+		local result, err, executed = exec.native_action(action, raw_args, ami)
+		ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+		return result
 	end
 
 	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami,
