@@ -64,11 +64,9 @@ function interface.find_entrypoint()
 			return hjson.parse(content)
 		end
 	}
-	
+
 	for candidate, loader in pairs(candidates) do
 		local sub_ami_content, err = fs.read_file(candidate)
-			print(sub_ami_content, candidate, os.cwd(), err)
-			print(fs.file_info(candidate))
 		if sub_ami_content then
 			log_trace(candidate .. " found loading...")
 			local ami, err = loader(sub_ami_content)

@@ -36,7 +36,7 @@ test["load valid ami violating app starndard"] = function()
 	os.chdir("tests/assets/interfaces/valid-ami-violating")
 	local default_print = print
 	local result
-	print = function(msg) 
+	print = function(msg)
 		result = msg
 	end
 	am.__reload_interface()

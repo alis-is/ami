@@ -140,31 +140,31 @@ end
 ---@param package_definition AmiPackageDef
 ---@return string, string
 local function get_pkg(package_definition)
-	local pkg_id = package_definition.sha256 or package_definition.sha512
+	local pkg_hash = package_definition.sha256 or package_definition.sha512
 	local tmp_pkg_path = os.tmpname()
 
-	local ok, err = am.cache.get_to_file("package-archive", pkg_id, tmp_pkg_path,
+	local ok, err = am.cache.get_to_file("package-archive", pkg_hash, tmp_pkg_path,
 		{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha512 or nil })
 	if ok then
-		log_trace("Using cached version of " .. pkg_id)
-		return pkg_id, tmp_pkg_path
+		log_trace("Using cached version of " .. pkg_hash)
+		return pkg_hash, tmp_pkg_path
 	else
 		log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
 	end
 
 	local ok, err = net.download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
 	if not ok then
-		ami_error("Failed to get package " .. tostring(err) .. " - " .. tostring(package_definition.id or pkg_id), EXIT_PKG_DOWNLOAD_ERROR)
+		ami_error("Failed to get package " .. tostring(err) .. " - " .. tostring(package_definition.id or pkg_hash), EXIT_PKG_DOWNLOAD_ERROR)
 	end
 	local hash, err = fs.hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
-	ami_assert(hash == pkg_id, "failed to verify package integrity of '" .. pkg_id .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
-	log_trace("Integrity checks of " .. pkg_id .. " successful.")
+	ami_assert(hash == pkg_hash, "failed to verify package integrity of '" .. pkg_hash .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
+	log_trace("Integrity checks of " .. pkg_hash .. " successful.")
 
-	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_id)
+	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_hash)
 	if not ok then
-		log_trace("Failed to cache package " .. pkg_id .. " - " .. tostring(err))
+		log_trace("Failed to cache package " .. pkg_hash .. " - " .. tostring(err))
 	end
-	return pkg_id, tmp_pkg_path
+	return pkg_hash, tmp_pkg_path
 end
 
 ---Extracts package specs from package archive and returns it

@@ -81,7 +81,7 @@ test["prepare pkg from local cache"] = function()
     -- model check
     test.assert(model_info.model.pkg_id == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
     test.assert(model_info.extensions[1].pkg_id == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
-    test.assert(model_info.extensions[2].pkg_id == "e27b66bfb87d15fa4419a27435e883de65e7ff9c49c26b833381cadae9ef2853")
+    test.assert(model_info.extensions[2].pkg_id == "6fd2c39b9ba181cc646fb055a449d528d9aa639ca20639eb55c1b703bf1476fa")
     -- version tree check
     test.assert(#version_tree.dependencies == 2)
     test.assert(version_tree.dependencies[1].id == "test.base")
@@ -218,7 +218,7 @@ test["unpack layers"] = function()
     local test2_hash = fs.hash_file(".ami-templates/__test/assets/test2.template.txt", {hex = true})
     test.assert(test2_hash == "172fb97f3321e9e3616ada32fb5f9202b3917f5adcf4b67957a098a847e2f12c")
     local specs_hash = fs.hash_file("specs.json", {hex = true})
-    test.assert(specs_hash == "3aaa99ed2b16ed97e85d9fb7e0666986b230e5dcbe2e04e513b99e7f9dc8810a")
+    test.assert(specs_hash == "f30b06c0ce277fd0ec8c1be82db4287a387fd466e73c485c5d7f8935b0f55ee1")
 
     os.chdir(default_cwd)
 end
@@ -242,7 +242,7 @@ test["generate model"] = function()
     test.assert(result)
 
     local model_hash = fs.hash_file("model.lua", {hex = true})
-    test.assert(model_hash == "58517f9f584336674cea455165cd9b1d7d8bccfc49bc7a1aad870e5d402aef9a") 
+    test.assert(model_hash == "11f2eb0c5638019399762d68c07b1f8c45105c854c6322740892f987b2f220b9") 
 
     os.chdir(default_cwd)
 end
