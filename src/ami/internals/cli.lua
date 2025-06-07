@@ -83,11 +83,10 @@ end
 local function is_array_of_tables(value)
 	if not util.is_array(value) then
 		return false
-	else
-		for _, v in ipairs(value) do
-			if type(v) ~= "table" then
-				return false
-			end
+	end
+	for _, v in ipairs(value) do
+		if type(v) ~= "table" then
+			return false
 		end
 	end
 	return true
@@ -107,7 +106,9 @@ end
 ---@param args string[]|CliArg[]
 ---@param scheme AmiCli
 ---@param options AmiParseArgsOptions
----@return table<string, string|number|boolean>, AmiCli|nil, CliArg[]
+---@return table<string, string|number|boolean> option_list
+---@return AmiCli|nil command
+---@return CliArg[] remaining_args
 function ami_cli.parse_args(args, scheme, options)
 	if not is_array_of_tables(args) then
 		args = cli.parse_args(args)
@@ -119,12 +120,6 @@ function ami_cli.parse_args(args, scheme, options)
 
 	local cli_options = type(scheme.options) == "table" and scheme.options or {}
 	local cli_cmds = type(scheme.commands) == "table" and scheme.commands or {}
-
-	--// TODO: remove in next version
-	if scheme.customHelp ~= nil and not scheme.custom_help then
-		scheme.custom_help = scheme.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
-	end
 
 	-- inject help option
 	if not scheme.custom_help and not cli_options.help then
@@ -182,7 +177,7 @@ function ami_cli.parse_args(args, scheme, options)
 	end
 
 	if not options.is_namespace or options.stop_on_non_option then
-		-- in case we did not precollect cli args (are precolleted if nonCommand == true and stop_on_non_option == false)
+		-- in case we did not pre-collect cli args (are pre-colleted if nonCommand == true and stop_on_non_option == false)
 		cli_remaining_args = { table.unpack(args, last_index) }
 	end
 	return cli_options_list, cli_cmd, cli_remaining_args
@@ -193,7 +188,8 @@ end
 ---@param optionList table
 ---@param command any
 ---@param cli AmiCli
----@return boolean, nil|string
+---@return boolean is_valid
+---@return string? error_message
 local function default_validate_args(optionList, command, cli)
 	local options = type(cli.options) == "table" and cli.options or {}
 
@@ -236,7 +232,6 @@ local function compare_args(t, a, b)
 	end
 end
 
----comment
 ---@param cli ExecutableAmiCli
 ---@param include_options_in_usage boolean
 ---@return string
@@ -283,12 +278,6 @@ local function generate_usage(cli, include_options_in_usage)
 	end
 
 	if has_commands then
-		-- // TODO: remove in next version
-		if cli.type == "no-command" then
-			cli.type = "namespace"
-			print("Warning: cli.type 'no-command' is deprecated. Use 'namespace' instead.")
-		end
-
 		if cli.type == "namespace" then
 			usage = usage .. "[args...]" .. " "
 		elseif cli.expects_command then
@@ -302,12 +291,6 @@ end
 
 local function generate_help_message(cli)
 	local has_commands = cli.commands and #table.keys(cli.commands) and not are_all_hidden(cli.commands)
-
-	-- // TODO: remove in next version
-	if cli.customHelp ~= nil and not cli.custom_help then
-		cli.custom_help = cli.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
-	end
 
 	if not cli.custom_help then
 		if type(cli.options) ~= "table" then
@@ -402,19 +385,8 @@ function ami_cli.print_help(ami, options)
 
 	local include_options_in_usage = nil
 
-	-- // TODO: remove in next version
-	if options.includeOptionsInUsage ~= nil and options.include_options_in_usage ~= nil then
-		options.include_options_in_usage = options.includeOptionsInUsage
-		print("Warning: includeOptionsInUsage is deprecated. Use include_options_in_usage instead.")
-	end
 	if include_options_in_usage == nil and options.include_options_in_usage ~= nil then
 		include_options_in_usage = options.include_options_in_usage
-	end
-
-	-- // TODO: remove in next version
-	if ami.includeOptionsInUsage ~= nil and ami.include_options_in_usage == nil then
-		ami.include_options_in_usage = ami.includeOptionsInUsage
-		print("Warning: includeOptionsInUsage is deprecated. Use include_options_in_usage instead.")
 	end
 
 	if include_options_in_usage == nil and ami.include_options_in_usage ~= nil then
@@ -503,12 +475,6 @@ function ami_cli.process(ami, args)
 		return exec.native_action(action, raw_args, ami)
 	end
 
-	-- // TODO: remove in next version
-	if ami.type == "no-command" then
-		ami.type = "namespace"
-		print("Warning: cli.type 'no-command' is deprecated. Use 'namespace' instead.")
-	end
-
 	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami, { is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
 	local executable_command = command
 
@@ -519,12 +485,6 @@ function ami_cli.process(ami, args)
 		executable_command.__root_cli_id = ami.__root_cli_id or ami.id
 		executable_command.__command_stack = ami.__command_stack or {}
 		table.insert(executable_command.__command_stack, executable_command and executable_command.id)
-	end
-
-	-- // TODO: remove in next version
-	if ami.customHelp ~= nil and not ami.custom_help then
-		ami.custom_help = ami.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
 	end
 
 	if not ami.custom_help and optionList.help then
