@@ -16,8 +16,9 @@
 local ami_base = require"ami.internals.interface.base"
 
 ---Generates default app interface
----@param options AmiCliGeneratorOptions
----@return ExecutableAmiCli
+---@param options AmiCliGeneratorOptions?
+---@return ExecutableAmiCli? result
+---@return string? error_message
 local function new(options)
     if type(options) ~= "table" then
         options = {}

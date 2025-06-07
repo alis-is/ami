@@ -116,7 +116,10 @@ function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then
 		options = { stop_on_non_option = true }
 	end
-	return am.parse_args(interface.new("base"), args, options)
+	local ami, err = interface.new("base")
+	assert(ami, "failed to create base interface: " .. tostring(err), EXIT_INVALID_INTERFACE)
+
+	return am.parse_args(ami, args, options)
 end
 
 ---Configures ami cache location
@@ -173,7 +176,11 @@ end
 ---Reloads application interface and returns true if it is application specific. (False if it is from templates)
 ---@param shallow boolean?
 function am.__reload_interface(shallow)
-	am.__has_app_specific_interface, am.__interface = interface.load(am.options.BASE_INTERFACE, shallow)
+	local ami, err, is_app_specific = interface.load(am.options.BASE_INTERFACE, shallow)
+	ami_assert(ami, tostring(err), EXIT_INVALID_AMI_INTERFACE)
+
+	am.__interface = ami
+	am.__has_app_specific_interface = is_app_specific
 end
 
 ---Finds app entrypoint (ami.lua/ami.json/ami.hjson)

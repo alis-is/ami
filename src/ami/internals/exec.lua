@@ -71,10 +71,7 @@ function exec.external_action(cmd, args, options)
 		os.exit(result.exit_code)
 	end
 
-	local desired_stdio = "inherit"
-	if options.stdio ~= nil then
-		desired_stdio = options.stdio
-	end
+	local desired_stdio = options.stdio ~= nil and options.stdio or "inherit"
 
 	local result, err = proc.spawn(cmd, raw_args, { wait = true, stdio = desired_stdio, env = options.environment })
 	ami_assert(result, "Failed to execute external action - " .. tostring(err) .. "!")
