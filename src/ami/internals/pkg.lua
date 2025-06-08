@@ -140,7 +140,6 @@ local function get_pkg_def(app_type)
 	if not package_definition and type(app_type.channel) == "string" and app_type.channel ~= "" then
 		log_trace("failed to obtain package definition from channel " .. app_type.channel .. ", retrying with default channel...")
 		package_definition, err = download_pkg_def(app_type, nil)
-		return package_definition, err
 	end
 	return package_definition, err
 end
@@ -178,20 +177,21 @@ end
 
 ---Extracts package specs from package archive and returns it
 ---@param pkg_path string
----@return table
+---@return table? specs
+---@return string? error_message
 local function get_pkg_specs(pkg_path)
 	local specs_raw, err = zip.extract_string(pkg_path, "specs.json", { flatten_root_dir = true })
-
-	ami_assert(specs_raw, "failed to extract '" .. pkg_path .. "' - " .. tostring(err), EXIT_PKG_LOAD_ERROR)
-	if specs_raw == nil then
-		-- no specs, standalone package
-		return {}
+	if not specs_raw then
+		if err ~= "not found" then
+			return nil, "failed to extract 'specs.json' from package - " .. tostring(err)
+		end
+		specs_raw = {}
 	end
-	log_trace("Analyzing " .. pkg_path .. " specs...")
+	log_trace("analyzing " .. pkg_path .. " specs...")
 
 	local specs, err = hjson.parse(specs_raw)
 	ami_assert(specs, "failed to parse package specification - " .. pkg_path .. " - " .. tostring(err), EXIT_PKG_LOAD_ERROR)
-	log_trace("Successfully parsed '" .. pkg_path .. "' specification")
+	log_trace("successfully parsed '" .. pkg_path .. "' specification")
 	return specs
 end
 
@@ -236,7 +236,8 @@ function pkg.prepare_pkg(app_type)
 	end
 
 	local pkg_id, package_archive_path = get_pkg(package_definition)
-	local specs = get_pkg_specs(package_archive_path)
+	local specs, err = get_pkg_specs(package_archive_path)
+	ami_assert(specs, "failed to get package specs - " .. tostring(err), EXIT_PKG_LOAD_ERROR)	
 
 	---@type table<string, AmiPackageFile>
 	local result = {}
