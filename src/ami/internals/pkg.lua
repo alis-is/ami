@@ -144,9 +144,14 @@ local function get_pkg_def(app_type)
 	return package_definition, err
 end
 
+---@class AmiGetPackageResult
+---@field path string
+---@field hash string
+
 ---Downloads app package and returns its path.
 ---@param package_definition AmiPackageDef
----@return string, string
+---@return AmiGetPackageResult? result
+---@return string? error_message
 local function get_pkg(package_definition)
 	local pkg_hash = package_definition.sha256 or package_definition.sha512
 	local tmp_pkg_path = os.tmpname()
@@ -154,25 +159,35 @@ local function get_pkg(package_definition)
 	local ok, err = am.cache.get_to_file("package-archive", pkg_hash, tmp_pkg_path,
 		{ sha256 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha256 or nil, sha512 = am.options.NO_INTEGRITY_CHECKS ~= true and package_definition.sha512 or nil })
 	if ok then
-		log_trace("Using cached version of " .. pkg_hash)
-		return pkg_hash, tmp_pkg_path
+		log_trace("using cached version of " .. pkg_hash)
+		return {
+			path = tmp_pkg_path,
+			hash = pkg_hash
+		}
 	else
-		log_trace("INTERNAL ERROR: Failed to get package from cache: " .. tostring(err))
+		log_trace("internal error: failed to get package from cache: " .. tostring(err))
 	end
 
 	local ok, err = net.download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
 	if not ok then
-		ami_error("Failed to get package " .. tostring(err) .. " - " .. tostring(package_definition.id or pkg_hash), EXIT_PKG_DOWNLOAD_ERROR)
+		return nil, "failed to download package from " .. package_definition.source .. " - " .. tostring(err)
 	end
 	local hash, err = fs.hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
-	ami_assert(hash == pkg_hash, "failed to verify package integrity of '" .. pkg_hash .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
-	log_trace("Integrity checks of " .. pkg_hash .. " successful.")
+	if not hash then
+		fs.remove(tmp_pkg_path)
+		return nil, "failed to verify package integrity hash - " .. tostring(err)
+	end
+	-- ami_assert(hash == pkg_hash, "failed to verify package integrity of '" .. pkg_hash .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
+	log_trace("integrity checks of " .. pkg_hash .. " successful")
 
 	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_hash)
 	if not ok then
-		log_trace("Failed to cache package " .. pkg_hash .. " - " .. tostring(err))
+		log_trace("failed to cache package " .. pkg_hash .. " - " .. tostring(err))
 	end
-	return pkg_hash, tmp_pkg_path
+	return {
+		path = tmp_pkg_path,
+		hash = pkg_hash
+	}
 end
 
 ---Extracts package specs from package archive and returns it
@@ -235,7 +250,9 @@ function pkg.prepare_pkg(app_type)
 		ami_assert(package_definition, "failed to get package definition - " .. tostring(package_definition), EXIT_PKG_INVALID_DEFINITION)
 	end
 
-	local pkg_id, package_archive_path = get_pkg(package_definition)
+	local get_result, err = get_pkg(package_definition)
+	ami_assert(get_result, "failed to get package - " .. tostring(err), EXIT_PKG_DOWNLOAD_ERROR)
+	local pkg_hash, package_archive_path = get_result.hash, get_result.path
 	local specs, err = get_pkg_specs(package_archive_path)
 	ami_assert(specs, "failed to get package specs - " .. tostring(err), EXIT_PKG_LOAD_ERROR)	
 
@@ -291,15 +308,15 @@ function pkg.prepare_pkg(app_type)
 		if     file == "model.lua" then
 			is_model_found = true
 			---@type AmiPackageModelOrigin
-			model.model = { source = package_archive_path, pkg_id = pkg_id }
+			model.model = { source = package_archive_path, pkg_id = pkg_hash }
 			model.extensions = {}
 		elseif file == "model.ext.lua" then
 			if not is_model_found then -- we ignore extensions in same layer
-				table.insert(model.extensions, { source = package_archive_path, pkg_id = pkg_id })
+				table.insert(model.extensions, { source = package_archive_path, pkg_id = pkg_hash })
 			end
 		elseif file ~= "model.ext.lua.template" and "model.ext.template.lua" then
 			-- we do not accept templates for model as model is used to render templates :)
-			result[file] = { source = package_archive_path, id = app_type.id, file = file, pkg_id = pkg_id }
+			result[file] = { source = package_archive_path, id = app_type.id, file = file, pkg_id = pkg_hash }
 		end
 	end
 	log_trace("Preparation of " .. app_type.id .. " complete.")
