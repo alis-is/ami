@@ -135,11 +135,13 @@ test["parse_args"] = function()
 	am.__set_interface(interface)
 
 	local args = { "test", "-to=randomOption" }
-	test.assert(hash.sha256_sum(hjson.stringify({ am.parse_args(args) }, { invalid_objects_as_type = true, indent = false, sort_keys = true }), true) ==
-		"39e8e5febeee2a65653b97914971cf0269ba34ce8a801851f10ec9be3d7992a1")
+	local result = am.parse_args(args) 
+	test.assert(hash.sha256_sum(hjson.stringify(result, { invalid_objects_as_type = true, indent = false, sort_keys = true }), true) ==
+		"0ac801074ffdb749882a9465fe841dea6c1c2a3e880894b7e8ca0005a572575d")
 	local args = { "test", "-to=randomOption", "test2", "--test3=xxx" }
-	test.assert(hash.sha256_sum(hjson.stringify({ am.parse_args(args) }, { invalid_objects_as_type = true, indent = false, sort_keys = true }), true) ==
-		"173e8397066e26357a14d99eb49de241dc52e2862ea7f403d4ab1fce2ab1262b")
+	local result = am.parse_args(args) 
+	test.assert(hash.sha256_sum(hjson.stringify(result, { invalid_objects_as_type = true, indent = false, sort_keys = true }), true) ==
+		"49160a7e87ecc68f5d4ad11e4f234417171477f94f59888e0f0ee9977e5899b4")
 
 	local args = { "-to=randomOption", "test2", "--test3=xxx" }
 	local error_hit = false

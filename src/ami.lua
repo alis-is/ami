@@ -17,7 +17,8 @@
 require "am"
 am.__args = { ... }
 
-local parsed_options, _, remaining_args = am.__parse_base_args({ ... })
+local parse_result = am.__parse_base_args({ ... })
+local parsed_options, remaining_args = parse_result.options, parse_result.remaining_args
 
 ---@type table<string, string | table> | nil
 SOURCES = nil

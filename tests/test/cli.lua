@@ -45,8 +45,9 @@ test["parse args (ignore commands)"] = function()
 	}
 
 	local arg_list = { "-to", "-to2=testValue", "--testOption3=2", "test", "-c", "-d", "test2" }
-	local ok, cli_options_list, cli_cmd, cli_remaining_args = pcall(am.parse_args, cli, arg_list)
-	test.assert(ok)
+	local result, err = am.parse_args(cli, arg_list)
+	test.assert(result)
+	cli_options_list, cli_cmd, cli_remaining_args = result.options, result.command, result.remaining_args
 	test.assert(cli_options_list.testOption2 == "testValue")
 	test.assert(cli_options_list.testOption == true)
 	test.assert(cli_options_list.testOption3 == 2)

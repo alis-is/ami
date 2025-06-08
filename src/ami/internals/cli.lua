@@ -102,13 +102,17 @@ end
 ---@field stop_on_non_option boolean?
 ---@field is_namespace boolean?
 
+---@class ParseArgsResult
+---@field options table<string, string|number|boolean>
+---@field command AmiCli|nil
+---@field remaining_args CliArg[]
+
 ---Parses arguments in respect to cli scheme
 ---@param args string[]|CliArg[]
 ---@param scheme AmiCli
 ---@param options AmiParseArgsOptions
----@return table<string, string|number|boolean> option_list
----@return AmiCli|nil command
----@return CliArg[] remaining_args
+---@return ParseArgsResult? result
+---@return string? error_message
 function ami_cli.parse_args(args, scheme, options)
 	if not is_array_of_tables(args) then
 		args = cli.parse_args(args)
@@ -126,7 +130,7 @@ function ami_cli.parse_args(args, scheme, options)
 		cli_options.help = HELP_OPTION
 	end
 
-	local to_map = function (t)
+	local function to_map(t)
 		local result = {}
 		for k, v in pairs(t) do
 			local def = util.merge_tables({ id = k }, v)
@@ -152,11 +156,12 @@ function ami_cli.parse_args(args, scheme, options)
 		local arg = args[i]
 		if arg.type == "option" then
 			local cli_option_def = cli_options_map[arg.id]
-			ami_assert(type(cli_option_def) == "table", "unknown option - '" .. arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
-			local arg_value, err, success = parse_value(tostring(arg.value), cli_option_def.type)
-			if not success then
-				ami_assert(false, err or "unknown error while parsing option value", EXIT_CLI_ARG_PARSE_ERROR)
+			if not cli_option_def then
+				return nil, "unknown option - '" .. arg.arg
 			end
+			local arg_value, err, success = parse_value(tostring(arg.value), cli_option_def.type)
+			if not success then return nil, "option: '" .. (arg.arg or "") .. "' -" .. err end
+
 			cli_options_list[cli_option_def.id] = arg_value
 		elseif options.stop_on_non_option then
 			-- we stop collecting if stop_on_non_option enabled to return everything remaining
@@ -169,7 +174,9 @@ function ami_cli.parse_args(args, scheme, options)
 		else
 			-- default mode - we try to identify underlying command
 			cli_cmd = cli_cmd_map[arg.arg]
-			ami_assert(type(cli_cmd) == "table", "unknown command '" .. (arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
+			if type(cli_cmd) ~= "table" then
+				return nil, "unknown command - '" .. (arg.arg or "") .. "'"
+			end
 			last_index = i + 1
 			break
 		end
@@ -180,7 +187,11 @@ function ami_cli.parse_args(args, scheme, options)
 		-- in case we did not pre-collect cli args (are pre-colleted if nonCommand == true and stop_on_non_option == false)
 		cli_remaining_args = { table.unpack(args, last_index) }
 	end
-	return cli_options_list, cli_cmd, cli_remaining_args
+	return {
+		options = cli_options_list,
+		command = cli_cmd,
+		remaining_args = cli_remaining_args,
+	}
 end
 
 ---Default argument validation.
@@ -447,8 +458,11 @@ function ami_cli.process(ami, args)
 		return result
 	end
 
-	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami,
+	local parsed_args_result, err = ami_cli.parse_args(parsed_args, ami,
 		{ is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
+	ami_assert(parsed_args_result, err or "unknown", EXIT_CLI_ARG_PARSING_ERROR)
+	local optionList, command, remaining_args = 
+		parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
 	local executable_command = command
 
 	local valid, err = validate(optionList, executable_command, ami)
@@ -465,7 +479,7 @@ function ami_cli.process(ami, args)
 	end
 	--- we validate within native_action
 	---@diagnostic disable-next-line: param-type-mismatch
-	local result, err, executed = exec.native_action(action, { optionList, executable_command, remainingArgs, ami }, ami)
+	local result, err, executed = exec.native_action(action, { optionList, executable_command, remaining_args, ami }, ami)
 	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
 	return result
 end

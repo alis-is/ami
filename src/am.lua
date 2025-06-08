@@ -20,7 +20,7 @@ local exec = require "ami.internals.exec"
 local interface = require "ami.internals.interface"
 local initialize_options = require "ami.internals.options.init"
 
-ami_assert(ver.compare(ELI_LIB_VERSION, "0.35.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
+ami_assert(ver.compare(ELI_LIB_VERSION, "0.36.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
 
 am = require "version-info"
 require "ami.cache"
@@ -102,16 +102,18 @@ end
 ---@param cmd string|string[]
 ---@param args string[]|AmiParseArgsOptions
 ---@param options AmiParseArgsOptions|nil
----@return table<string, string|number|boolean>, AmiCli|nil, CliArg[]:
+---@return ParseArgsResult
 function am.parse_args(cmd, args, options)
 	local interface, args = get_interface(cmd, args)
-	return cli.parse_args(args, interface, options)
+	local result, err = cli.parse_args(args, interface, options)
+	ami_assert(result, "failed to parse args: " .. tostring(err), EXIT_CLI_ARGS_PARSE_ERROR)
+	return result
 end
 
 ---Parses provided args in respect to ami base
 ---@param args string[]
 ---@param options AmiParseArgsOptions | nil
----@return table<string, string|number|boolean>, nil, CliArg[]
+---@return ParseArgsResult
 function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then
 		options = { stop_on_non_option = true }
