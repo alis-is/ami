@@ -85,7 +85,7 @@ end
 
 ---@param app_type table
 ---@param channel string?
----@return boolean, AmiPackageDef|string, number?
+---@return AmiPackageDef?, string?
 local function download_pkg_def(app_type, channel)
 	local pkg_id = app_type.id:gsub("%.", "/")
 
@@ -102,51 +102,47 @@ local function download_pkg_def(app_type, channel)
 		local pkg_definition, _ = hjson.parse(pkg_definition_raw)
 		if pkg_definition and 
 			(app_type.version ~= "latest" or (type(pkg_definition.last_ami_check) == "number" and pkg_definition.last_ami_check + am.options.CACHE_EXPIRATION_TIME > os.time())) then
-			return true, pkg_definition
+			return pkg_definition
 		end
 	end
 
 	local pkg_definition_raw, status = net.download_string(definition_url)
 	if not pkg_definition_raw or status / 100 ~= 2 then
-		return false, "failed to download package definition - " .. tostring(status), EXIT_PKG_INVALID_DEFINITION
+		return nil, "failed to download package definition - " .. tostring(status)
 	end
 
 	local pkg_definition, err = hjson.parse(pkg_definition_raw)
 	if not pkg_definition then
-		return ok, "failed to parse package definition of '" .. app_type.id .. "' - " .. tostring(err), EXIT_PKG_INVALID_DEFINITION
+		return nil, "failed to parse package definition of '" .. app_type.id .. "' - " .. tostring(err)
 	end
 
 	local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
 	local cached_definition_raw, _ = hjson.stringify(cached_definition)
 	local ok = cached_definition_raw and am.cache.put(cached_definition_raw, "package-definition", full_pkg_id)
 	if ok then
-		log_trace("Local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
+		log_trace("local copy of " .. app_type.id .. " definition saved into " .. full_pkg_id)
 	else
 		-- it is not necessary to save definition locally as we hold version in memory already
-		log_trace("Failed to cache " .. app_type.id .. " definition!")
+		log_trace("failed to cache " .. app_type.id .. " definition!")
 	end
 
-	return true, pkg_definition
+	return pkg_definition
 end
 
 ---Downloads app package definition from repository.
 ---@param app_type AmiPackage|AmiPackageType
----@return boolean, AmiPackageDef
+---@return AmiPackageDef? result
+---@return string? error_message
 local function get_pkg_def(app_type)
 	-- try to download based on app channel
-	local ok, package_definition = download_pkg_def(app_type, app_type.channel)
+	local package_definition, err = download_pkg_def(app_type, app_type.channel)
 	-- if we failed to download channel and we werent downloading default already, try download default
-	if not ok and type(app_type.channel) == "string" and app_type.channel ~= "" then
-		log_trace("Failed to obtain package definition from channel " .. app_type.channel .. "! Retrying with default...")
-		local package_definition_or_error, exit_code
-		ok, package_definition_or_error, exit_code = download_pkg_def(app_type, nil)
-		ami_assert(ok, package_definition_or_error--[[@as string]] , exit_code)
-		package_definition = package_definition_or_error
+	if not package_definition and type(app_type.channel) == "string" and app_type.channel ~= "" then
+		log_trace("failed to obtain package definition from channel " .. app_type.channel .. ", retrying with default channel...")
+		package_definition, err = download_pkg_def(app_type, nil)
+		return package_definition, err
 	end
-	if ok then
-		log_trace("Successfully parsed " .. app_type.id .. " definition.")
-	end
-	return ok, package_definition --[[@as AmiPackageDef]]
+	return package_definition, err
 end
 
 ---Downloads app package and returns its path.
@@ -235,8 +231,8 @@ function pkg.prepare_pkg(app_type)
 		fs.remove(tmp_path)
 		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
-		ok, package_definition = get_pkg_def(app_type)
-		ami_assert(ok, "failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+		package_definition, err = get_pkg_def(app_type)
+		ami_assert(package_definition, "failed to get package definition - " .. tostring(package_definition), EXIT_PKG_INVALID_DEFINITION)
 	end
 
 	local pkg_id, package_archive_path = get_pkg(package_definition)
@@ -390,8 +386,8 @@ function pkg.is_pkg_update_available(package, current_version)
 	end
 	package.version = package.wanted_version
 
-	local ok, package_definition = get_pkg_def(package)
-	ami_assert(ok, "failed to get package definition", EXIT_PKG_INVALID_DEFINITION)
+	local package_definition, err = get_pkg_def(package)
+	ami_assert(package_definition, "failed to get package definition - " .. tostring(err), EXIT_PKG_DOWNLOAD_ERROR)
 
 	if type(current_version) ~= "string" then
 		log_trace("New version available...")
