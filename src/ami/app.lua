@@ -277,14 +277,15 @@ end
 ---Prepares app environment - extracts layers and builds model.
 function am.app.prepare()
 	log_info"Preparing the application..."
-	local file_list, model_info, version_tree, tmp_pkgs = ami_pkg.prepare_pkg(am.app.get"type")
+	local preparation_result, err = ami_pkg.prepare_pkg(am.app.get"type")
+	ami_assert(preparation_result, "failed to prepare app - " .. tostring(err), EXIT_APP_INTERNAL_ERROR)
 
-	local ok, err = ami_pkg.unpack_layers(file_list)
+	local ok, err = ami_pkg.unpack_layers(preparation_result.files)
 	ami_assert(ok, "failed to unpack layers: " .. tostring(err), EXIT_PKG_LAYER_EXTRACT_ERROR)
-	local ok, err = ami_pkg.generate_model(model_info)
+	local ok, err = ami_pkg.generate_model(preparation_result.model)
 	ami_assert(ok, "failed to generate model: " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
-	for _, v in ipairs(tmp_pkgs) do fs.remove(v) end
-	fs.write_file(".version-tree.json", hjson.stringify_to_json(version_tree))
+	for _, v in ipairs(preparation_result.tmp_archive_paths) do fs.remove(v) end
+	fs.write_file(".version-tree.json", hjson.stringify_to_json(preparation_result.version_tree))
 
 	is_model_loaded = false -- force mode load on next access
 	am.app.load_configuration()

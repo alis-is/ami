@@ -49,23 +49,23 @@ test["prepare pkg from remote"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
     -- file list check
-    test.assert(file_list["specs.json"].id == "test.app")
-    test.assert(file_list["__test/assets/test.template.txt"].id == "test.app")
-    test.assert(file_list["__test/assets/test2.template.txt"].id == "test.base2")
+    test.assert(result.files["specs.json"].id == "test.app")
+    test.assert(result.files["__test/assets/test.template.txt"].id == "test.app")
+    test.assert(result.files["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    local test_base_2_pkg_hash = file_list["__test/assets/test2.template.txt"].source
-    local test_app_pkg_hash = file_list["__test/assets/test.template.txt"].source
-    test.assert(model_info.model.source ~= test_app_pkg_hash and model_info.model.source ~= test_base_2_pkg_hash)
-    test.assert(model_info.extensions[1].source == test_base_2_pkg_hash)
-    test.assert(model_info.extensions[2].source == test_app_pkg_hash)
+    local test_base_2_pkg_hash = result.files["__test/assets/test2.template.txt"].source
+    local test_app_pkg_hash = result.files["__test/assets/test.template.txt"].source
+    test.assert(result.model.model.source ~= test_app_pkg_hash and result.model.model.source ~= test_base_2_pkg_hash)
+    test.assert(result.model.extensions[1].source == test_base_2_pkg_hash)
+    test.assert(result.model.extensions[2].source == test_app_pkg_hash)
     -- version tree check
-    test.assert(#version_tree.dependencies == 2)
-    test.assert(version_tree.dependencies[1].id == "test.base")
-    test.assert(version_tree.dependencies[2].id == "test.base2")
-    test.assert(version_tree.id == "test.app")
+    test.assert(#result.version_tree.dependencies == 2)
+    test.assert(result.version_tree.dependencies[1].id == "test.base")
+    test.assert(result.version_tree.dependencies[2].id == "test.base2")
+    test.assert(result.version_tree.id == "test.app")
 end
 
 test["prepare pkg from local cache"] = function()
@@ -77,21 +77,21 @@ test["prepare pkg from local cache"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
     -- file list check
-    test.assert(file_list["specs.json"].id == "test.app")
-    test.assert(file_list["__test/assets/test.template.txt"].id == "test.app")
-    test.assert(file_list["__test/assets/test2.template.txt"].id == "test.base2")
+    test.assert(result.files["specs.json"].id == "test.app")
+    test.assert(result.files["__test/assets/test.template.txt"].id == "test.app")
+    test.assert(result.files["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    test.assert(model_info.model.pkg_id == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
-    test.assert(model_info.extensions[1].pkg_id == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
-    test.assert(model_info.extensions[2].pkg_id == "6fd2c39b9ba181cc646fb055a449d528d9aa639ca20639eb55c1b703bf1476fa")
+    test.assert(result.model.model.pkg_id == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
+    test.assert(result.model.extensions[1].pkg_id == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
+    test.assert(result.model.extensions[2].pkg_id == "6fd2c39b9ba181cc646fb055a449d528d9aa639ca20639eb55c1b703bf1476fa")
     -- version tree check
-    test.assert(#version_tree.dependencies == 2)
-    test.assert(version_tree.dependencies[1].id == "test.base")
-    test.assert(version_tree.dependencies[2].id == "test.base2")
-    test.assert(version_tree.id == "test.app")
+    test.assert(#result.version_tree.dependencies == 2)
+    test.assert(result.version_tree.dependencies[1].id == "test.base")
+    test.assert(result.version_tree.dependencies[2].id == "test.base2")
+    test.assert(result.version_tree.id == "test.app")
 end
 
 test["prepare specific pkg from remote"] = function()
@@ -104,23 +104,23 @@ test["prepare specific pkg from remote"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, model_nfo, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
     -- file list check
-    test.assert(file_list["specs.json"].id == "test.app")
-    test.assert(file_list["__test/assets/test.template.txt"].id == "test.app")
-    test.assert(file_list["__test/assets/test2.template.txt"].id == "test.base2")
+    test.assert(result.files["specs.json"].id == "test.app")
+    test.assert(result.files["__test/assets/test.template.txt"].id == "test.app")
+    test.assert(result.files["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    local test_base_2_pkg_hash = file_list["__test/assets/test2.template.txt"].source
-    local test_app_pkg_hash = file_list["__test/assets/test.template.txt"].source
-    test.assert(model_nfo.model.source ~= test_app_pkg_hash and model_nfo.model.source ~= test_base_2_pkg_hash)
-    test.assert(model_nfo.extensions[1].source == test_base_2_pkg_hash)
-    test.assert(model_nfo.extensions[2].source == test_app_pkg_hash)
+    local test_base_2_pkg_hash = result.files["__test/assets/test2.template.txt"].source
+    local test_app_pkg_hash = result.files["__test/assets/test.template.txt"].source
+    test.assert(result.model.model.source ~= test_app_pkg_hash and result.model.model.source ~= test_base_2_pkg_hash)
+    test.assert(result.model.extensions[1].source == test_base_2_pkg_hash)
+    test.assert(result.model.extensions[2].source == test_app_pkg_hash)
     -- version tree check
-    test.assert(#version_tree.dependencies == 2)
-    test.assert(version_tree.dependencies[1].id == "test.base")
-    test.assert(version_tree.dependencies[2].id == "test.base2")
-    test.assert(version_tree.id == "test.app")
+    test.assert(#result.version_tree.dependencies == 2)
+    test.assert(result.version_tree.dependencies[1].id == "test.base")
+    test.assert(result.version_tree.dependencies[2].id == "test.base2")
+    test.assert(result.version_tree.id == "test.app")
 end
 
 test["prepare specific pkg from local cache"] = function()
@@ -133,21 +133,21 @@ test["prepare specific pkg from local cache"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
     -- file list check
-    test.assert(file_list["specs.json"].id == "test.app")
-    test.assert(file_list["__test/assets/test.template.txt"].id == "test.app")
-    test.assert(file_list["__test/assets/test2.template.txt"].id == "test.base2")
+    test.assert(result.files["specs.json"].id == "test.app")
+    test.assert(result.files["__test/assets/test.template.txt"].id == "test.app")
+    test.assert(result.files["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    test.assert(model_info.model.pkg_id == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
-    test.assert(model_info.extensions[1].pkg_id == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
-    test.assert(model_info.extensions[2].pkg_id == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
+    test.assert(result.model.model.pkg_id == "33e4e7e3f2e8d0651ff498036cc2098910a950f9b3eed55aa26b9d95d75338d0")
+    test.assert(result.model.extensions[1].pkg_id == "1e05f3895e0bbfe9c3e4608abb9d5366ff64e93e78e6217a69cc875390e71d7f")
+    test.assert(result.model.extensions[2].pkg_id == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
-    test.assert(#version_tree.dependencies == 2)
-    test.assert(version_tree.dependencies[1].id == "test.base")
-    test.assert(version_tree.dependencies[2].id == "test.base2")
-    test.assert(version_tree.id == "test.app")
+    test.assert(#result.version_tree.dependencies == 2)
+    test.assert(result.version_tree.dependencies[1].id == "test.base")
+    test.assert(result.version_tree.dependencies[2].id == "test.base2")
+    test.assert(result.version_tree.id == "test.app")
 end
 
 test["prepare pkg no integrity checks"] = function()
@@ -160,21 +160,21 @@ test["prepare pkg no integrity checks"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
     -- file list check
-    test.assert(file_list["specs.json"].id == "test.app")
-    test.assert(file_list["__test/assets/test.template.txt"].id == "test.app")
-    test.assert(file_list["__test/assets/test2.template.txt"].id == "test.base2")
+    test.assert(result.files["specs.json"].id == "test.app")
+    test.assert(result.files["__test/assets/test.template.txt"].id == "test.app")
+    test.assert(result.files["__test/assets/test2.template.txt"].id == "test.base2")
     -- model check
-    test.assert(model_info.model.pkg_id == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
-    test.assert(model_info.extensions[1].pkg_id == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
-    test.assert(model_info.extensions[2].pkg_id == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
+    test.assert(result.model.model.pkg_id == "9adfc4bbeee214a8358b40e146a8b44df076502c8f8ebcea8f2e96bae791bb69")
+    test.assert(result.model.extensions[1].pkg_id == "a2bc34357589128a1e1e8da34d932931b52f09a0c912859de9bf9d87570e97e9")
+    test.assert(result.model.extensions[2].pkg_id == "d0b5a56925682c70f5e46d99798e16cb791081124af89c780ed40fb97ab589c5")
     -- version tree check
-    test.assert(#version_tree.dependencies == 2)
-    test.assert(version_tree.dependencies[1].id == "test.base")
-    test.assert(version_tree.dependencies[2].id == "test.base2")
-    test.assert(version_tree.id == "test.app")
+    test.assert(#result.version_tree.dependencies == 2)
+    test.assert(result.version_tree.dependencies[1].id == "test.base")
+    test.assert(result.version_tree.dependencies[2].id == "test.base2")
+    test.assert(result.version_tree.id == "test.app")
     am.options.NO_INTEGRITY_CHECKS = false
 end
 
@@ -187,8 +187,8 @@ test["prepare pkg from alternative channel"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local _, _, _, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
-    test.assert(version_tree.version:match(".+-beta"))
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
+    test.assert(result.version_tree.version:match(".+-beta"))
 end
 
 
@@ -201,8 +201,8 @@ test["prepare pkg from non existing alternative channel"] = function()
     }
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local _, _, _, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
-    test.assert(not version_tree.version:match(".+-alpha"))
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
+    test.assert(not result.version_tree.version:match(".+-alpha"))
 end
 
 test["unpack layers"] = function()
@@ -218,10 +218,10 @@ test["unpack layers"] = function()
 
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, file_list, _, _ = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
 
-    local result = pcall(ami_pkg.unpack_layers, file_list)
+    local result = ami_pkg.unpack_layers(result.files)
     test.assert(result)
 
     local test_hash = fs.hash_file(".ami-templates/__test/assets/test.template.txt", {hex = true})
@@ -247,10 +247,10 @@ test["generate model"] = function()
 
     local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
     test.assert(pkg_type)
-    local result, _, model_info, _ = pcall(ami_pkg.prepare_pkg, pkg_type)
+    local result, _ = ami_pkg.prepare_pkg(pkg_type)
     test.assert(result)
 
-    local result, _ = pcall(ami_pkg.generate_model, model_info)
+    local result, _ = ami_pkg.generate_model(result.model)
     test.assert(result)
 
     local model_hash = fs.hash_file("model.lua", {hex = true})

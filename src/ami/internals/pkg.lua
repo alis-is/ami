@@ -49,6 +49,12 @@ local ami_util = require "ami.internals.util"
 
 ---@alias AvailableUpdates table<string, string>
 
+---@class PreparedPackage
+---@field files table<string, AmiPackageFile>
+---@field model AmiPackageModelDef
+---@field version_tree AmiPackage
+---@field tmp_archive_paths string[]
+
 local pkg = {}
 
 ---Normalizes package type
@@ -211,48 +217,50 @@ end
 
 ---Generates structures necessary for package setup and version tree of all packages required
 ---@param app_type AmiPackageType
----@return table<string, AmiPackageFile>
----@return AmiPackageModelDef
----@return AmiPackage
----@return string[]
+---@return PreparedPackage? result
+---@return string? error_message
 function pkg.prepare_pkg(app_type)
 	if type(app_type.id) ~= "string" then
-		ami_error("Invalid pkg specification or definition!", EXIT_PKG_INVALID_DEFINITION)
-	end
-	log_debug("Preparation of " .. app_type.id .. " started ...")
-	local app_type, err = normalize_pkg_type(app_type)
-	if not app_type then
-		ami_error(err, EXIT_PKG_INVALID_DEFINITION)
+		return nil, "invalid pkg id - expected string, got " .. type(app_type.id)
 	end
 
+	log_debug("preparation of " .. app_type.id .. " started")
+
+	local app_type, err = normalize_pkg_type(app_type)
+	if not app_type then return nil, err end
+
+	local local_sources = SOURCES or {}
+
 	local package_definition
-	if type(SOURCES) == "table" and SOURCES[app_type.id] then
-		local local_source = SOURCES[app_type.id]
-		log_trace("Loading local package from path " .. local_source)
+
+	local local_package_source = local_sources[app_type.id]	
+	if local_package_source then
+		log_trace("loading local package from path " .. local_package_source)
 		local tmp_path = os.tmpname()
-		local ok, err = zip.compress(local_source, tmp_path, { recurse = true, overwrite = true })
+		local ok, err = zip.compress(local_package_source, tmp_path, { recurse = true, overwrite = true })
 		if not ok then
 			fs.remove(tmp_path)
-			ami_error("Failed to compress local source directory: " .. (err or ""), EXIT_PKG_LOAD_ERROR)
+			return nil, err
 		end
 		local hash, err = fs.hash_file(tmp_path, { hex = true, type = "sha256" })
-		if not ok then
+		if not hash then
 			fs.remove(tmp_path)
-			ami_error("failed to load package '" .. app_type.id .. "' from local sources - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
+			return nil, err
 		end
 		am.cache.put_from_file(tmp_path, "package-archive",  hash)
 		fs.remove(tmp_path)
 		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
 		package_definition, err = get_pkg_def(app_type)
-		ami_assert(package_definition, "failed to get package definition - " .. tostring(err), EXIT_PKG_INVALID_DEFINITION)
+		if not package_definition then return nil, err end
 	end
 
 	local get_result, err = get_pkg(package_definition)
-	ami_assert(get_result, "failed to get package - " .. tostring(err), EXIT_PKG_DOWNLOAD_ERROR)
+	if not get_result then return nil, err end
 	local pkg_hash, package_archive_path = get_result.hash, get_result.path
+
 	local specs, err = get_pkg_specs(package_archive_path)
-	ami_assert(specs, "failed to get package specs - " .. tostring(err), EXIT_PKG_LOAD_ERROR)	
+	if not specs then return nil, err end
 
 	---@type table<string, AmiPackageFile>
 	local result = {}
@@ -278,16 +286,18 @@ function pkg.prepare_pkg(app_type)
 		for _, dependency in pairs(specs.dependencies) do
 			log_trace("Collecting dependency " .. (type(dependency) == "table" and dependency.id or "n." .. _) .. "...")
 
-			local sub_result, sub_model, sub_version_tree, sub_package_sources = pkg.prepare_pkg(dependency)
-			tmp_package_sources = util.merge_arrays(tmp_package_sources, sub_package_sources) --[[@as string[] ]]
-			if type(sub_model.model) == "table" then
+			local sub_package_preparation_result, err = pkg.prepare_pkg(dependency)
+			if not sub_package_preparation_result then return nil, err end
+
+			tmp_package_sources = util.merge_arrays(tmp_package_sources, sub_package_preparation_result.tmp_archive_paths) --[[@as string[] ]]
+			if type(sub_package_preparation_result.model.model) == "table" then
 				-- we overwrite entire model with extension if we didnt get extensions only
-				model = sub_model
+				model = sub_package_preparation_result.model
 			else
-				model = util.merge_tables(model, sub_model, true)
+				model = util.merge_tables(model, sub_package_preparation_result.model, true)
 			end
-			result = util.merge_tables(result, sub_result, true)
-			table.insert(version_tree.dependencies, sub_version_tree)
+			result = util.merge_tables(result, sub_package_preparation_result.files, true)
+			table.insert(version_tree.dependencies, sub_package_preparation_result.version_tree)
 		end
 		log_trace("Dependcies of " .. app_type.id .. " successfully collected.")
 	else
@@ -296,12 +306,12 @@ function pkg.prepare_pkg(app_type)
 
 	log_trace("Preparing " .. app_type.id .. " files...")
 	local files = zip.get_files(package_archive_path, { flatten_root_dir = true })
-	local _filter = function(_, v) -- ignore directories
+	local function filter(_, v) -- ignore directories
 		return type(v) == "string" and #v > 0 and not v:match("/$")
 	end
 
 	local is_model_found = false
-	for _, file in ipairs(table.filter(files, _filter)) do
+	for _, file in ipairs(table.filter(files, filter)) do
 		-- assign file source
 		if     file == "model.lua" then
 			is_model_found = true
@@ -318,7 +328,12 @@ function pkg.prepare_pkg(app_type)
 		end
 	end
 	log_trace("Preparation of " .. app_type.id .. " complete.")
-	return result, model, version_tree, tmp_package_sources
+	return {
+		files = result,
+		model = model,
+		version_tree = version_tree,
+		tmp_archive_paths = tmp_package_sources
+	}
 end
 
 ---Extracts files from package archives
