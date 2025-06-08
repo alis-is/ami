@@ -64,7 +64,9 @@ end
 function am.execute(cmd, args)
 	local interface, args = get_interface(cmd, args)
 	ami_assert(type(interface) == "table", "no valid command provided", EXIT_CLI_CMD_UNKNOWN)
-	return cli.process(interface, args)
+	local result, err, executed =  cli.process(interface, args)
+	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+	return result
 end
 
 ---#DES am.execute_action

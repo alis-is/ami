@@ -411,9 +411,11 @@ end
 ---Processes args passed to cli and executes appropriate operation
 ---@param ami ExecutableAmiCli
 ---@param args string[]?
----@return any
+---@return any result
+---@return string? error_message
+---@return boolean executed
 function ami_cli.process(ami, args)
-	ami_assert(type(ami) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
+	assert(type(ami) == "table", "invalid cli scheme provided, expected table, got: " .. type(ami))
 	local parsed_args = cli.parse_args(args)
 
 	local validate = type(ami.validate) == "function" and ami.validate or default_validate_args
@@ -425,25 +427,22 @@ function ami_cli.process(ami, args)
 		action = ami.exec
 	end
 
-	ami_assert(
-		type(action) == "table" or type(action) == "function" or type(action) == "string",
-		"Action not specified properly or not found! " .. cli_id,
-		EXIT_CLI_ACTION_MISSING
-	)
+	if type(action) ~= "table" and type(action) ~= "function" and type(action) ~= "string" then
+		return nil, "action not specified for the cli " .. cli_id, false
+	end
 
 	if ami.type == "external" then
-		ami_assert(
-			type(action) == "string",
-			"Action has to be string specifying path to external cli",
-			EXIT_CLI_INVALID_DEFINITION
-		)
-		local result, err, executed = exec.external_action(action, parsed_args, ami)
-		ami_assert(result ~= nil, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
-		if ami.should_return then
-			return result
+		if type(action) ~= "string" then
+			return nil, "action for external cli has to be string specifying path to external cli", false
 		end
-		os.exit(result)
-		return
+		local exit_code, err, executed = exec.external_action(action, parsed_args, ami)
+		if not executed then
+			return nil, err or "unknown", executed
+		end
+		if not ami.should_return then
+			os.exit(exit_code)
+		end
+		return exit_code, nil, executed
 	end
 
 	if ami.type == "raw" then
@@ -454,19 +453,25 @@ function ami_cli.process(ami, args)
 		--- we validate within native_action
 		---@diagnostic disable-next-line: param-type-mismatch
 		local result, err, executed = exec.native_action(action, raw_args, ami)
-		ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
-		return result
+		if not executed then
+			return nil, err or "unknown", executed
+		end
+		return result, nil, executed
 	end
 
 	local parsed_args_result, err = ami_cli.parse_args(parsed_args, ami,
 		{ is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
-	ami_assert(parsed_args_result, err or "unknown", EXIT_CLI_ARG_PARSING_ERROR)
-	local optionList, command, remaining_args = 
-		parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
+	if not parsed_args_result then
+		return nil, err or "unknown", false
+	end
+	local option_list, command, remaining_args =
+	   parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
 	local executable_command = command
 
-	local valid, err = validate(optionList, executable_command, ami)
-	ami_assert(valid, err or "unknown", EXIT_CLI_ARG_VALIDATION_ERROR)
+	local valid, err = validate(option_list, executable_command, ami)
+	if not valid then
+		return nil, err or "unknown", false
+	end
 
 	if type(executable_command) == "table" then
 		executable_command.__root_cli_id = ami.__root_cli_id or ami.id
@@ -474,14 +479,13 @@ function ami_cli.process(ami, args)
 		table.insert(executable_command.__command_stack, executable_command and executable_command.id)
 	end
 
-	if not ami.custom_help and optionList.help then
-		return ami_cli.print_help(ami)
+	if not ami.custom_help and option_list.help then
+		ami_cli.print_help(ami)
+		return nil, nil, true
 	end
 	--- we validate within native_action
 	---@diagnostic disable-next-line: param-type-mismatch
-	local result, err, executed = exec.native_action(action, { optionList, executable_command, remaining_args, ami }, ami)
-	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
-	return result
+	return exec.native_action(action, { option_list, executable_command, remaining_args, ami }, ami)
 end
 
 return ami_cli
