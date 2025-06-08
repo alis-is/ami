@@ -95,9 +95,8 @@ end
 ---@return string? error_message
 ---@return boolean executed
 function exec.native_action(action, args, options)
-	if type(action) ~= "string" and type(action) ~= "function" then
-		error("Unsupported action/extension type (" .. type(action) .. ")!")
-	end
+	assert(type(action) == "string" or type(action) == "function", "action must be a string or a function")
+
 	if type(args) ~= "table" then
 		args = {}
 	end

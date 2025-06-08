@@ -212,7 +212,11 @@ end
 ---@diagnostic disable-next-line: undefined-doc-param
 ---@param options ExecNativeActionOptions?
 ---@return any
-am.execute_extension = exec.native_action
+function am.execute_extension(...)
+	local result, err, executed = exec.native_action(...)
+	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+	return result
+end
 
 ---#DES am.execute_external()
 ---
