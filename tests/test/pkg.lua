@@ -264,9 +264,9 @@ test["is update available"] = function()
         id = "test.app",
         wanted_version = "latest"
     }
-    local isAvailable, id, version = ami_pkg.is_pkg_update_available(pkg, "0.0.0")
+    local isAvailable = ami_pkg.is_pkg_update_available(pkg, "0.0.0")
     test.assert(isAvailable)
-    local isAvailable, id, version = ami_pkg.is_pkg_update_available(pkg, "100.0.0")
+    local isAvailable = ami_pkg.is_pkg_update_available(pkg, "100.0.0")
     test.assert(not isAvailable)
 end
 
@@ -277,11 +277,11 @@ test["is update available from alternative channel"] = function()
         wanted_version = "latest",
         channel = "beta"
     }
-    local isAvailable, id, version = ami_pkg.is_pkg_update_available(pkg, "0.0.0")
+    local isAvailable = ami_pkg.is_pkg_update_available(pkg, "0.0.0")
     test.assert(isAvailable)
-    local isAvailable, id, version = ami_pkg.is_pkg_update_available(pkg, "0.0.3-beta")
+    local isAvailable = ami_pkg.is_pkg_update_available(pkg, "0.0.3-beta")
     test.assert(not isAvailable)
-    local isAvailable, id, version = ami_pkg.is_pkg_update_available(pkg, "100.0.0")
+    local isAvailable = ami_pkg.is_pkg_update_available(pkg, "100.0.0")
     test.assert(not isAvailable)
 end
 

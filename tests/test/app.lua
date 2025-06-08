@@ -459,8 +459,9 @@ test["is update available alternative channel"] = function()
 
 	os.chdir(test_dir)
 	local ok = pcall(am.app.load_configuration)
-	local is_available, _, version = am.app.is_update_available()
-	test.assert(is_available and version == "0.0.3-beta")
+	local is_available, available_versions = am.app.is_update_available()
+	test.assert(is_available)
+	test.assert(available_versions["test.app"] == "0.0.3-beta")
 	os.chdir(default_cwd)
 end
 

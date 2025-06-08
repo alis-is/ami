@@ -47,6 +47,8 @@ local ami_util = require "ami.internals.util"
 ---@field model AmiPackageModelOrigin|nil
 ---@field extensions AmiPackageModelOrigin[]
 
+---@alias AvailableUpdates table<string, string>
+
 local pkg = {}
 
 ---Normalizes package type
@@ -113,7 +115,7 @@ local function download_pkg_def(app_type, channel)
 
 	local pkg_definition, err = hjson.parse(pkg_definition_raw)
 	if not pkg_definition then
-		return nil, "failed to parse package definition of '" .. app_type.id .. "' - " .. tostring(err)
+		return nil, err
 	end
 
 	local cached_definition = util.merge_tables(pkg_definition, { last_ami_check = os.time() })
@@ -169,15 +171,12 @@ local function get_pkg(package_definition)
 	end
 
 	local ok, err = net.download_file(package_definition.source, tmp_pkg_path, { follow_redirects = true, show_default_progress = false })
-	if not ok then
-		return nil, "failed to download package from " .. package_definition.source .. " - " .. tostring(err)
-	end
+	if not ok then return nil, err end
 	local hash, err = fs.hash_file(tmp_pkg_path, { hex = true, type = package_definition.sha512 and "sha512" or nil })
 	if not hash then
 		fs.remove(tmp_pkg_path)
-		return nil, "failed to verify package integrity hash - " .. tostring(err)
+		return nil, err
 	end
-	-- ami_assert(hash == pkg_hash, "failed to verify package integrity of '" .. pkg_hash .. "' - " .. tostring(err), EXIT_PKG_INTEGRITY_CHECK_ERROR)
 	log_trace("integrity checks of " .. pkg_hash .. " successful")
 
 	local ok, err = am.cache.put_from_file(tmp_pkg_path, "package-archive", pkg_hash)
@@ -197,15 +196,15 @@ end
 local function get_pkg_specs(pkg_path)
 	local specs_raw, err = zip.extract_string(pkg_path, "specs.json", { flatten_root_dir = true })
 	if not specs_raw then
-		if err ~= "not found" then
-			return nil, "failed to extract 'specs.json' from package - " .. tostring(err)
-		end
+		if err ~= "not found" then return nil, err end
 		specs_raw = {}
 	end
 	log_trace("analyzing " .. pkg_path .. " specs...")
 
 	local specs, err = hjson.parse(specs_raw)
-	ami_assert(specs, "failed to parse package specification - " .. pkg_path .. " - " .. tostring(err), EXIT_PKG_LOAD_ERROR)
+	if not specs then
+		return nil, err
+	end
 	log_trace("successfully parsed '" .. pkg_path .. "' specification")
 	return specs
 end
@@ -226,7 +225,6 @@ function pkg.prepare_pkg(app_type)
 		ami_error(err, EXIT_PKG_INVALID_DEFINITION)
 	end
 
-	local ok
 	local package_definition
 	if type(SOURCES) == "table" and SOURCES[app_type.id] then
 		local local_source = SOURCES[app_type.id]
@@ -247,7 +245,7 @@ function pkg.prepare_pkg(app_type)
 		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
 	else
 		package_definition, err = get_pkg_def(app_type)
-		ami_assert(package_definition, "failed to get package definition - " .. tostring(package_definition), EXIT_PKG_INVALID_DEFINITION)
+		ami_assert(package_definition, "failed to get package definition - " .. tostring(err), EXIT_PKG_INVALID_DEFINITION)
 	end
 
 	local get_result, err = get_pkg(package_definition)
@@ -325,6 +323,8 @@ end
 
 ---Extracts files from package archives
 ---@param file_list table<string, AmiPackageFile>
+---@return boolean success
+---@return string? error_message
 function pkg.unpack_layers(file_list)
 	local unpack_map = {}
 	local unpack_id_map = {}
@@ -338,12 +338,12 @@ function pkg.unpack_layers(file_list)
 	end
 
 	for source, files in pairs(unpack_map) do
-		log_debug("Extracting (" .. source .. ") " .. unpack_id_map[source])
+		log_debug("extracting (" .. source .. ") " .. unpack_id_map[source])
 		local filter = function(f)
 			return files[f]
 		end
 
-		local transform = function(f, destination)
+		local function transform(f, destination)
 			local name, extension = path.nameext(f)
 			if extension == "template" then
 				destination = path.combine(destination, ".ami-templates")
@@ -359,75 +359,90 @@ function pkg.unpack_layers(file_list)
 
 		local options = { flatten_root_dir = true, filter = filter, transform_path = transform }
 		local ok, err = zip.extract(source, ".", options)
-		ami_assert(ok, err or "", EXIT_PKG_LAYER_EXTRACT_ERROR)
+		if not ok then
+			return false, err
+		end
 		log_trace("(" .. source .. ") " .. unpack_id_map[source] .. " extracted.")
 	end
+	return true
 end
 
 ---Generates app model from model definition
 ---@param model_definition AmiPackageModelDef
+---@return boolean success
+---@return string? error_message
 function pkg.generate_model(model_definition)
 	if type(model_definition.model) ~= "table" or type(model_definition.model.source) ~= "string" then
-		log_trace("No model found. Skipping model generation ...")
-		return
+		log_trace("no model found - skipping model generation ...")
+		return true
 	end
-	log_trace("Generating app model...")
+	log_trace("generating app model...")
 	local model, err = zip.extract_string(model_definition.model.source, "model.lua", { flatten_root_dir = true })
-	ami_assert(model, "failed to extract app model - " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+	if not model then return false, err end
 	for _, model_extension in ipairs(model_definition.extensions) do
 		local extension_content, err = zip.extract_string(model_extension.source, "model.ext.lua", { flatten_root_dir = true })
-		ami_assert(extension_content, "failed to extract app model extension - " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+		if not extension_content then return false, err end
 		model = model .. "\n\n----------- injected ----------- \n--\t" .. model_extension.pkg_id .. "/model.ext.lua\n-------------------------------- \n\n" .. extension_content
 	end
-	local ok, err = fs.write_file("model.lua", model)
-	ami_assert(ok, "failed to write model.lua - ".. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+	return fs.write_file("model.lua", model)
 end
+
 
 ---Check whether there is new version of specified pkg.
 ---If new version is found returns true, pkg.id and new version
 ---@param package AmiPackage | AmiPackageType
 ---@param current_version string | nil
----@return boolean, string|nil, string|nil
+---@return boolean? is_update_available
+---@return string|AvailableUpdates? version_or_error_message
 function pkg.is_pkg_update_available(package, current_version)
-	if type(current_version) ~= "string" then
-		current_version = package.version
-	end
-	log_trace("Checking update availability of " .. package.id)
-	local package, err = normalize_pkg_type(package)
-	if not package then
-		ami_error(err, EXIT_PKG_INVALID_DEFINITION)
-	end
+	current_version = type(current_version) == "string" and current_version or package.version
+	log_trace("checking update availability of " .. package.id)
 
-	if package.wanted_version ~= "latest" and package.wanted_version ~= nil then
-		log_trace("Static version detected, update suppressed.")
+	local normalized, err = normalize_pkg_type(package)
+	if not normalized then return nil, err end
+	package = normalized
+
+	local wanted_version = package.wanted_version or package.version
+	if package.wanted_version ~= "latest" and wanted_version == current_version then
+		log_trace("static version detected, update not required...")
 		return false
 	end
 	package.version = package.wanted_version
 
-	local package_definition, err = get_pkg_def(package)
-	ami_assert(package_definition, "failed to get package definition - " .. tostring(err), EXIT_PKG_DOWNLOAD_ERROR)
-
-	if type(current_version) ~= "string" then
-		log_trace("New version available...")
-		return true, package.id, package_definition.version
+	local pkg_def, err = get_pkg_def(package)
+	if not pkg_def then
+		log_trace("failed to get package definition - " .. tostring(err))
+		return nil, err
 	end
 
-	if ver.compare(package_definition.version, current_version) > 0 then
-		log_trace("New version available...")
-		return true, package.id, package_definition.version
+	if type(current_version) ~= "string" then
+		log_trace("new version available")
+		return true, { [package.id] = pkg_def.version }
+	end
+
+	if ver.compare(pkg_def.version, current_version) > 0 then
+		log_trace("new version available")
+		return true, { [package.id] = pkg_def.version }
 	end
 
 	if util.is_array(package.dependencies) then
+		local updates = {}
 		for _, dep in ipairs(package.dependencies) do
-			local _available, _id, _ver = pkg.is_pkg_update_available(dep, dep.version)
-			if _available then
-				log_trace("New version of child package found...")
-				return true, _id, _ver
+			local is_update_available, available_updates = pkg.is_pkg_update_available(dep, dep.version)
+			if is_update_available then
+				for dep_id, dep_version in pairs(available_updates) do
+					local existing_version = updates[dep_id]
+					if not existing_version or ver.compare(dep_version, existing_version) > 0 then
+						updates[dep_id] = dep_version
+					end
+				end
 			end
 		end
+		return next(updates) ~= nil, updates
 	end
 
-	return false
+	log_trace("no update required.")
+	return false, {}
 end
 
 return pkg

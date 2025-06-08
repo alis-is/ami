@@ -279,11 +279,11 @@ function am.app.prepare()
 	log_info"Preparing the application..."
 	local file_list, model_info, version_tree, tmp_pkgs = ami_pkg.prepare_pkg(am.app.get"type")
 
-	ami_pkg.unpack_layers(file_list)
-	ami_pkg.generate_model(model_info)
-	for _, v in ipairs(tmp_pkgs) do
-		fs.remove(v)
-	end
+	local ok, err = ami_pkg.unpack_layers(file_list)
+	ami_assert(ok, "failed to unpack layers: " .. tostring(err), EXIT_PKG_LAYER_EXTRACT_ERROR)
+	local ok, err = ami_pkg.generate_model(model_info)
+	ami_assert(ok, "failed to generate model: " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+	for _, v in ipairs(tmp_pkgs) do fs.remove(v) end
 	fs.write_file(".version-tree.json", hjson.stringify_to_json(version_tree))
 
 	is_model_loaded = false -- force mode load on next access
@@ -310,13 +310,16 @@ end
 ---
 ---Returns true if there is update available for any of related packages
 ---@return boolean
+---@return table<string, string>? updates
 function am.app.is_update_available()
 	local version_tree_raw, _ = fs.read_file".version-tree.json"
 	if version_tree_raw then
 		local version_tree, _ = hjson.parse(version_tree_raw)
 		if version_tree then
 			log_trace"Using .version-tree.json for update availability check."
-			return ami_pkg.is_pkg_update_available(version_tree)
+			local update_available, available_versions_or_error = ami_pkg.is_pkg_update_available(version_tree)
+			ami_assert(update_available ~= nil, "failed to check update availability - " .. tostring(available_versions_or_error), EXIT_APP_UPDATE_ERROR)
+			return update_available, available_versions_or_error
 		end
 	end
 
@@ -325,7 +328,9 @@ function am.app.is_update_available()
 	ami_assert(specs_raw, "failed to load app specs.json - " .. tostring(err), EXIT_APP_UPDATE_ERROR)
 	local specs, err = hjson.parse(specs_raw)
 	ami_assert(specs, "failed to parse app specs.json - " .. tostring(err), EXIT_APP_UPDATE_ERROR)
-	return ami_pkg.is_pkg_update_available(am.app.get"type", specs and specs.version)
+	local update_available, available_versions_or_error = ami_pkg.is_pkg_update_available(am.app.get"type", specs and specs.version)
+	ami_assert(update_available ~= nil, "failed to check update availability - " .. tostring(available_versions_or_error), EXIT_APP_UPDATE_ERROR)
+	return update_available, available_versions_or_error
 end
 
 ---@class PackageVersion
