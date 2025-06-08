@@ -105,7 +105,7 @@ function am.plugin.get(name, options)
 
 	local version = type(options.version) == "string" and options.version or "latest"
 
-	local bound_packages = am.app.__is_loaded() and am.app.get("dependency override")
+	local bound_packages = am.app.__is_loaded() and am.app.get("dependency_override")
 	if type(name) == "string" and type(bound_packages) == "table" and type(bound_packages["plugin." .. name]) == "string" then
 		version = bound_packages["plugin." .. name]
 		log_warn("Using overridden plugin version " .. version .. " of " .. name .. "!")

@@ -13,7 +13,8 @@ test["normalize pkg type"] = function()
     local pkg_type = {
         id = "test.app"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     test.assert(pkg_type.version == "latest")
     test.assert(pkg_type.repository == am.options.DEFAULT_REPOSITORY_URL)
 end
@@ -23,7 +24,8 @@ test["normalize pkg type (specific version)"] = function()
         id = "test.app",
         version = "0.0.2"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     test.assert(pkg_type.version == "0.0.2")
 end
 
@@ -33,7 +35,8 @@ test["normalize pkg type (specific repository)"] = function()
         id = "test.app",
         repository = custom_repo
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     test.assert(pkg_type.repository == custom_repo)
 end
 
@@ -44,7 +47,8 @@ test["prepare pkg from remote"] = function()
     local pkg_type = {
         id = "test.app"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
     -- file list check
@@ -71,7 +75,8 @@ test["prepare pkg from local cache"] = function()
         id = "test.app",
         repository = "non existing repository"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
     -- file list check
@@ -97,7 +102,8 @@ test["prepare specific pkg from remote"] = function()
         id = "test.app",
         version = "0.0.2"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, model_nfo, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
     -- file list check
@@ -125,7 +131,8 @@ test["prepare specific pkg from local cache"] = function()
         repository = "non existing repository",
         version = "0.0.2"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
     -- file list check
@@ -151,7 +158,8 @@ test["prepare pkg no integrity checks"] = function()
         id = "test.app",
         repository = "non existing repository"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, model_info, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
     -- file list check
@@ -177,7 +185,8 @@ test["prepare pkg from alternative channel"] = function()
         id = "test.app",
         channel = "beta"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local _, _, _, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(version_tree.version:match(".+-beta"))
 end
@@ -190,7 +199,8 @@ test["prepare pkg from non existing alternative channel"] = function()
         id = "test.app",
         channel = "alpha"
     }
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local _, _, _, version_tree = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(not version_tree.version:match(".+-alpha"))
 end
@@ -206,7 +216,8 @@ test["unpack layers"] = function()
     fs.remove(test_dir, {recurse = true, content_only = true})
     os.chdir(test_dir)
 
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, file_list, _, _ = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
 
@@ -234,7 +245,8 @@ test["generate model"] = function()
     fs.remove(test_dir, {recurse = true, content_only = true})
     os.chdir(test_dir)
 
-    ami_pkg.normalize_pkg_type(pkg_type)
+    local pkg_type, err = ami_pkg.normalize_pkg_type(pkg_type)
+    test.assert(pkg_type)
     local result, _, model_info, _ = pcall(ami_pkg.prepare_pkg, pkg_type)
     test.assert(result)
 

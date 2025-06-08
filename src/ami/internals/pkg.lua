@@ -50,20 +50,33 @@ local ami_util = require "ami.internals.util"
 local pkg = {}
 
 ---Normalizes package type
----@param pkg_type AmiPackageType | AmiPackage
+---@generic T: AmiPackageType | AmiPackage 
+---@param pkg_type T
+---@return T? result
+---@return string? error_message
 local function normalize_pkg_type(pkg_type)
-	local bound_packages = am.app.__is_loaded() and am.app.get("dependency override")
-	if type(pkg_type.id) == "string" and type(bound_packages) == "table" and type(bound_packages[pkg_type.id]) == "string" then
-		pkg_type.version = bound_packages[pkg_type.id]
-		log_warn("Using overriden version " .. pkg_type.version .. " of " .. pkg_type.id .. "!")
+	assert(type(pkg_type) == "table", "invalid pkg type")
+	pkg_type = util.clone(pkg_type, true)
+
+	local bound_packages = am.app.__is_loaded() and am.app.get("dependency_override", {}) or {}
+	local bound_package = bound_packages[pkg_type.id]
+	if type(bound_package) == "string" then
+		pkg_type.version = bound_package
+		log_warn("using overridden version " .. pkg_type.version .. " of " .. pkg_type.id)
 	end
-	if pkg_type.version == nil then
-		pkg_type.version = "latest"
+
+	if pkg_type.version == nil then pkg_type.version = "latest" end
+
+	if type(pkg_type.version) ~= "string" then
+		return nil, "invalid pkg version - expected string, got " .. type(pkg_type.version)
 	end
-	ami_assert(type(pkg_type.version) == "string", "Invalid pkg version", EXIT_PKG_INVALID_VERSION)
-	if type(pkg_type.repository) ~= "string" then
-		pkg_type.repository = am.options.DEFAULT_REPOSITORY_URL
+	if type(pkg_type.repository) ~= "string" then 
+		pkg_type.repository = am.options.DEFAULT_REPOSITORY_URL 
+		if type(pkg_type.repository) ~= "string" then
+			return nil, "invalid pkg repository - expected string, got " .. type(pkg_type.repository)
+		end
 	end
+	return pkg_type, nil
 end
 
 if TEST_MODE then
@@ -197,7 +210,10 @@ function pkg.prepare_pkg(app_type)
 		ami_error("Invalid pkg specification or definition!", EXIT_PKG_INVALID_DEFINITION)
 	end
 	log_debug("Preparation of " .. app_type.id .. " started ...")
-	normalize_pkg_type(app_type)
+	local app_type, err = normalize_pkg_type(app_type)
+	if not app_type then
+		ami_error(err, EXIT_PKG_INVALID_DEFINITION)
+	end
 
 	local ok
 	local package_definition
@@ -363,7 +379,10 @@ function pkg.is_pkg_update_available(package, current_version)
 		current_version = package.version
 	end
 	log_trace("Checking update availability of " .. package.id)
-	normalize_pkg_type(package)
+	local package, err = normalize_pkg_type(package)
+	if not package then
+		ami_error(err, EXIT_PKG_INVALID_DEFINITION)
+	end
 
 	if package.wanted_version ~= "latest" and package.wanted_version ~= nil then
 		log_trace("Static version detected, update suppressed.")
