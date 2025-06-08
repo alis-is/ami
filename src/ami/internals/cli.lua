@@ -19,7 +19,7 @@ local exec = require"ami.internals.exec"
 local HELP_OPTION = {
 	index = 100,
 	aliases = { "h" },
-	description = "Prints this help message"
+	description = "Prints this help message",
 }
 
 local ami_cli = {}
@@ -27,48 +27,50 @@ local ami_cli = {}
 ---Parses value into required type if possible.
 ---@param value string
 ---@param _type string
----@return boolean|number|string|nil
-local function _parse_value(value, _type)
+---@return boolean|number|string|nil value
+---@return string? error_message
+---@return boolean success
+local function parse_value(value, _type)
 	if type(value) ~= "string" then
-		return value
+		return value, "invalid value type - string expected, got: " .. type(value), false
 	end
 
 	local parse_map = {
-		boolean = function(v)
-			if     v == "true" or v == "TRUE" or v == "True" then
-				return true
-			elseif v == "false" or v == "FALSE" or v == "False" then
-				return false
+		boolean = function (v)
+			if     string.lower(v) == "true" or v == "1" then
+				return true, nil, true
+			elseif string.lower(v) == "false" or v == "0" then
+				return false, nil, true
 			else
-				ami_error("Invalid value type! Boolean expected, got: " .. value .. "!", EXIT_CLI_INVALID_VALUE)
+				return nil, "invalid value type - boolean expected, got: " .. value, false
 			end
 		end,
-		number = function(v)
-			local _n = tonumber(v)
-			if _n ~= nil then
-				return _n
-			else
-				ami_error("Invalid value type! Number expected, got: " .. value .. "!", EXIT_CLI_INVALID_VALUE)
+		number = function (v)
+			local n = tonumber(v)
+			if n == nil then
+				return nil, "invalid value type - number expected, got: " .. value, false
 			end
+			return n, nil, true
 		end,
-		string = function(v)
-			return v
+		string = function (v)
+			return v, nil, true
 		end,
-		auto = function(v)
-			if     v == "true" or v == "TRUE" or v == "True" then
-				return true
-			elseif v == "false" or v == "FALSE" or v == "False" then
-				return false
-			elseif v == "null" or v == "NULL" or v == "nil" then
-				return nil
+		auto = function (v)
+			local l = string.lower(v)
+			if     l == "true" then
+				return true, nil, true
+			elseif l == "false" then
+				return false, nil, true
+			elseif l == "null" or l == "nil" then
+				return nil, nil, true
 			else
-				local _n = tonumber(v)
-				if _n ~= nil then
-					return _n
+				local n = tonumber(v)
+				if n ~= nil then
+					return n, nil, true
 				end
 			end
-			return v
-		end
+			return v, nil, true
+		end,
 	}
 
 	local parse_fn = parse_map[_type] or parse_map.auto
@@ -81,11 +83,10 @@ end
 local function is_array_of_tables(value)
 	if not util.is_array(value) then
 		return false
-	else
-		for _, v in ipairs(value) do
-			if type(v) ~= "table" then
-				return false
-			end
+	end
+	for _, v in ipairs(value) do
+		if type(v) ~= "table" then
+			return false
 		end
 	end
 	return true
@@ -101,11 +102,17 @@ end
 ---@field stop_on_non_option boolean?
 ---@field is_namespace boolean?
 
+---@class ParseArgsResult
+---@field options table<string, string|number|boolean>
+---@field command AmiCli|nil
+---@field remaining_args CliArg[]
+
 ---Parses arguments in respect to cli scheme
 ---@param args string[]|CliArg[]
 ---@param scheme AmiCli
 ---@param options AmiParseArgsOptions
----@return table<string, string|number|boolean>, AmiCli|nil, CliArg[]
+---@return ParseArgsResult? result
+---@return string? error_message
 function ami_cli.parse_args(args, scheme, options)
 	if not is_array_of_tables(args) then
 		args = cli.parse_args(args)
@@ -118,18 +125,12 @@ function ami_cli.parse_args(args, scheme, options)
 	local cli_options = type(scheme.options) == "table" and scheme.options or {}
 	local cli_cmds = type(scheme.commands) == "table" and scheme.commands or {}
 
-	--// TODO: remove in next version
-	if scheme.customHelp ~= nil and not scheme.custom_help then
-		scheme.custom_help = scheme.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
-	end
-
 	-- inject help option
 	if not scheme.custom_help and not cli_options.help then
 		cli_options.help = HELP_OPTION
 	end
 
-	local to_map = function(t)
+	local function to_map(t)
 		local result = {}
 		for k, v in pairs(t) do
 			local def = util.merge_tables({ id = k }, v)
@@ -155,8 +156,13 @@ function ami_cli.parse_args(args, scheme, options)
 		local arg = args[i]
 		if arg.type == "option" then
 			local cli_option_def = cli_options_map[arg.id]
-			ami_assert(type(cli_option_def) == "table", "Unknown option - '" .. arg.arg .. "'!", EXIT_CLI_OPTION_UNKNOWN)
-			cli_options_list[cli_option_def.id] = _parse_value(tostring(arg.value), cli_option_def.type)
+			if not cli_option_def then
+				return nil, "unknown option - '" .. arg.arg
+			end
+			local arg_value, err, success = parse_value(tostring(arg.value), cli_option_def.type)
+			if not success then return nil, "option: '" .. (arg.arg or "") .. "' -" .. err end
+
+			cli_options_list[cli_option_def.id] = arg_value
 		elseif options.stop_on_non_option then
 			-- we stop collecting if stop_on_non_option enabled to return everything remaining
 			last_index = i
@@ -168,7 +174,9 @@ function ami_cli.parse_args(args, scheme, options)
 		else
 			-- default mode - we try to identify underlying command
 			cli_cmd = cli_cmd_map[arg.arg]
-			ami_assert(type(cli_cmd) == "table", "Unknown command '" .. (arg.arg or "") .. "'!", EXIT_CLI_CMD_UNKNOWN)
+			if type(cli_cmd) ~= "table" then
+				return nil, "unknown command - '" .. (arg.arg or "") .. "'"
+			end
 			last_index = i + 1
 			break
 		end
@@ -176,10 +184,14 @@ function ami_cli.parse_args(args, scheme, options)
 	end
 
 	if not options.is_namespace or options.stop_on_non_option then
-		-- in case we did not precollect cli args (are precolleted if nonCommand == true and stop_on_non_option == false)
+		-- in case we did not pre-collect cli args (are pre-colleted if nonCommand == true and stop_on_non_option == false)
 		cli_remaining_args = { table.unpack(args, last_index) }
 	end
-	return cli_options_list, cli_cmd, cli_remaining_args
+	return {
+		options = cli_options_list,
+		command = cli_cmd,
+		remaining_args = cli_remaining_args,
+	}
 end
 
 ---Default argument validation.
@@ -187,7 +199,8 @@ end
 ---@param optionList table
 ---@param command any
 ---@param cli AmiCli
----@return boolean, nil|string
+---@return boolean is_valid
+---@return string? error_message
 local function default_validate_args(optionList, command, cli)
 	local options = type(cli.options) == "table" and cli.options or {}
 
@@ -200,18 +213,6 @@ local function default_validate_args(optionList, command, cli)
 			if not optionList[k] then
 				return false, "required option not specified (" .. k .. ")"
 			end
-		end
-	end
-	return true
-end
-
----Returns true if all values in table contains property hidden with value true
----@param t table
----@return boolean
-local function are_all_hidden(t)
-	for _, v in pairs(t) do
-		if not v.hidden then
-			return false
 		end
 	end
 	return true
@@ -230,157 +231,128 @@ local function compare_args(t, a, b)
 	end
 end
 
----comment
 ---@param cli ExecutableAmiCli
 ---@param include_options_in_usage boolean
 ---@return string
 local function generate_usage(cli, include_options_in_usage)
-	local has_commands = cli.commands and #table.keys(cli.commands)
-	local has_options = cli.options and #table.keys(cli.options)
-
 	local cli_id = cli.__root_cli_id or path.file(APP_ROOT_SCRIPT or "")
-	local usage = "Usage: " .. cli_id .. " "
-	local optional_begin = "["
-	local optional_end = "]"
+	local usage_parts = { "Usage: ", cli_id }
 
 	for _, v in ipairs(cli.__command_stack or {}) do
-		usage = usage .. v .. " "
+		table.insert(usage_parts, " " .. v)
 	end
 
+	local has_options = cli.options and next(cli.options) ~= nil
 	if has_options and include_options_in_usage then
 		local options = table.keys(cli.options)
-		local sort_function = function(a, b)
+		local sort_function = function (a, b)
 			return compare_args(cli.options, a, b)
 		end
 
 		table.sort(options, sort_function)
 		for _, k in ipairs(options) do
 			local v = cli.options[k]
-			if not v.hidden then
-				local usage_beginning = v.required and "" or optional_begin
-				local usage_ending = v.required and "" or optional_end
-				local option_alias = v.aliases and v.aliases[1] or k
-				if #option_alias == 1 then
-					option_alias = "-" .. option_alias
-				else
-					option_alias = "--" .. option_alias
-				end
-				usage = usage .. usage_beginning .. option_alias
-
-				if v.type == "boolean" or v.type == nil then
-					usage = usage .. usage_ending .. " "
-				else
-					usage = usage .. "=<" .. k .. ">" .. usage_ending .. " "
-				end
+			if v.hidden then
+				goto continue
 			end
+			local begin_bracket = v.required and "" or "["
+			local end_bracket = v.required and "" or "]"
+			local alias = v.aliases and v.aliases[1] or k
+			alias = (#alias == 1) and ("-" .. alias) or ("--" .. alias)
+			local option_usage
+			if v.type == "boolean" or v.type == nil then
+				option_usage = begin_bracket .. alias .. end_bracket
+			else
+				option_usage = begin_bracket .. alias .. "=<" .. k .. ">" .. end_bracket
+			end
+			table.insert(usage_parts, " " .. option_usage)
+			::continue::
 		end
 	end
 
+	local has_commands = cli.commands and next(cli.commands) ~= nil
 	if has_commands then
-		-- // TODO: remove in next version
-		if cli.type == "no-command" then
-			cli.type = "namespace"
-			print("Warning: cli.type 'no-command' is deprecated. Use 'namespace' instead.")
-		end
-
 		if cli.type == "namespace" then
-			usage = usage .. "[args...]" .. " "
+			table.insert(usage_parts, " [args...]")
 		elseif cli.expects_command then
-			usage = usage .. "<command>" .. " "
+			table.insert(usage_parts, " <command>")
 		else
-			usage = usage .. "[<command>]" .. " "
+			table.insert(usage_parts, " [<command>]")
 		end
 	end
-	return usage
+	return table.concat(usage_parts)
 end
 
 local function generate_help_message(cli)
-	local has_commands = cli.commands and #table.keys(cli.commands) and not are_all_hidden(cli.commands)
-
-	-- // TODO: remove in next version
-	if cli.customHelp ~= nil and not cli.custom_help then
-		cli.custom_help = cli.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
-	end
-
-	if not cli.custom_help then
-		if type(cli.options) ~= "table" then
-			cli.options = {}
-		end
-		cli.options.help = HELP_OPTION
-	end
-	local has_options = cli.options and #table.keys(cli.options) and not are_all_hidden(cli.options)
-
 	local rows = {}
-	if has_options then
-		table.insert(rows, { left = "Options: ", description = "" })
-		local options = table.keys(cli.options)
-		local sort_function = function(a, b)
-			return compare_args(cli.options, a, b)
-		end
-		table.sort(options, sort_function)
 
-		for _, k in ipairs(options) do
+	local function sorted_visible_keys(tbl)
+		local keys = {}
+		for k, v in pairs(tbl or {}) do
+			if not v.hidden then table.insert(keys, k) end
+		end
+		table.sort(keys, function (a, b) return compare_args(tbl, a, b) end)
+		return keys
+	end
+
+	if type(cli.options) ~= "table" then cli.options = {} end
+	if not cli.custom_help then cli.options.help = HELP_OPTION end
+
+	local options_keys = sorted_visible_keys(cli.options)
+	if #options_keys > 0 then
+		table.insert(rows, { left = "Options: ", description = "" })
+		for _, k in ipairs(options_keys) do
 			local v = cli.options[k]
-			local aliases = ""
-			if v.aliases and v.aliases[1] then
+
+			local parts = {}
+			if v.aliases then
 				for _, alias in ipairs(v.aliases) do
 					if #alias == 1 then
-						alias = "-" .. alias
+						table.insert(parts, "-" .. alias)
 					else
-						alias = "--" .. alias
+						table.insert(parts, "--" .. alias)
 					end
-					aliases = aliases .. alias .. "|"
 				end
+			end
 
-				aliases = aliases .. "--" .. k
-				if v.type == "boolean" or v.type == nil then
-					aliases = aliases .. " "
-				else
-					aliases = aliases .. "=<" .. k .. ">" .. " "
-				end
-			else
-				aliases = "--" .. k
+			table.insert(parts, "--" .. k)
+			-- Add value placeholder for non-boolean
+			local opt_usage = table.concat(parts, "|")
+			if v.type ~= "boolean" and v.type ~= nil then
+				opt_usage = opt_usage .. "=<" .. k .. ">"
 			end
-			if not v.hidden then
-				table.insert(rows, { left = aliases, description = v.description or "" })
-			end
+			table.insert(rows, { left = opt_usage, description = v.description or "" })
 		end
 	end
 
-	if has_commands then
-		table.insert(rows, { left = "", description = "" })
+	local command_keys = sorted_visible_keys(cli.commands)
+	if #command_keys > 0 then
+		if #rows > 0 then table.insert(rows, { left = "", description = "" }) end -- blank line
 		table.insert(rows, { left = "Commands: ", description = "" })
-		local commands = table.keys(cli.commands)
-		local sort_function = function(a, b)
-			return compare_args(cli.commands, a, b)
-		end
-		table.sort(commands, sort_function)
 
-		for _, k in ipairs(commands) do
+		for _, k in ipairs(command_keys) do
 			local v = cli.commands[k]
-			if not v.hidden then
-				table.insert(rows, { left = k, description = v.summary or v.description or "" })
-			end
+			table.insert(rows, { left = k, description = v.summary or v.description or "" })
 		end
 	end
 
 	local left_length = 0
 	for _, row in ipairs(rows) do
-		if #row.left > left_length then
-			left_length = #row.left
-		end
+		if #row.left > left_length then left_length = #row.left end
 	end
 
-	local msg = ""
+	local lines = {}
 	for _, row in ipairs(rows) do
 		if #row.left == 0 then
-			msg = msg .. NEW_LINE
+			table.insert(lines, "")
 		else
-			msg = msg .. row.left .. string.rep(" ", left_length - #row.left) .. "\t\t" .. row.description .. NEW_LINE
+			table.insert(
+				lines,
+				string.format("%-" .. left_length .. "s\t\t%s", row.left, row.description)
+			)
 		end
 	end
-	return msg
+	return table.concat(lines, NEW_LINE) .. NEW_LINE
 end
 
 ---Prints help for specified
@@ -390,77 +362,60 @@ function ami_cli.print_help(ami, options)
 	if type(options) ~= "table" then
 		options = {}
 	end
-	local title = options.title or ami.title
-	local description = options.description or ami.description
-	local _summary = options.summary or ami.summary
+	local title                    = options.title or ami.title
+	local description              = options.description or ami.description
+	local summary                  = options.summary or ami.summary
+	local footer                   = options.footer
+	local print_usage              = options.print_usage
+	local output_fmt               = ami.options and ami.options.OUTPUT_FORMAT
+	local help_message             = ami.help_message
 
-	local include_options_in_usage = nil
-
-	-- // TODO: remove in next version
-	if options.includeOptionsInUsage ~= nil and options.include_options_in_usage ~= nil then
-		options.include_options_in_usage = options.includeOptionsInUsage
-		print("Warning: includeOptionsInUsage is deprecated. Use include_options_in_usage instead.")
-	end
-	if include_options_in_usage == nil and options.include_options_in_usage ~= nil then
-		include_options_in_usage = options.include_options_in_usage
-	end
-
-	-- // TODO: remove in next version
-	if ami.includeOptionsInUsage ~= nil and ami.include_options_in_usage == nil then
-		ami.include_options_in_usage = ami.includeOptionsInUsage
-		print("Warning: includeOptionsInUsage is deprecated. Use include_options_in_usage instead.")
-	end
-
-	if include_options_in_usage == nil and ami.include_options_in_usage ~= nil then
+	local include_options_in_usage = options.include_options_in_usage
+	if include_options_in_usage == nil then
 		include_options_in_usage = ami.include_options_in_usage
 	end
-
 	if include_options_in_usage == nil then
 		include_options_in_usage = true
 	end
 
-	local print_usage = options.printUsage
 	if print_usage == nil then
 		print_usage = true
 	end
 
-	local footer = options.footer
-
-	if     type(ami.help_message) == "function" then
-		print(ami.help_message(ami))
-	elseif type(ami.help_message) == "string" then
-		print(ami.help_message)
-	else
-		if am.options.OUTPUT_FORMAT == "json" then
-			print(require "hjson".stringify(ami.commands, { invalid_objects_as_type = true, indent = false }))
-		else
-			-- collect and print help
-			if type(title) == "string" then
-				print(title .. NEW_LINE)
-			end
-			if type(description) == "string" then
-				print(description .. NEW_LINE)
-			end
-			if type(_summary) == "string" then
-				print("- " .. _summary .. NEW_LINE)
-			end
-			if print_usage then
-				print(generate_usage(ami, include_options_in_usage) .. NEW_LINE)
-			end
-			print(generate_help_message(ami))
-			if type(footer) == "string" then
-				print(footer)
-			end
-		end
+	if type(help_message) == "function" then
+		print(help_message(ami))
+		return
+	elseif type(help_message) == "string" then
+		print(help_message)
+		return
 	end
+
+	if output_fmt == "json" then
+		print(require"hjson".stringify(ami.commands, { invalid_objects_as_type = true, indent = false }))
+		return
+	end
+	-- collect and print help
+	if type(title) == "string" and #title > 0 then print(title .. NEW_LINE) end
+	if type(description) == "string" and #description > 0 then print(description .. NEW_LINE) end
+	if type(summary) == "string" and #summary > 0 then print("- " .. summary .. NEW_LINE) end
+
+	if print_usage then
+		print(generate_usage(ami, include_options_in_usage) .. NEW_LINE)
+	end
+
+	print(generate_help_message(ami))
+
+	if type(footer) == "string" then print(footer) end
 end
 
 ---Processes args passed to cli and executes appropriate operation
 ---@param ami ExecutableAmiCli
 ---@param args string[]?
----@return any
+---@return any result
+---@return string? error_message
+---@return boolean executed
 function ami_cli.process(ami, args)
-	ami_assert(type(ami) == "table", "cli scheme not provided!", EXIT_CLI_SCHEME_MISSING)
+	assert(type(ami) == "table", "invalid cli scheme provided, expected table, got: " .. type(ami))
 	local parsed_args = cli.parse_args(args)
 
 	local validate = type(ami.validate) == "function" and ami.validate or default_validate_args
@@ -472,19 +427,22 @@ function ami_cli.process(ami, args)
 		action = ami.exec
 	end
 
-	ami_assert(
-	type(action) == "table" or type(action) == "function" or type(action) == "string",
-		"Action not specified properly or not found! " .. cli_id,
-		EXIT_CLI_ACTION_MISSING
-	)
+	if type(action) ~= "table" and type(action) ~= "function" and type(action) ~= "string" then
+		return nil, "action not specified for the cli " .. cli_id, false
+	end
 
 	if ami.type == "external" then
-		ami_assert(
-		type(action) == "string",
-			"Action has to be string specifying path to external cli",
-			EXIT_CLI_INVALID_DEFINITION
-		)
-		return exec.external_action(action, parsed_args, ami)
+		if type(action) ~= "string" then
+			return nil, "action for external cli has to be string specifying path to external cli", false
+		end
+		local exit_code, err, executed = exec.external_action(action, parsed_args, ami)
+		if not executed then
+			return nil, err or "unknown", executed
+		end
+		if not ami.should_return then
+			os.exit(exit_code)
+		end
+		return exit_code, nil, executed
 	end
 
 	if ami.type == "raw" then
@@ -494,20 +452,26 @@ function ami_cli.process(ami, args)
 		end
 		--- we validate within native_action
 		---@diagnostic disable-next-line: param-type-mismatch
-		return exec.native_action(action, raw_args, ami)
+		local result, err, executed = exec.native_action(action, raw_args, ami)
+		if not executed then
+			return nil, err or "unknown", executed
+		end
+		return result, nil, executed
 	end
 
-	-- // TODO: remove in next version
-	if ami.type == "no-command" then
-		ami.type = "namespace"
-		print("Warning: cli.type 'no-command' is deprecated. Use 'namespace' instead.")
+	local parsed_args_result, err = ami_cli.parse_args(parsed_args, ami,
+		{ is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
+	if not parsed_args_result then
+		return nil, err or "unknown", false
 	end
-
-	local optionList, command, remainingArgs = ami_cli.parse_args(parsed_args, ami, { is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
+	local option_list, command, remaining_args =
+	   parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
 	local executable_command = command
 
-	local valid, err = validate(optionList, executable_command, ami)
-	ami_assert(valid, err or "unknown", EXIT_CLI_ARG_VALIDATION_ERROR)
+	local valid, err = validate(option_list, executable_command, ami)
+	if not valid then
+		return nil, err or "unknown", false
+	end
 
 	if type(executable_command) == "table" then
 		executable_command.__root_cli_id = ami.__root_cli_id or ami.id
@@ -515,18 +479,13 @@ function ami_cli.process(ami, args)
 		table.insert(executable_command.__command_stack, executable_command and executable_command.id)
 	end
 
-	-- // TODO: remove in next version
-	if ami.customHelp ~= nil and not ami.custom_help then
-		ami.custom_help = ami.customHelp
-		print("Warning: customHelp is deprecated. Use custom_help instead.")
-	end
-
-	if not ami.custom_help and optionList.help then
-		return ami_cli.print_help(ami)
+	if not ami.custom_help and option_list.help then
+		ami_cli.print_help(ami)
+		return nil, nil, true
 	end
 	--- we validate within native_action
 	---@diagnostic disable-next-line: param-type-mismatch
-	return exec.native_action(action, { optionList, executable_command, remainingArgs, ami }, ami)
+	return exec.native_action(action, { option_list, executable_command, remaining_args, ami }, ami)
 end
 
 return ami_cli

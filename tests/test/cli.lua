@@ -6,7 +6,7 @@ require "tests.test_init"
 test["parse args"] = function()
 	local old_args = args
 	args = {}
-
+ -- // TODO:
 	args = old_args
 end
 
@@ -45,8 +45,9 @@ test["parse args (ignore commands)"] = function()
 	}
 
 	local arg_list = { "-to", "-to2=testValue", "--testOption3=2", "test", "-c", "-d", "test2" }
-	local ok, cli_options_list, cli_cmd, cli_remaining_args = pcall(am.parse_args, cli, arg_list)
-	test.assert(ok)
+	local result, err = am.parse_args(cli, arg_list)
+	test.assert(result)
+	cli_options_list, cli_cmd, cli_remaining_args = result.options, result.command, result.remaining_args
 	test.assert(cli_options_list.testOption2 == "testValue")
 	test.assert(cli_options_list.testOption == true)
 	test.assert(cli_options_list.testOption3 == 2)
@@ -227,7 +228,6 @@ test["process cli (external)"] = function()
 		recordedExitCode = exit_code
 	end
 
-
 	local cli = {
 		title = "test cli2",
 		description = "test cli description",
@@ -294,6 +294,7 @@ test["process cli (external)"] = function()
 	local arg_list_init2 = is_unix_like and { "test2", "-c" } or { "test2", "/c" }
 	local arg_list = util.merge_arrays(arg_list_init2, { "exit 0" })
 	local ok, result = pcall(am.execute, cli, arg_list)
+	
 	test.assert(ok and result == 0)
 
 	local arg_list = util.merge_arrays(arg_list_init, { "exit 0" })
@@ -533,7 +534,7 @@ test["show cli help (include_options_in_usage = false)"] = function()
 	test.assert(ok and not result:match("%[%-%-to%] %[%-%-to2%]") and result:match("Usage:"))
 end
 
-test["show cli help (printUsage = false)"] = function()
+test["show cli help (print_usage = false)"] = function()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -565,7 +566,7 @@ test["show cli help (printUsage = false)"] = function()
 	local ok, result =
 	collect_printout(
 		function()
-			am.print_help(cli, { printUsage = false })
+			am.print_help(cli, { print_usage = false })
 		end
 	)
 	test.assert(ok and not result:match("%[%-%-to%] %[%-%-to2%]") and not result:match("Usage:"))

@@ -20,7 +20,7 @@ local exec = require "ami.internals.exec"
 local interface = require "ami.internals.interface"
 local initialize_options = require "ami.internals.options.init"
 
-ami_assert(ver.compare(ELI_LIB_VERSION, "0.35.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
+ami_assert(ver.compare(ELI_LIB_VERSION, "0.36.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
 
 am = require "version-info"
 require "ami.cache"
@@ -63,8 +63,10 @@ end
 ---@return any
 function am.execute(cmd, args)
 	local interface, args = get_interface(cmd, args)
-	ami_assert(type(interface) == "table", "No valid command provided!", EXIT_CLI_CMD_UNKNOWN)
-	return cli.process(interface, args)
+	ami_assert(type(interface) == "table", "no valid command provided", EXIT_CLI_CMD_UNKNOWN)
+	local result, err, executed =  cli.process(interface, args)
+	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+	return result
 end
 
 ---#DES am.execute_action
@@ -102,21 +104,26 @@ end
 ---@param cmd string|string[]
 ---@param args string[]|AmiParseArgsOptions
 ---@param options AmiParseArgsOptions|nil
----@return table<string, string|number|boolean>, AmiCli|nil, CliArg[]:
+---@return ParseArgsResult
 function am.parse_args(cmd, args, options)
 	local interface, args = get_interface(cmd, args)
-	return cli.parse_args(args, interface, options)
+	local result, err = cli.parse_args(args, interface, options)
+	ami_assert(result, "failed to parse args: " .. tostring(err), EXIT_CLI_ARGS_PARSE_ERROR)
+	return result
 end
 
 ---Parses provided args in respect to ami base
 ---@param args string[]
 ---@param options AmiParseArgsOptions | nil
----@return table<string, string|number|boolean>, nil, CliArg[]
+---@return ParseArgsResult
 function am.__parse_base_args(args, options)
 	if type(options) ~= "table" then
 		options = { stop_on_non_option = true }
 	end
-	return am.parse_args(interface.new("base"), args, options)
+	local ami, err = interface.new("base")
+	assert(ami, "failed to create base interface: " .. tostring(err), EXIT_INVALID_INTERFACE)
+
+	return am.parse_args(ami, args, options)
 end
 
 ---Configures ami cache location
@@ -138,14 +145,16 @@ function am.configure_cache(cache)
 		am.options.CACHE_DIR = cache_path
 
 		--fallback to local dir in case we have no access to global one
-		if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+		local ok, err = fs.write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "")
+		if not ok then
 			local log = custom_cache_path and log_error or log_debug
-			log("Access to '" .. am.options.CACHE_DIR .. "' denied! Using local '.ami-cache' directory.")
+			log("access to '" .. am.options.CACHE_DIR .. "' denied (error: " .. tostring(err) ..") - using local '.ami-cache' directory")
 			am.options.CACHE_DIR = ".ami-cache"
 
-			if not fs.safe_write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "") then
+			local ok, err = fs.write_file(path.combine(tostring(am.options.CACHE_DIR), ".ami-test-access"), "")
+			if not ok then
 				am.options.CACHE_DIR = false
-				log_debug("Access to '" .. am.options.CACHE_DIR .. "' denied! Cache disabled.")
+				log_debug("access to '" .. am.options.CACHE_DIR .. "' denied - ".. tostring(err) .." - cache disabled.")
 			end
 		end
 	end
@@ -171,7 +180,11 @@ end
 ---Reloads application interface and returns true if it is application specific. (False if it is from templates)
 ---@param shallow boolean?
 function am.__reload_interface(shallow)
-	am.__has_app_specific_interface, am.__interface = interface.load(am.options.BASE_INTERFACE, shallow)
+	local ami, err, is_app_specific = interface.load(am.options.BASE_INTERFACE, shallow)
+	ami_assert(ami, tostring(err), EXIT_INVALID_AMI_INTERFACE)
+
+	am.__interface = ami
+	am.__has_app_specific_interface = is_app_specific
 end
 
 ---Finds app entrypoint (ami.lua/ami.json/ami.hjson)
@@ -203,7 +216,11 @@ end
 ---@diagnostic disable-next-line: undefined-doc-param
 ---@param options ExecNativeActionOptions?
 ---@return any
-am.execute_extension = exec.native_action
+function am.execute_extension(...)
+	local result, err, executed = exec.native_action(...)
+	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
+	return result
+end
 
 ---#DES am.execute_external()
 ---

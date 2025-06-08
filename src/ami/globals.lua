@@ -15,7 +15,7 @@
 
 require "ami.exit-codes"
 
-hjson = util.generate_safe_functions(require "hjson")
+hjson = require "hjson"
 
 ---#DES log_success
 ---

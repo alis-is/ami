@@ -8,8 +8,8 @@ test["load cached plugin"] = function()
     local plugin, _ = am.plugin.get("test")
     test.assert(plugin.test() == "cached test plugin")
     am.plugin.__erase_cache()
-    local ok, plugin = am.plugin.safe_get("test")
-    test.assert(ok and plugin.test() == "cached test plugin")
+    local plugin = am.plugin.get("test")
+    test.assert(plugin and plugin.test() == "cached test plugin")
 end
 
 test["load remote plugin"] = function()
@@ -19,19 +19,17 @@ test["load remote plugin"] = function()
     local plugin = am.plugin.get("test")
     test.assert(plugin.test() == "remote test plugin")
     am.plugin.__erase_cache()
-    local ok, plugin = am.plugin.safe_get("test")
-    test.assert(ok and plugin.test() == "remote test plugin")
+    local plugin = am.plugin.get("test")
+    test.assert(plugin and plugin.test() == "remote test plugin")
 end
 
 test["load from in mem cache"] = function()
     am.plugin.__remove_cached("test")
     am.options.CACHE_DIR = "tests/cache/1"
     local plugin = am.plugin.get("test")
-    plugin.tag = "taged"
+    plugin.tag = "tagged"
     local plugin2 = am.plugin.get("test")
-    test.assert(plugin2.tag == "taged")
-    local ok, plugin2 = am.plugin.safe_get("test")
-    test.assert(ok and plugin2.tag == "taged")
+    test.assert(plugin2.tag == "tagged")
 end
 
 test["load specific version"] = function()
@@ -41,8 +39,8 @@ test["load specific version"] = function()
     local plugin = am.plugin.get("test", { version = "0.0.1" })
     test.assert(plugin.test() == "remote test plugin")
     am.plugin.__erase_cache()
-    local ok, plugin = am.plugin.safe_get("test", { version = "0.0.1" })
-    test.assert(ok and plugin.test() == "remote test plugin")
+    local plugin = am.plugin.get("test", { version = "0.0.1" })
+    test.assert(plugin and plugin.test() == "remote test plugin")
 end
 
 test["load specific cached version"] = function()
@@ -51,8 +49,8 @@ test["load specific cached version"] = function()
     local plugin = am.plugin.get("test", { version = "0.0.1" })
     test.assert(plugin.test() == "cached test plugin")
     am.plugin.__erase_cache()
-    local ok, plugin = am.plugin.safe_get("test", { version = "0.0.1" })
-    test.assert(ok and plugin.test() == "cached test plugin")
+    local plugin = am.plugin.get("test", { version = "0.0.1" })
+    test.assert(plugin and plugin.test() == "cached test plugin")
 end
 
 test["load from local sources"] = function()
@@ -66,8 +64,8 @@ test["load from local sources"] = function()
     test.assert(plugin.test() == "cached test plugin")
 
     am.plugin.__remove_cached("test", "0.0.1")
-    local ok, plugin = am.plugin.safe_get("test", { version = "0.0.1" })
-    test.assert(ok and plugin.test() == "cached test plugin")
+    local plugin = am.plugin.get("test", { version = "0.0.1" })
+    test.assert(plugin and plugin.test() == "cached test plugin")
     SOURCES = nil
 end
 

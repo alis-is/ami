@@ -17,6 +17,6 @@
  ],
  "id": "test.app",
  "repository": "https://raw.githubusercontent.com/cryon-io/air/master/ami/",
- "version": "0.1.0",
+ "version": "0.2.0",
  "wanted_version": "latest"
 }

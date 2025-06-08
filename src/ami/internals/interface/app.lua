@@ -16,8 +16,9 @@
 local ami_base = require"ami.internals.interface.base"
 
 ---Generates default app interface
----@param options AmiCliGeneratorOptions
----@return ExecutableAmiCli
+---@param options AmiCliGeneratorOptions?
+---@return ExecutableAmiCli? result
+---@return string? error_message
 local function new(options)
     if type(options) ~= "table" then
         options = {}
@@ -30,11 +31,10 @@ local function new(options)
         local ok, entrypoint = am.__find_entrypoint()
         if not ok then
             -- fails with proper error in case of entrypoint not found or invalid
-            print("Failed to load entrypoint:")
-            ami_error(entrypoint --[[@as string]], EXIT_INVALID_AMI_INTERFACE)
+            ami_error("failed to load entrypoint: " .. tostring(entrypoint), EXIT_INVALID_AMI_INTERFACE)
         end
         -- entrypoint found and loadable but required action undefined
-        ami_error("Violation of AMI@app standard! " .. implementation_status, implementation_error)
+        ami_error("violation of ami@app standard " .. implementation_status, implementation_error)
     end
 
     local base = ami_base.new() --[[@as ExecutableAmiCli]]
@@ -147,7 +147,7 @@ local function new(options)
             },
             -- (options, command, args, cli)
             action = function(options)
-				ami_assert(am.__has_app_specific_interface or options.force, "You are trying to remove app, but app specific removal routine is not available. Use '--force' to force removal", EXIT_APP_REMOVE_ERROR)
+				ami_assert(am.__has_app_specific_interface or options.force, "you are trying to remove app, but app specific removal routine is not available. Use '--force' to force removal", EXIT_APP_REMOVE_ERROR)
 				if options.all then
                     am.app.remove()
                     log_success("Application removed.")

@@ -33,11 +33,11 @@ local function init_ami_test(testDir, configPath, options)
     if options.cleanupTestDir then
         fs.remove(testDir, {recurse = true, content_only = true})
     end
-    local ok
+    local ok, err
     if type(options.environment) == "string" then
-        ok = fs.safe_copy_file(configPath, path.combine(testDir, "app." .. options.environment .. ".hjson"))
+        ok, err = fs.copy_file(configPath, path.combine(testDir, "app." .. options.environment .. ".hjson"))
     else
-        ok = fs.safe_copy_file(configPath, path.combine(testDir, "app.hjson"))
+        ok, err = fs.copy_file(configPath, path.combine(testDir, "app.hjson"))
     end
     test.assert(ok)
     am.app.__set_loaded(false)
@@ -179,18 +179,19 @@ end
 test["ami about"] = function()
     local test_dir = "tests/tmp/ami_test_setup"
     init_ami_test(test_dir, "tests/app/configs/ami_test_app@latest.hjson")
-    
+
     local original_print = print
     local printed = ""
     print = function(v)
         printed = printed .. v
     end
-
+    
     ami("--path="..test_dir, "-ll=info", "--cache=../ami_cache", "about")
     os.chdir(default_cwd)
+    print = original_print
+   
     test.assert(not error_called and printed:match"Test app" and printed:match"dummy%.web")
 
-    print = original_print
 end
 
 test["ami remove"] = function()

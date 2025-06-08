@@ -84,61 +84,65 @@ if TEST_MODE then
 end
 
 ---@param candidates string[]
----@return boolean, string|table
+---@return table|nil config
+---@return string|nil error
 local function find_and_load_configuration(candidates)
-	local ok, config_content
+	local config_content, err
 	for _, config_candidate in ipairs(candidates) do
-		ok, config_content = fs.safe_read_file(config_candidate)
-		if ok then
-			local ok, config = hjson.safe_parse(config_content)
-			return ok, config
+		config_content, err = fs.read_file(config_candidate)
+		if config_content then
+			local config, err = hjson.parse(config_content)
+			-- we take first existing candidate even if it is not valid
+			-- to maintain deterministic behavior
+			return config, err
 		end
 	end
-	return false, config_content
+	return nil, err
 end
 
 ---loads configuration and env configuration if available
 ---@param path string?
----@return string
+---@return string?
+---@return string? error
 local function load_configuration_content(path)
 	local predefined_path = path or am.options.APP_CONFIGURATION_PATH
 	if type(predefined_path) == "string" then
-		local ok, config_content = fs.safe_read_file(predefined_path)
-		ami_assert(ok, "Failed to load app.h/json - " .. tostring(config_content), EXIT_INVALID_CONFIGURATION)
+		local config_content, err = fs.read_file(predefined_path)
+		ami_assert(config_content, "failed to load app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
 		return config_content
 	end
 
 	local env_ok, env_config
-	local default_ok, default_config = find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
+	local default_config, _ = find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
 	if am.options.ENVIRONMENT then
 		local candidates = table.map(am.options.APP_CONFIGURATION_ENVIRONMENT_CANDIDATES, function (v)
 			local result = string.interpolate(v, { environment = am.options.ENVIRONMENT })
 			return result
 		end)
-		env_ok, env_config = find_and_load_configuration(candidates)
-		if not env_ok then log_warn("Failed to load environment configuration - " .. tostring(env_config)) end
+		env_config, _ = find_and_load_configuration(candidates)
+		if not env_ok then log_warn("failed to load environment configuration (" .. am.options.ENVIRONMENT .. ") - " .. tostring(env_config)) end
 	end
 
-	ami_assert(default_ok or env_ok, "Failed to load app.h/json - " .. tostring(default_config),
+	ami_assert(default_config or env_config, "failed to load app.h/json - " .. tostring(default_config),
 		EXIT_INVALID_CONFIGURATION)
-	if not default_ok then log_warn("Failed to load default configuration - " .. tostring(default_config)) end
+	if not default_config then log_warn("failed to load default configuration - " .. tostring(default_config)) end
 	return hjson.stringify_to_json(
-		util.merge_tables(default_ok and default_config --[[@as table]] or {},
-			env_ok and env_config --[[@as table]] or {},
-			true), { indent = false })
+		util.merge_tables(default_config --[[@as table]] or {}, env_config --[[@as table]] or {}, true), { indent = false })
 end
 
 local function load_configuration(path)
-	local config_content = load_configuration_content(path)
-	local ok, app = hjson.safe_parse(config_content)
-	ami_assert(ok, "Failed to parse app.h/json - " .. tostring(app), EXIT_INVALID_CONFIGURATION)
+	local config_content, err = load_configuration_content(path)
+	assert(config_content, "failed to load app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
+	local app, err = hjson.parse(config_content)
+	ami_assert(app, "failed to parse app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
 
 	__set(app)
 	local variables = am.app.get("variables", {})
 	local options = am.app.get("options", {})
 	variables = util.merge_tables(variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
 	config_content = am.util.replace_variables(config_content, variables, options)
-	__set(hjson.parse(config_content))
+	local app, _ = hjson.parse(config_content)
+	__set(app)
 end
 
 
@@ -177,7 +181,7 @@ end
 
 ---#DES am.app.get_config
 ---
----Gets valua from path in app.configuration or falls back to default if value in path is nil
+---Gets value from path in app.configuration or falls back to default if value in path is nil
 ---@deprecated
 ---@param path string|string[]
 ---@param default any?
@@ -199,7 +203,7 @@ function am.app.load_model()
 	local ok, err = pcall(dofile, path)
 	if not ok then
 		is_model_loaded = false
-		ami_error("Failed to load app model - " .. err, EXIT_APP_INVALID_MODEL)
+		ami_error("failed to load app model - " .. err, EXIT_APP_INVALID_MODEL)
 	end
 end
 
@@ -273,14 +277,15 @@ end
 ---Prepares app environment - extracts layers and builds model.
 function am.app.prepare()
 	log_info"Preparing the application..."
-	local file_list, model_info, version_tree, tmp_pkgs = ami_pkg.prepare_pkg(am.app.get"type")
+	local preparation_result, err = ami_pkg.prepare_pkg(am.app.get"type")
+	ami_assert(preparation_result, "failed to prepare app - " .. tostring(err), EXIT_APP_INTERNAL_ERROR)
 
-	ami_pkg.unpack_layers(file_list)
-	ami_pkg.generate_model(model_info)
-	for _, v in ipairs(tmp_pkgs) do
-		fs.safe_remove(v)
-	end
-	fs.write_file(".version-tree.json", hjson.stringify_to_json(version_tree))
+	local ok, err = ami_pkg.unpack_layers(preparation_result.files)
+	ami_assert(ok, "failed to unpack layers: " .. tostring(err), EXIT_PKG_LAYER_EXTRACT_ERROR)
+	local ok, err = ami_pkg.generate_model(preparation_result.model)
+	ami_assert(ok, "failed to generate model: " .. tostring(err), EXIT_PKG_MODEL_GENERATION_ERROR)
+	for _, v in ipairs(preparation_result.tmp_archive_paths) do fs.remove(v) end
+	fs.write_file(".version-tree.json", hjson.stringify_to_json(preparation_result.version_tree))
 
 	is_model_loaded = false -- force mode load on next access
 	am.app.load_configuration()
@@ -289,7 +294,10 @@ end
 ---#DES am.app.render
 ---
 ---Renders app templates.
-am.app.render = ami_tpl.render_templates
+function am.app.render()
+	local ok, err = ami_tpl.render_templates()
+	ami_assert(ok, "app.render: " .. tostring(err), EXIT_TPL_RENDERING_ERROR)
+end
 
 ---#DES am.app.__are_templates_generated
 ---
@@ -303,22 +311,27 @@ end
 ---
 ---Returns true if there is update available for any of related packages
 ---@return boolean
+---@return table<string, string>? updates
 function am.app.is_update_available()
-	local ok, version_tree_raw = fs.safe_read_file".version-tree.json"
-	if ok then
-		local ok, version_tree = hjson.safe_parse(version_tree_raw)
-		if ok then
+	local version_tree_raw, _ = fs.read_file".version-tree.json"
+	if version_tree_raw then
+		local version_tree, _ = hjson.parse(version_tree_raw)
+		if version_tree then
 			log_trace"Using .version-tree.json for update availability check."
-			return ami_pkg.is_pkg_update_available(version_tree)
+			local update_available, available_versions_or_error = ami_pkg.is_pkg_update_available(version_tree)
+			ami_assert(update_available ~= nil, "failed to check update availability - " .. tostring(available_versions_or_error), EXIT_APP_UPDATE_ERROR)
+			return update_available, available_versions_or_error
 		end
 	end
 
 	log_warn"Version tree not found. Running update check against specs..."
-	local ok, specs_raw = fs.safe_read_file"specs.json"
-	ami_assert(ok, "Failed to load app specs.json", EXIT_APP_UPDATE_ERROR)
-	local ok, specs = hjson.parse(specs_raw)
-	ami_assert(ok, "Failed to parse app specs.json", EXIT_APP_UPDATE_ERROR)
-	return ami_pkg.is_pkg_update_available(am.app.get"type", specs and specs.version)
+	local specs_raw, err = fs.read_file"specs.json"
+	ami_assert(specs_raw, "failed to load app specs.json - " .. tostring(err), EXIT_APP_UPDATE_ERROR)
+	local specs, err = hjson.parse(specs_raw)
+	ami_assert(specs, "failed to parse app specs.json - " .. tostring(err), EXIT_APP_UPDATE_ERROR)
+	local update_available, available_versions_or_error = ami_pkg.is_pkg_update_available(am.app.get"type", specs and specs.version)
+	ami_assert(update_available ~= nil, "failed to check update availability - " .. tostring(available_versions_or_error), EXIT_APP_UPDATE_ERROR)
+	return update_available, available_versions_or_error
 end
 
 ---@class PackageVersion
@@ -333,10 +346,10 @@ end
 ---Returns app version
 ---@return PackageVersion?, string?
 function am.app.get_version_tree()
-	local ok, version_tree_raw = fs.safe_read_file".version-tree.json"
-	if ok then
-		local ok, version_tree = hjson.safe_parse(version_tree_raw)
-		if ok then
+	local version_tree_raw, _ = fs.read_file".version-tree.json"
+	if version_tree_raw then
+		local version_tree, _ = hjson.parse(version_tree_raw)
+		if version_tree then
 			return version_tree
 		end
 		return nil, "invalid version tree"
@@ -393,7 +406,7 @@ function am.app.remove_data(keep)
 		end, protected_files)
 	end
 
-	local ok, err = fs.safe_remove("data", {
+	local ok, err = fs.remove("data", {
 		recurse = true,
 		content_only = true,
 		keep = function (p, _)
@@ -431,7 +444,7 @@ function am.app.remove(keep)
 		end, protected_files)
 	end
 
-	local ok, err = fs.safe_remove(".", {
+	local ok, err = fs.remove(".", {
 		recurse = true,
 		content_only = true,
 		keep = function (p, fp)
@@ -452,10 +465,10 @@ end
 ---Checks whether app is installed based on app.h/json and .version-tree.json
 ---@return boolean
 function am.app.is_installed()
-	local ok, version_tree_json = fs.safe_read_file".version-tree.json"
-	if not ok then return false end
-	local ok, version_tree = hjson.safe_parse(version_tree_json)
-	if not ok then return false end
+	local version_tree_json, _ = fs.read_file".version-tree.json"
+	if not version_tree_json then return false end
+	local version_tree, _ = hjson.parse(version_tree_json)
+	if not version_tree then return false end
 
 	local version = am.app.get{ "type", "version" }
 	return am.app.get{ "type", "id" } == version_tree.id and (version == "latest" or version == version_tree.version)
@@ -527,6 +540,7 @@ end
 ---
 ---Packs the app into a zip archive for easy migration
 ---@param options PackOptions
+---@return boolean
 function am.app.pack(options)
 	if type(options) ~= "table" then
 		options = {}
@@ -604,11 +618,11 @@ function am.app.unpack(options)
 
 	log_info("unpacking app from archive '" .. source .. "'...")
 
-	local ok, metadata = zip.safe_extract_string(source, PACKER_METADATA_FILE)
-	ami_assert(ok, "failed to extract metadata from packed app - " .. tostring(metadata), EXIT_INVALID_AMI_ARCHIVE)
+	local metadata_raw, err = zip.extract_string(source, PACKER_METADATA_FILE)
+	ami_assert(metadata_raw, "failed to extract metadata from packed app - " .. tostring(err), EXIT_INVALID_AMI_ARCHIVE)
 
-	local ok, metadata = hjson.safe_parse(metadata)
-	ami_assert(ok, "failed to parse metadata from packed app - " .. tostring(metadata), EXIT_INVALID_AMI_ARCHIVE)
+	local metadata, err = hjson.parse(metadata_raw)
+	ami_assert(metadata, "failed to parse metadata from packed app - " .. tostring(err), EXIT_INVALID_AMI_ARCHIVE)
 
 	ami_assert(metadata.VERSION == PACKER_VERSION, "packed app version mismatch - " .. tostring(metadata.VERSION),
 		EXIT_INVALID_AMI_ARCHIVE)

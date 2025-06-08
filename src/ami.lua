@@ -17,16 +17,17 @@
 require "am"
 am.__args = { ... }
 
-local parsed_options, _, remaining_args = am.__parse_base_args({ ... })
+local parse_result = am.__parse_base_args({ ... })
+local parsed_options, remaining_args = parse_result.options, parse_result.remaining_args
 
 ---@type table<string, string | table> | nil
 SOURCES = nil
 
 if parsed_options["local-sources"] then
-	local ok, local_sources_raw = fs.safe_read_file(tostring(parsed_options["local-sources"]))
-	ami_assert(ok, "failed to read local sources file " .. parsed_options["local-sources"], EXIT_INVALID_SOURCES_FILE)
-	local ok, local_sources = hjson.safe_parse(local_sources_raw)
-	ami_assert(ok, "failed to parse local sources file " .. parsed_options["local-sources"], EXIT_INVALID_SOURCES_FILE)
+	local local_sources_raw, err = fs.read_file(tostring(parsed_options["local-sources"]))
+	ami_assert(local_sources_raw, "failed to read local sources file '" .. parsed_options["local-sources"] .. "': " .. tostring(err), EXIT_INVALID_SOURCES_FILE)
+	local local_sources, err = hjson.parse(local_sources_raw)
+	ami_assert(local_sources, "failed to parse local sources file '" .. parsed_options["local-sources"] .. "': " .. tostring(err), EXIT_INVALID_SOURCES_FILE)
 	SOURCES = local_sources
 end
 
@@ -110,8 +111,8 @@ end
 
 if parsed_options["dry-run"] then
 	if parsed_options["dry-run-config"] then
-		local ok, app_config = hjson.safe_parse(parsed_options["dry-run-config"])
-		if ok then -- model is valid json
+		local app_config, _ = hjson.parse(parsed_options["dry-run-config"] --[[@as string]])
+		if app_config then -- model is valid json
 			am.app.__set(app_config)
 		else  -- model is not valid json fallback to path
 			am.app.load_configuration(tostring(parsed_options["dry-run-config"]))

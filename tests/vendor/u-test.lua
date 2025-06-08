@@ -7,7 +7,7 @@ if eli_fs.exists(U_TEST_FILE) then
 else
     print "downloading u-test"
     local ok =
-        eli_net.safe_download_file("https://raw.githubusercontent.com/cryi/u-test/master/u-test.lua", U_TEST_FILE)
+        eli_net.download_file("https://raw.githubusercontent.com/cryi/u-test/master/u-test.lua", U_TEST_FILE)
     assert(ok, "Failed to download u-test")
 end
 

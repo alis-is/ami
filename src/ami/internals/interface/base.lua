@@ -14,7 +14,8 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ---Generates AmiBaseInterface
----@return AmiCliBase
+---@return AmiCliBase result
+---@return string? error_message
 local function new()
 	return {
 		id = "ami",
