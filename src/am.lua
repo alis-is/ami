@@ -20,7 +20,7 @@ local exec = require "ami.internals.exec"
 local interface = require "ami.internals.interface"
 local initialize_options = require "ami.internals.options.init"
 
-ami_assert(ver.compare(ELI_LIB_VERSION, "0.36.0") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
+ami_assert(ver.compare(ELI_LIB_VERSION, "0.36.0-alpha") >= 0, "Invalid ELI_LIB_VERSION (" .. tostring(ELI_LIB_VERSION) .. ")!", EXIT_INVALID_ELI_VERSION)
 
 am = require "version-info"
 require "ami.cache"
