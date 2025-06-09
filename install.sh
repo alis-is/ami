@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TMP_NAME="./$(head -n 1 -c 32 /dev/urandom | tr -dc 'a-zA-Z0-9'| fold -w 32)"
+TMP_NAME="./$(head -c 32 /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
 PRERELEASE=false
 PRERELEASE_FLAG=""
 if [ "$1" = "--prerelease" ]; then
@@ -59,17 +59,21 @@ rm -f "/usr/local/sbin/$BIN"
 rm -f "/usr/sbin/$BIN"
 rm -f "/sbin/$BIN"
 # check destination folder
-if [ -d "/usr/bin" ]; then
+if [ -w "/usr/local/bin" ]; then
+    DESTINATION="/usr/local/bin/$BIN"
+elif [ -w "/usr/local/sbin" ]; then
+    DESTINATION="/usr/local/sbin/$BIN"
+elif [ -w "/usr/bin" ]; then
     DESTINATION="/usr/bin/$BIN"
-elif [ -d "/bin" ]; then
-    DESTINATION="/bin/$BIN"
-elif [ -d "/usr/sbin" ]; then
+elif [ -w "/usr/sbin" ]; then
     DESTINATION="/usr/sbin/$BIN"
-elif [ -d "/sbin" ]; then
+elif [ -w "/bin" ]; then
+    DESTINATION="/bin/$BIN"
+elif [ -w "/sbin" ]; then
     DESTINATION="/sbin/$BIN"
 else
-    echo "no suitable destination folder found" 1>&2
-    exit 1
+    echo "No writable system binary directory found, installing locally."
+    DESTINATION="./$BIN"
 fi
 
 # install ami
