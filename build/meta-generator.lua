@@ -41,7 +41,6 @@ end
 ---| '"field"'
 ---| '"function"'
 ---| '"class"'
----| '"safe_function"'
 
 ---@class DocBlock
 ---@field kind DocBlockKind
@@ -84,28 +83,7 @@ local function _collect_function(code, libName, docBlock)
     return docBlock.content .. _functionDef .. "(" .. _params .. ") end\n"
 end
 
----collects safe function
----@param code string
----@param libName string
----@param docBlock DocBlock
----@return string
-local function _collect_safe_function(code, libName, docBlock)
-    local _content = _collect_function(code, libName, docBlock)
-    _content = _content:gsub("#DES '?" .. libName .. "%." ..
-                                 docBlock.name:match("safe_(.*)") .. "'?",
-                             "#DES '" .. libName .. "." .. docBlock.name .. "'")
-    -- fix content for save function
-    if _content:find("---[ ]?@return") then
-        _content = _content:gsub("---[ ]?@return", "---@return boolean,")
-    else
-        local _, _end = _get_next_doc_block(_content, libName)
-        _content = _content:sub(1, _end) .. "---@return boolean\n" ..
-                       _content:sub(_end + 1)
-    end
-    return _content
-end
-
----comment
+--comment
 ---@param _ string
 ---@param libName string
 ---@param docBlock DocBlock
@@ -162,7 +140,6 @@ end
 local _collectors = {
     ["independent"] = function(_, _, docBlock, _) return docBlock.content end,
     ["function"] = _collect_function,
-    ["safe_function"] = _collect_safe_function,
     ["class"] = _collect_class,
     ["field"] = _collect_field
 }
@@ -192,8 +169,8 @@ local function _generate_meta(libName, libReference, sourceFiles, isGlobal, noSa
     end
     local _code = ""
     for _, v in ipairs(_sourcePaths) do
-        local _ok, _codePart = fs.safe_read_file(v)
-        if _ok then _code = _code .. _codePart .. "\n" end
+        local code_part, err = fs.read_file(v)
+        if code_part then _code = _code .. code_part .. "\n" end
     end
 
     if _code == "" then return "" end
@@ -260,19 +237,6 @@ local function _generate_meta(libName, libReference, sourceFiles, isGlobal, noSa
         if _collector ~= nil then
             _generatedDoc = _generatedDoc .. _collector(_code, libName, v, isGlobal, isRoot) ..
                                 "\n"
-            if not noSafe and v.kind == "function" and not v.name:match("^safe_") then
-                local _safeFnName = "safe_" .. v.name
-                if type(libReference[_safeFnName]) == "function" then
-                    local _saveV = util.clone(v, true)
-                    _saveV.name = _safeFnName
-                    _generatedDoc = _generatedDoc ..
-                                        _collectors["safe_function"](_code,
-                                                                     libName,
-                                                                     _saveV,
-                                                                     isGlobal) ..
-                                        "\n"
-                end
-            end
         end
     end
     if not isGlobal then
