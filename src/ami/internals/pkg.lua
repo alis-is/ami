@@ -233,7 +233,7 @@ function pkg.prepare_pkg(app_type)
 
 	local package_definition
 
-	local local_package_source = local_sources[app_type.id]	
+	local local_package_source = local_sources[app_type.id]
 	if local_package_source then
 		log_trace("loading local package from path " .. local_package_source)
 		local tmp_path = os.tmpname()
@@ -249,7 +249,7 @@ function pkg.prepare_pkg(app_type)
 		end
 		am.cache.put_from_file(tmp_path, "package-archive",  hash)
 		fs.remove(tmp_path)
-		package_definition = { sha256 = hash, id = "debug-dir-pkg" }
+		package_definition = { sha256 = hash, id = "debug-dir-pkg", version = "0.0.0+local-sources" }
 	else
 		package_definition, err = get_pkg_def(app_type)
 		if not package_definition then return nil, err end

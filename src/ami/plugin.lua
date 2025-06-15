@@ -42,7 +42,7 @@ end
 ---@param name string
 ---@param version string
 ---@return any?, string?
-local function _get_plugin_def(name, version)
+local function get_plugin_def(name, version)
 	local plugin_id = name .. "@" .. version
 
 	local definition_url
@@ -131,7 +131,7 @@ function am.plugin.get(name, options)
 		entrypoint = table.get(plugin_definition, "entrypoint", name .. ".lua")
 		log_trace("Loading local plugin from path " .. load_dir)
 	else
-		local plugin_definition, err = _get_plugin_def(name, version)
+		local plugin_definition, err = get_plugin_def(name, version)
 		if not plugin_definition then
 			return nil, "failed to get plugin definition: " .. tostring(err)
 		end
