@@ -5,12 +5,12 @@
 local test = TEST or require "tests.vendor.u-test"
 require"tests.test_init"
 
-local default_cwd = os.cwd()
+local default_cwd = os.cwd() or "."
 local function ami(...) 
     am.app.__set_loaded(false)
     am.__reset_options()
 
-    local original_dir = os.cwd()
+    local original_dir = os.cwd() or "."
     os.chdir("src")
     local __ami = loadfile("ami.lua")
     os.chdir(original_dir)

@@ -4,7 +4,7 @@ require "tests.test_init"
 
 local stringify = require "hjson".stringify
 
-local default_cwd = os.cwd()
+local default_cwd = os.cwd() or "."
 if not default_cwd then
 	test["get cwd"] = function()
 		test.assert(false)

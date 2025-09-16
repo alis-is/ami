@@ -2,7 +2,7 @@ local test = TEST or require "tests.vendor.u-test"
 
 require"tests.test_init"
 
-local default_cwd = os.cwd()
+local default_cwd = os.cwd() or "."
 
 test["load valid ami"] = function()
 	os.chdir("tests/assets/interfaces/valid-ami")

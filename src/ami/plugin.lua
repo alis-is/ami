@@ -192,7 +192,7 @@ function am.plugin.get(name, options)
 	-- plugins used in non EOS env should be used compiled as single lue file. Requiring sub files from plugin dir wont be available.
 	-- NOTE: use amalg.lua
 	if os.EOS then
-		original_cwd = os.cwd() or ""
+		original_cwd = os.cwd() or "."
 		os.chdir(load_dir)
 	end
 	local ok, result = pcall(dofile, entrypoint)

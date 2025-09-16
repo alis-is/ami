@@ -21,7 +21,7 @@ test["template rendering"] = function()
         version="0.0.1"
     })
 
-    local test_cwd = os.cwd()
+    local test_cwd = os.cwd() or "."
     os.chdir("tests/app/templates/1")
     am.app.render()
     local file_hash = fs.hash_file("test.txt", { hex = true })

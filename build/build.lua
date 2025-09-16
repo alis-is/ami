@@ -29,7 +29,7 @@ if not fs.exists("../build/luasrcdiet") then
 	zip.extract("../build/luasrcdiet.zip", "../build/luasrcdiet", { flatten_root_dir = true })
 end
 
-local cwd = os.cwd() or ""
+local cwd = os.cwd() or "."
 os.chdir("../build/luasrcdiet")
 local eli_path = os.getenv("ELI_PATH") or arg[-1]
 os.execute(eli_path .. " bin/luasrcdiet ../../bin/ami.lua -o ../../bin/ami-min.lua" ..

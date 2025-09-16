@@ -264,7 +264,7 @@ end
 ---@field isRoot boolean
 
 ---@type MetaGeneratorCollectible[]
-local _cwd = os.cwd()
+local _cwd = os.cwd() or "."
 os.chdir("src")
 require"am"
 local _exitCodes = require("ami.exit-codes")

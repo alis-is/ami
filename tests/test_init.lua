@@ -3,7 +3,7 @@ hjson = require"hjson"
 
 TEST_MODE = true
 
-local original_cwd = os.cwd()
+local original_cwd = os.cwd() or "."
 os.chdir("src")
 require"am"
 

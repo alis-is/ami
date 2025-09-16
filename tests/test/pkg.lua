@@ -7,7 +7,7 @@ local stringify = require "hjson".stringify
 ---@diagnostic disable-next-line: different-requires
 local ami_pkg = require "src.ami.internals.pkg"
 
-local default_cwd = os.cwd()
+local default_cwd = os.cwd() or "."
 
 test["normalize pkg type"] = function()
     local pkg_type = {

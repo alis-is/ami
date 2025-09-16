@@ -33,7 +33,7 @@ end
 
 if parsed_options.path then
 	if os.EOS then
-		package.path = package.path .. ";" .. os.cwd() .. "/?.lua"
+		package.path = package.path .. ";" .. (os.cwd() or ".") .. "/?.lua"
 		local ok, err = os.chdir(tostring(parsed_options.path))
 		assert(ok, err)
 	else
