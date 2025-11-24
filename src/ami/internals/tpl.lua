@@ -33,7 +33,7 @@ local function _to_renderable_data(source)
 			result[key .. "__ARRAY"] = table.to_array(value)
 		end
 
-		if type(key) == "string" and key:lower():match("args") and util.is_array(value) then
+		if type(key) == "string" and util.is_array(value) then
 			local _args = {}
 			for _, _arg in ipairs(value) do
 				if type(_arg) == "string" or type(_arg) == "boolean" or type(_arg) == "number" then
