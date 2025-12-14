@@ -6,13 +6,13 @@ local test = TEST or require "tests.vendor.u-test"
 require"tests.test_init"
 
 local default_cwd = os.cwd() or "."
-local function ami(...) 
+local function ami(...)
     am.app.__set_loaded(false)
     am.__reset_options()
 
     local original_dir = os.cwd() or "."
     os.chdir("src")
-    local __ami = loadfile("ami.lua")
+    local __ami, err = loadfile("ami.lua")
     os.chdir(original_dir)
     __ami(...)
 end
@@ -44,6 +44,72 @@ local function init_ami_test(testDir, configPath, options)
     am.__reset_options()
     error_called = false
 end
+
+local function add_modify_and_show_test(test, mode, file, set_path, value)
+    test["modify and show: ".. tostring(mode or "--set") ..", ".. tostring(file) ..", ".. tostring(set_path) ..", ".. tostring(value)] = function()
+        local test_dir = "tests/tmp/ami_test_modify"
+        init_ami_test(test_dir, "tests/app/configs/ami_test_app@latest.hjson", { cleanupTestDir = true })
+
+        os.chdir(default_cwd)
+        if type(file) == "string" then
+            local file = path.combine(test_dir, file)
+            if not fs.exists(file) then
+                fs.write_file(file, "{}")
+            end
+        end
+
+        local cwd = os.cwd() or "."
+        local args = { "--log-level=error", "--path="..test_dir, "modify", set_path, value }
+        if type(file) == "string" then
+            table.insert(args, 4, "--file="..file)
+        end
+        if type(mode) == "string" then
+            table.insert(args, 4, "--"..mode)
+        end
+        ami(table.unpack(args))
+        os.chdir(cwd) -- restore cwd
+        local original_print = print
+        local printed = ""
+        print = function(...)
+            for _, v in ipairs({...}) do
+                printed = printed .. tostring(v) .. "\t"
+            end
+            printed = printed .. "\n"
+        end
+
+        local show_args = { "--log-level=error", "--path="..test_dir, "show", set_path }
+        if type(file) == "string" then
+            table.insert(show_args, 4, "--file="..file)
+        end
+        ami(table.unpack(show_args))
+        print = original_print
+        os.chdir(default_cwd)
+        test.assert(not error_called)
+
+        local value_as_string = type(value) == "string" and value or hjson.stringify(value, { indent = false, sort_keys = true, invalid_objects_as_type = true })
+        if mode == "unset" or mode == "remove" then
+            test.assert(printed:match("null") or printed:match(value_as_string) == nil, "Unexpected value '" .. tostring(value) .. "' found in output: " .. printed)
+        else
+            test.assert(printed:match(value_as_string) ~= nil, "Expected value '" .. tostring(value) .. "' not found in output: " .. printed)
+        end
+    end
+end
+
+add_modify_and_show_test(test, "set", nil, "test", "123")
+add_modify_and_show_test(test, nil, nil, "test.new_value", "123")
+add_modify_and_show_test(test, "unset", nil, "test.new_value", nil)
+add_modify_and_show_test(test, "add", nil, "test", "item3")
+add_modify_and_show_test(test, "add", nil, "test.list", "item4")
+add_modify_and_show_test(test, "remove", nil, "test.list", "item4")
+add_modify_and_show_test(test, "remove", nil, "configuration.TEST_CONFIGURATION", "bool2")
+
+add_modify_and_show_test(test, "set", "test.hjson", "test", "123")
+add_modify_and_show_test(test, nil, "test.hjson", "test.new_value", "123")
+add_modify_and_show_test(test, "unset", "test.hjson", "test.new_value", nil)
+add_modify_and_show_test(test, "add", "test.hjson", "test", "item3")
+add_modify_and_show_test(test, "add", "test.hjson", "test.list", "item4")
+add_modify_and_show_test(test, "remove", "test.hjson", "test.list", "item4")
+add_modify_and_show_test(test, "remove", "test.hjson", "configuration.TEST_CONFIGURATION", "bool2")
 
 test["shallow"] = function()
     local test_dir = "tests/tmp/ami_test_shallow"

@@ -150,4 +150,129 @@ function util.glob_to_lua_pattern(glob)
 	return "^" .. string.join("", parts_to_merge) .. "$"
 end
 
+local function modify_set(_, new_value)
+    return new_value
+end
+
+local function modify_unset(current_value, _)
+    return nil
+end
+
+local function modify_add(current_value, new_value)
+    if type(current_value) == "table" and table.is_array(current_value) then
+        table.insert(current_value, new_value)
+        return current_value
+    end
+    return nil, "invalid current value type to add to: " .. type(current_value)
+end
+
+local function modify_remove(current_value, value_to_remove)
+    if type(current_value) == "table" and table.is_array(current_value) then
+        for i, v in ipairs(current_value) do
+            if v == value_to_remove then
+                table.remove(current_value, i)
+                return current_value
+            end
+        end
+        return current_value
+    end
+    if type(current_value) == "table" then
+        current_value[value_to_remove] = nil
+        return current_value
+    end
+    return nil, "invalid current value type to remove from: " .. type(current_value)
+end
+
+local modify_handlers = {
+    auto = function (current_value, new_value)
+        if type(current_value) == "table" and table.is_array(current_value) then
+            return modify_add(current_value, new_value)
+        end
+        if table.includes({"string", "number", "boolean", "nil", "table"}, type(current_value)) then
+            return modify_set(current_value, new_value)
+        end
+        return nil, "invalid current value type for auto modification: " .. type(current_value)
+    end,
+    set = modify_set,
+    unset = modify_unset,
+    add = modify_add,
+    remove = modify_remove
+}
+
+local function find_default_modify_file()
+	local candidates = am.options.APP_CONFIGURATION_CANDIDATES
+	for _, candidate in ipairs(candidates) do
+		if fs.exists(candidate) then
+			return candidate
+		end
+	end
+	return nil, "no candidate found"
+end
+
+---modifies configurations
+---@param mode nil|"auto"|"set"|"unset"|"add"|"remove"
+---@param file string?
+---@param path string[]
+---@param value any
+---@return boolean?, string?
+function util.modify_file(mode, file, path, value)
+	if type(mode) ~= "string" then
+		mode = "auto"
+	end
+	if type(file) ~= "string" then
+		file, _ = find_default_modify_file()
+        if type(file) ~= "string" then return nil, "no valid configuration file found to modify" end
+	end
+
+	local raw_content, err = fs.read_file(file --[[@as string ]])
+    if not raw_content then return nil, err or "failed to read configuration file" end
+	local content, err = hjson.parse(raw_content --[[@as string ]])
+    if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
+
+    if not modify_handlers[mode] then return nil, "invalid modify mode: " .. tostring(mode) end
+
+	local default = value
+	if table.includes({"add", "remove"}, mode) then
+		default = {}
+	end
+	local current_value = table.get(content, path, default)
+
+	local new_value, err = modify_handlers[mode](current_value, value)
+    if not new_value and err then return nil, "modification failed: " .. tostring(err) end
+
+	local result = table.set(content, path, new_value)
+    if not result then return nil, "failed to set new value in configuration" end
+
+	local new_raw_content, err = hjson.stringify(result, { indent = "\t", sort_keys = true })
+    if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
+	local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])
+    if not ok then return nil, "failed to write modified configuration to file '" .. tostring(file) .. ".new': " .. tostring(err) end
+	-- replace original file
+	local ok, err = os.rename(file .. ".new" --[[@as string ]], file --[[@as string ]])
+    if not ok then return nil, "failed to replace original configuration file '" .. tostring(file) .. "': " .. tostring(err) end
+    return true
+end
+
+---checks configurations
+---@param file string?
+---@param path string[]
+---@return any, string?
+function util.get_value_from_file(file, path)
+	if type(file) ~= "string" then
+		file, _ = find_default_modify_file()
+        if type(file) ~= "string" then return nil, "no valid configuration file found to modify" end
+	end
+	local raw_content, err = fs.read_file(file --[[@as string ]])
+    if not raw_content then return nil, err or "failed to read configuration file" end
+
+	local content, err = hjson.parse(raw_content --[[@as string ]])
+    if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
+
+	if path == nil or #path == 0 then
+		return content
+	end
+
+	return table.get(content, path)
+end
+
 return util

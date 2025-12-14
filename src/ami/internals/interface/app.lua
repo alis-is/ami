@@ -157,6 +157,65 @@ local function new(options)
                 end
             end
         },
+        modify = {
+            description = "ami 'modify' sub command",
+            summary = "Modifies app configuration file",
+            stop_on_non_option = true,
+            options = {
+                file = {
+                    index = 1,
+                    description = "Path to configuration file to modify (Defaults to app.h/json)"
+                },
+                set = {
+                    description = "Sets value at path",
+                    type = "boolean",
+                    hidden = true
+                },
+                unset = {
+                    description = "Unsets value at path",
+                    type = "boolean",
+                    hidden = true
+                },
+                add = {
+                    description = "Adds value to list or dictionary",
+                    type = "boolean",
+                    hidden = true
+                },
+                remove = {
+                    description = "Removes value from list or dictionary",
+                    type = "boolean",
+                    hidden = true
+                },
+            },
+            action = function (options, _, args)
+                ami_assert(#args > 1 or (#args == 1 and options.unset), "invalid arguments to modify command - needs path and value or --unset and path", EXIT_MODIFY_ERROR)
+                options.set = options.set or (not options.unset and not options.add and not options.remove) -- default to set
+
+                local options_without_file = table.filter(options, function(key, v) return key ~= "file" and v == true end)
+                ami_assert(#table.keys(options_without_file) <= 1, "only one modification mode can be specified", EXIT_MODIFY_ERROR)
+                local mode = "auto"
+                if #table.keys(options_without_file) == 1 then
+                    mode = table.keys(options_without_file)[1]
+                end
+
+                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil)
+            end
+		},
+        show = {
+            description = "ami 'show' sub command",
+            summary = "Shows value from app configuration file",
+            stop_on_non_option = true,
+            options = {
+                file = {
+                    index = 1,
+                    description = "Path to configuration file to show from (Defaults to app.h/json)"
+                }
+            },
+            action = function (options, _, args)
+                ami_assert(#args > 0, "invalid arguments to show command - needs path", EXIT_SHOW_ERROR)
+                am.show_file(options.file, args[1].value)
+            end
+        },
         about = {
             index = 7,
             description = "ami 'about' sub command",

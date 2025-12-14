@@ -17,6 +17,7 @@ require "ami.globals"
 
 local cli = require "ami.internals.cli"
 local exec = require "ami.internals.exec"
+local ami_util = require "ami.internals.util"
 local interface = require "ami.internals.interface"
 local initialize_options = require "ami.internals.options.init"
 
@@ -44,7 +45,7 @@ am.options = initialize_options(get_default_options())
 ---@return AmiCli, string[]
 local function get_interface(cmd, args)
 	local interface = cmd
-	if util.is_array(cmd) then
+	if table.is_array(cmd) then
 		args = cmd --[[@as string[] ]]
 		interface = am.__interface
 	end
@@ -220,6 +221,67 @@ function am.execute_extension(...)
 	local result, err, executed = exec.native_action(...)
 	ami_assert(executed, err or "unknown", EXIT_CLI_ACTION_EXECUTION_ERROR)
 	return result
+end
+
+---#DES am.modify_file()
+---
+---Modifies app configurations
+---@param mode nil|"auto"|"set"|"unset"|"add"|"remove"
+---@param file string?
+---@param path string
+---@param value any
+function am.modify_file(mode, file, path, value)
+	-- split path by dot
+	local path_parts = {}
+	for part in string.gmatch(path, "[^%.]+") do
+		table.insert(path_parts, part)
+	end
+
+	-- try parse value as json/hjson
+	if type(value) == "string" then
+		local parsed_value, _ = hjson.parse(value)
+		if parsed_value ~= nil then
+			value = parsed_value
+		end
+	end
+
+	local ok, err = ami_util.modify_file(mode, file, path_parts, value)
+	ami_assert(ok, "failed to modify configuration: " .. tostring(err), EXIT_MODIFY_ERROR)
+	log_success("Requested modification applied.")
+end
+
+---#DES am.get_value_from_file()
+---
+---Modifies app configurations
+---@param file string?
+---@param path string
+function am.get_value_from_file(file, path)
+	-- split path by dot
+	local path_parts = {}
+	for part in string.gmatch(path, "[^%.]+") do
+		table.insert(path_parts, part)
+	end
+
+	local value, err = ami_util.get_value_from_file(file, path_parts)
+	ami_assert(err == nil, "failed to get configuration: " .. tostring(err), EXIT_SHOW_ERROR)
+	return value
+end
+
+---#DES am.show_file()
+---
+---Modifies app configurations
+---@param file string?
+---@param path string[]
+function am.show_file(file, path)
+	local value = am.get_value_from_file(file, path)
+	local is_tty = require"is_tty".is_stdout_tty()
+	if is_tty then
+		local to_print = hjson.encode(value, { indent = "\t", sort_keys = true, invalid_objects_as_type = true })
+		print(to_print)
+	else
+		local to_print = hjson.encode_to_json(value, { indent = false, sort_keys = true, invalid_objects_as_type = true })
+		print(to_print)
+	end
 end
 
 ---#DES am.execute_external()
