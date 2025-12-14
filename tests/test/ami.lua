@@ -77,7 +77,7 @@ local function add_modify_and_show_test(test, mode, file, set_path, value)
             printed = printed .. "\n"
         end
 
-        local show_args = { "--log-level=error", "--path="..test_dir, "show", set_path }
+        local show_args = { "--log-level=error", "--path="..test_dir, "show"}
         if type(file) == "string" then
             table.insert(show_args, 4, "--file="..file)
         end

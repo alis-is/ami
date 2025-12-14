@@ -254,11 +254,11 @@ end
 ---
 ---Modifies app configurations
 ---@param file string?
----@param path string
+---@param path string?
 function am.get_value_from_file(file, path)
 	-- split path by dot
 	local path_parts = {}
-	for part in string.gmatch(path, "[^%.]+") do
+	for part in string.gmatch(path or "", "[^%.]+") do
 		table.insert(path_parts, part)
 	end
 
@@ -271,7 +271,7 @@ end
 ---
 ---Modifies app configurations
 ---@param file string?
----@param path string[]
+---@param path string?
 function am.show_file(file, path)
 	local value = am.get_value_from_file(file, path)
 	local is_tty = require"is_tty".is_stdout_tty()

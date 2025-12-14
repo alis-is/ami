@@ -212,8 +212,7 @@ local function new(options)
                 }
             },
             action = function (options, _, args)
-                ami_assert(#args > 0, "invalid arguments to show command - needs path", EXIT_SHOW_ERROR)
-                am.show_file(options.file, args[1].value)
+                am.show_file(options.file, type(args) == "table" and #args > 0 and args[1].value or nil)
             end
         },
         about = {
