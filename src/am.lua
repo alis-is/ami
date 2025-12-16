@@ -239,10 +239,9 @@ function am.modify_file(mode, file, path, value)
 
 	-- try parse value as json/hjson
 	if type(value) == "string" then
-		local parsed_value, _ = hjson.parse(value)
-		if parsed_value ~= nil then
-			value = parsed_value
-		end
+		local parsed_value, err = hjson.parse(value)
+		ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
+		value = parsed_value
 	end
 
 	local ok, err = ami_util.modify_file(mode, file, path_parts, value)

@@ -167,9 +167,10 @@ local function modify_add(current_value, new_value)
 end
 
 local function modify_remove(current_value, value_to_remove)
+	local equals = require"eli.util".equals
     if type(current_value) == "table" and table.is_array(current_value) then
         for i, v in ipairs(current_value) do
-            if v == value_to_remove then
+            if equals(v, value_to_remove, true) then
                 table.remove(current_value, i)
                 return current_value
             end
@@ -240,7 +241,10 @@ function util.modify_file(mode, file, path, value)
 	local new_value, err = modify_handlers[mode](current_value, value)
     if not new_value and err then return nil, "modification failed: " .. tostring(err) end
 
-	local result = table.set(content, path, new_value)
+	local result, err = table.set(content, path, new_value)
+	if err == "cannot set nested value on a non-table object" then
+		return nil, "cannot set nested value on a non-table value at path: " .. table.concat(path, ".")
+	end
     if not result then return nil, "failed to set new value in configuration" end
 
 	local new_raw_content, err = hjson.stringify(result, { indent = "\t", sort_keys = true })

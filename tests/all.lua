@@ -14,6 +14,7 @@ require"tests.test.am-app"
 require"tests.test.cache"
 require"tests.test.ami"
 require"tests.test.interfaces"
+require"tests.test.modify_n_show"
 
 local ntests, nfailed = test.result()
 test.summary()
