@@ -119,7 +119,10 @@ function exec.native_action(action, args, options)
 		action = ext
 	end
 
-	local ok, result = pcall(action, table.unpack(args))
+	-- action expects 4 args but some may be nil so we unpack with exact range
+	local option_list, command, remaining_args, ami = table.unpack(args, 1, 4)
+
+	local ok, result = pcall(action, option_list, command, remaining_args, ami)
 	if not ok then
 		local err_msg = "Execution of extension [" .. id .. "] failed - " .. (tostring(result) or "")
 		if     type(options.error_message) == "string" then

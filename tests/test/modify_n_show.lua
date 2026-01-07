@@ -118,7 +118,7 @@ local function add_modify_and_show_test(test, name, tests)
 
             local printed_value = hjson.parse(printed)
             if not util.equals(printed_value, expected_value, true) then
-                print("Printed value: ", printed_value)
+                print("Printed value: ", printed_value or printed)
                 print("Expected value:", expected_value)
                 test.assert(false,
                     "Expected value '" .. tostring(expected_value) .. "', got '" .. tostring(printed_value) .. "'")

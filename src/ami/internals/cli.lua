@@ -465,7 +465,7 @@ function ami_cli.process(ami, args)
 		return nil, err or "unknown", false
 	end
 	local option_list, command, remaining_args =
-	   parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
+		parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
 	local executable_command = command
 
 	local valid, err = validate(option_list, executable_command, ami)
