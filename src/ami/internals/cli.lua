@@ -22,6 +22,74 @@ local HELP_OPTION = {
 	description = "Prints this help message",
 }
 
+---Calculates Levenshtein distance between two strings
+---@param s1 string
+---@param s2 string
+---@return number distance
+local function levenshtein_distance(s1, s2)
+    local len1, len2 = #s1, #s2
+    if len1 == 0 then return len2 end
+    if len2 == 0 then return len1 end
+
+    -- iterate over the shorter string to minimize memory
+    if len1 > len2 then
+        s1, s2 = s2, s1
+        len1, len2 = len2, len1
+    end
+
+    local prev_row = {}
+    for j = 1, len2 do prev_row[j] = j end
+
+    local s1_bytes = { string.byte(s1, 1, -1) }
+    local s2_bytes = { string.byte(s2, 1, -1) }
+
+    for i = 1, len1 do
+        local char1 = s1_bytes[i]
+        local left = i - 1
+        local current_col_0 = i
+
+        for j = 1, len2 do
+            local cost = (char1 == s2_bytes[j]) and 0 or 1
+            local val = math.min(prev_row[j] + 1, current_col_0 + 1, left + cost)
+            left = prev_row[j]
+            prev_row[j] = val
+            current_col_0 = val
+        end
+    end
+
+    return prev_row[len2]
+end
+
+---Finds closest matching commands (up to 3) within reasonable edit distance
+---@param unknown_command string
+---@param available_commands table<string, table>
+---@return string[] suggestions
+local function find_closest_commands(unknown_command, available_commands)
+	if next(available_commands) == nil then return {} end
+	if not unknown_command or unknown_command == "" then return {} end
+
+	-- threshold: ~40% of length, min 1, max 3
+	local max_distance = math.min(3, math.max(1, math.ceil(#unknown_command * 0.4)))
+	local candidates = {}
+
+	for cmd_name, _ in pairs(available_commands) do
+		if type(cmd_name) == "string" then
+			local distance = levenshtein_distance(unknown_command, cmd_name)
+			if distance <= max_distance then
+				table.insert(candidates, { name = cmd_name, distance = distance })
+			end
+		end
+	end
+
+	table.sort(candidates, function(a, b) return a.distance < b.distance end)
+
+	local suggestions = {}
+	for i = 1, math.min(3, #candidates) do
+		table.insert(suggestions, candidates[i].name)
+	end
+	return suggestions
+end
+
 local ami_cli = {}
 
 ---Parses value into required type if possible.
@@ -175,7 +243,20 @@ function ami_cli.parse_args(args, scheme, options)
 			-- default mode - we try to identify underlying command
 			cli_cmd = cli_cmd_map[arg.arg]
 			if type(cli_cmd) ~= "table" then
-				return nil, "unknown command - '" .. (arg.arg or "") .. "'"
+				local unknown_cmd = arg.arg or ""
+				local suggestions = find_closest_commands(unknown_cmd, cli_cmd_map)
+				local error_msg = "unknown command - '" .. unknown_cmd .. "'"
+				if #suggestions > 0 then
+					if #suggestions == 1 then
+						error_msg = error_msg .. "\nDid you mean: " .. suggestions[1] .. "?"
+					else
+						error_msg = error_msg .. "\nDid you mean:"
+						for _, suggestion in ipairs(suggestions) do
+							error_msg = error_msg .. "\n  " .. suggestion
+						end
+					end
+				end
+				return nil, error_msg
 			end
 			last_index = i + 1
 			break
@@ -194,8 +275,7 @@ function ami_cli.parse_args(args, scheme, options)
 	}
 end
 
----Default argument validation.
----Validates processed args, whether there are valid in given cli definition
+---Validates args against cli definition
 ---@param optionList table
 ---@param command any
 ---@param cli AmiCli

@@ -451,6 +451,17 @@ local function collect_printout(_fn)
 	return ok, result
 end
 
+local function assert_with_debug(output, pattern, test_name, error_msg, print_output)
+	if not output:match(pattern) then
+		print("Test '" .. (test_name or "unknown") .. "' failed - pattern not found:")
+		print("  Pattern:", pattern)
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(output:match(pattern))
+end
+
 test["show cli help"] = function()
 	local cli = {
 		title = "test cli2",
@@ -714,6 +725,362 @@ test["show cli help (namespace)"] = function()
 	test.assert(result:match("%-t%|%-%-test"))
 	test.assert(result:match("%[%-f%] %[%-t%]") and result:match("Usage:"))
 	test.assert(result:match("%[args%.%.%.]") and result:match("Usage:"))
+end
+
+test["unknown command with suggestions"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			build = {
+				action = function() end,
+				description = "build command"
+			},
+			test = {
+				action = function() end,
+				description = "test command"
+			},
+			install = {
+				action = function() end,
+				description = "install command"
+			},
+			uninstall = {
+				action = function() end,
+				description = "uninstall command"
+			}
+		},
+		action = function() end
+	}
+
+	-- Test typo: "buil" should suggest "build" (distance 1, within threshold)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "buil" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "unknown command with suggestions - buil", error_msg, print_output)
+	assert_with_debug(output, "buil", "unknown command with suggestions - buil", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: build%?", "unknown command with suggestions - buil", error_msg, print_output)
+	assert_with_debug(output, "build", "unknown command with suggestions - buil", error_msg, print_output)
+
+	-- Test typo: "tets" should suggest "test" (distance 1, within threshold)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "tets" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "unknown command with suggestions - tets", error_msg, print_output)
+	assert_with_debug(output, "tets", "unknown command with suggestions - tets", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: test%?", "unknown command with suggestions - tets", error_msg, print_output)
+	assert_with_debug(output, "test", "unknown command with suggestions - tets", error_msg, print_output)
+
+	-- Test typo: "instal" should suggest "install" (distance 1, within threshold)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "instal" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "unknown command with suggestions - instal", error_msg, print_output)
+	assert_with_debug(output, "instal", "unknown command with suggestions - instal", error_msg, print_output)
+	assert_with_debug(output, "Did you mean:", "unknown command with suggestions - instal", error_msg, print_output)
+	assert_with_debug(output, "install", "unknown command with suggestions - instal", error_msg, print_output)
+
+	-- Test typo: "uninstal" should suggest "uninstall" (distance 1, within threshold)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "uninstal" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "unknown command with suggestions - uninstal", error_msg, print_output)
+	assert_with_debug(output, "uninstal", "unknown command with suggestions - uninstal", error_msg, print_output)
+	assert_with_debug(output, "Did you mean:", "unknown command with suggestions - uninstal", error_msg, print_output)
+	assert_with_debug(output, "uninstall", "unknown command with suggestions - uninstal", error_msg, print_output)
+end
+
+test["unknown command suggestions - multiple close matches"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			build = {
+				action = function() end,
+				description = "build command"
+			},
+			built = {
+				action = function() end,
+				description = "built command"
+			},
+			builder = {
+				action = function() end,
+				description = "builder command"
+			},
+			test = {
+				action = function() end,
+				description = "test command"
+			}
+		},
+		action = function() end
+	}
+
+	-- Test that multiple suggestions are provided (up to 3)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "buil" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "multiple close matches", error_msg, print_output)
+	assert_with_debug(output, "buil", "multiple close matches", error_msg, print_output)
+	assert_with_debug(output, "Did you mean:", "multiple close matches", error_msg, print_output)
+	-- Should suggest up to 3 commands (all distance 1 from "buil")
+	local suggestions_count = 0
+	for _ in output:gmatch("\n  [^\n]+") do
+		suggestions_count = suggestions_count + 1
+	end
+	if suggestions_count < 1 or suggestions_count > 3 then
+		print("Test 'multiple close matches' failed - suggestions count:", suggestions_count)
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(suggestions_count >= 1) -- At least one suggestion
+	test.assert(suggestions_count <= 3) -- At most 3 suggestions
+	-- Verify suggestions are from the close matches
+	if not (output:match("build") or output:match("built") or output:match("builder")) then
+		print("Test 'multiple close matches' failed - no close match found")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(output:match("build") or output:match("built") or output:match("builder"))
+end
+
+
+test["unknown command without suggestions"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {},
+		action = function() end
+	}
+
+	-- Test with no commands available
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "xyz" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "without suggestions - no commands", error_msg, print_output)
+	assert_with_debug(output, "xyz", "without suggestions - no commands", error_msg, print_output)
+	-- Should not have "Did you mean:" when no suggestions available
+	if output:match("Did you mean:") then
+		print("Test 'without suggestions - no commands' failed - unexpected suggestions")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(not output:match("Did you mean:"))
+
+	-- Test with completely different command (too far away)
+	cli.commands = {
+		build = {
+			action = function() end,
+			description = "build command"
+		}
+	}
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "completelydifferentcommand" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "without suggestions - too far", error_msg, print_output)
+	assert_with_debug(output, "completelydifferentcommand", "without suggestions - too far", error_msg, print_output)
+	-- Should not have suggestions when distance is too large (threshold is 3 for long commands)
+	if output:match("Did you mean:") then
+		print("Test 'without suggestions - too far' failed - unexpected suggestions")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(not output:match("Did you mean:"))
+
+	-- Test with command that's just beyond threshold (distance 4 for 4-char command)
+	cli.commands = {
+		test = {
+			action = function() end,
+			description = "test command"
+		}
+	}
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "abcd" }) -- distance 4 from "test", threshold is 2
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "without suggestions - beyond threshold", error_msg, print_output)
+	if output:match("Did you mean:") then
+		print("Test 'without suggestions - beyond threshold' failed - unexpected suggestions")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(not output:match("Did you mean:"))
+end
+
+test["unknown command suggestions - empty command"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			build = {
+				action = function() end,
+				description = "build command"
+			}
+		},
+		action = function() end
+	}
+
+	-- Test with empty string command
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "empty command", error_msg, print_output)
+	if not (output:match("''") or output:match('""')) then
+		print("Test 'empty command' failed - empty string not found")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(output:match("''") or output:match('""'))
+end
+
+test["unknown command suggestions - verify closest match"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			cat = {
+				action = function() end,
+				description = "cat command"
+			},
+			bat = {
+				action = function() end,
+				description = "bat command"
+			},
+			hat = {
+				action = function() end,
+				description = "hat command"
+			},
+			mat = {
+				action = function() end,
+				description = "mat command"
+			}
+		},
+		action = function() end
+	}
+
+	-- "rat" should suggest up to 3 of "cat", "bat", "hat", "mat" (all distance 1)
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "rat" })
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "verify closest match", error_msg, print_output)
+	assert_with_debug(output, "rat", "verify closest match", error_msg, print_output)
+	assert_with_debug(output, "Did you mean:", "verify closest match", error_msg, print_output)
+	-- Verify that suggestions are present (should suggest up to 3, all are distance 1)
+	local suggestions_count = 0
+	for _ in output:gmatch("\n  [^\n]+") do
+		suggestions_count = suggestions_count + 1
+	end
+	if suggestions_count < 1 or suggestions_count > 3 then
+		print("Test 'verify closest match' failed - suggestions count:", suggestions_count)
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(suggestions_count >= 1) -- At least one suggestion
+	test.assert(suggestions_count <= 3) -- At most 3 suggestions
+	-- Verify at least one of the close matches is suggested
+	local has_suggestion = output:match("cat") or output:match("bat") or output:match("hat") or output:match("mat")
+	if not has_suggestion then
+		print("Test 'verify closest match' failed - no close match found")
+		print("  error_msg:", error_msg)
+		print("  print_output:", print_output)
+		print("  combined output:", output)
+	end
+	test.assert(has_suggestion)
+end
+
+test["unknown command suggestions - single character difference"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			build = {
+				action = function() end,
+				description = "build command"
+			},
+			test = {
+				action = function() end,
+				description = "test command"
+			}
+		},
+		action = function() end
+	}
+
+	-- Single character typo should definitely suggest the correct command
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "buil" }) -- missing 'd', distance 1
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "single character difference - buil", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: build%?", "single character difference - buil", error_msg, print_output)
+
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "tes" }) -- missing 't', distance 1
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "single character difference - tes", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: test%?", "single character difference - tes", error_msg, print_output)
 end
 
 if not TEST then
