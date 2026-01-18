@@ -60,10 +60,15 @@ local function levenshtein_distance(s1, s2)
     return prev_row[len2]
 end
 
+---@class CommandSuggestion
+---@field name string
+---@field summary string?
+---@field alias_of string?
+
 ---Finds closest matching commands (up to 3) within reasonable edit distance
 ---@param unknown_command string
 ---@param available_commands table<string, table>
----@return string[] suggestions
+---@return CommandSuggestion[] suggestions
 local function find_closest_commands(unknown_command, available_commands)
 	if next(available_commands) == nil then return {} end
 	if not unknown_command or unknown_command == "" then return {} end
@@ -72,11 +77,16 @@ local function find_closest_commands(unknown_command, available_commands)
 	local max_distance = math.min(3, math.max(1, math.ceil(#unknown_command * 0.4)))
 	local candidates = {}
 
-	for cmd_name, _ in pairs(available_commands) do
+	for cmd_name, cmd_data in pairs(available_commands) do
 		if type(cmd_name) == "string" then
 			local distance = levenshtein_distance(unknown_command, cmd_name)
 			if distance <= max_distance then
-				table.insert(candidates, { name = cmd_name, distance = distance })
+				table.insert(candidates, {
+					name = cmd_name,
+					distance = distance,
+					summary = cmd_data.summary or cmd_data.description,
+					alias_of = cmd_data.__alias_full_name,
+				})
 			end
 		end
 	end
@@ -85,7 +95,12 @@ local function find_closest_commands(unknown_command, available_commands)
 
 	local suggestions = {}
 	for i = 1, math.min(3, #candidates) do
-		table.insert(suggestions, candidates[i].name)
+		local c = candidates[i]
+		table.insert(suggestions, {
+			name = c.name,
+			summary = c.summary,
+			alias_of = c.alias_of,
+		})
 	end
 	return suggestions
 end
@@ -204,7 +219,8 @@ function ami_cli.parse_args(args, scheme, options)
 			local def = util.merge_tables({ id = k }, v)
 			if type(v.aliases) == "table" then
 				for _, a in ipairs(v.aliases) do
-					result[a] = def
+					result[a] = util.clone(def)
+					result[a].__alias_full_name = k
 				end
 			end
 			result[k] = def
@@ -247,12 +263,22 @@ function ami_cli.parse_args(args, scheme, options)
 				local suggestions = find_closest_commands(unknown_cmd, cli_cmd_map)
 				local error_msg = "unknown command - '" .. unknown_cmd .. "'"
 				if #suggestions > 0 then
+					local function format_suggestion(s)
+						local parts = { s.name }
+						if s.alias_of then
+							table.insert(parts, " (" .. s.alias_of .. ")")
+						end
+						if s.summary then
+							table.insert(parts, " - " .. s.summary)
+						end
+						return table.concat(parts)
+					end
 					if #suggestions == 1 then
-						error_msg = error_msg .. "\nDid you mean: " .. suggestions[1] .. "?"
+						error_msg = error_msg .. "\nDid you mean: " .. format_suggestion(suggestions[1]) .. "?"
 					else
 						error_msg = error_msg .. "\nDid you mean:"
 						for _, suggestion in ipairs(suggestions) do
-							error_msg = error_msg .. "\n  " .. suggestion
+							error_msg = error_msg .. "\n  " .. format_suggestion(suggestion)
 						end
 					end
 				end

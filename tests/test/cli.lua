@@ -763,7 +763,7 @@ test["unknown command with suggestions"] = function()
 	local output = error_msg .. print_output
 	assert_with_debug(output, "unknown command", "unknown command with suggestions - buil", error_msg, print_output)
 	assert_with_debug(output, "buil", "unknown command with suggestions - buil", error_msg, print_output)
-	assert_with_debug(output, "Did you mean: build%?", "unknown command with suggestions - buil", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: build %- build command%?", "unknown command with suggestions - buil", error_msg, print_output)
 	assert_with_debug(output, "build", "unknown command with suggestions - buil", error_msg, print_output)
 
 	-- Test typo: "tets" should suggest "test" (distance 1, within threshold)
@@ -777,7 +777,7 @@ test["unknown command with suggestions"] = function()
 	local output = error_msg .. print_output
 	assert_with_debug(output, "unknown command", "unknown command with suggestions - tets", error_msg, print_output)
 	assert_with_debug(output, "tets", "unknown command with suggestions - tets", error_msg, print_output)
-	assert_with_debug(output, "Did you mean: test%?", "unknown command with suggestions - tets", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: test %- test command%?", "unknown command with suggestions - tets", error_msg, print_output)
 	assert_with_debug(output, "test", "unknown command with suggestions - tets", error_msg, print_output)
 
 	-- Test typo: "instal" should suggest "install" (distance 1, within threshold)
@@ -1069,7 +1069,7 @@ test["unknown command suggestions - single character difference"] = function()
 	end)
 	local output = error_msg .. print_output
 	assert_with_debug(output, "unknown command", "single character difference - buil", error_msg, print_output)
-	assert_with_debug(output, "Did you mean: build%?", "single character difference - buil", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: build %- build command%?", "single character difference - buil", error_msg, print_output)
 
 	local error_msg = ""
 	local _, print_output = collect_printout(function()
@@ -1080,7 +1080,39 @@ test["unknown command suggestions - single character difference"] = function()
 	end)
 	local output = error_msg .. print_output
 	assert_with_debug(output, "unknown command", "single character difference - tes", error_msg, print_output)
-	assert_with_debug(output, "Did you mean: test%?", "single character difference - tes", error_msg, print_output)
+	assert_with_debug(output, "Did you mean: test %- test command%?", "single character difference - tes", error_msg, print_output)
+end
+
+test["unknown command suggestions - alias display"] = function()
+	local cli = {
+		title = "test cli",
+		description = "test cli description",
+		commands = {
+			build = {
+				action = function() end,
+				summary = "build command",
+				aliases = { "b" }
+			},
+			test = {
+				action = function() end,
+				description = "test command"
+			},
+		},
+		action = function() end
+	}
+
+	-- Typo close to an alias should show the alias and its full command name in brackets
+	local error_msg = ""
+	local _, print_output = collect_printout(function()
+		local ok, err = pcall(am.execute, cli, { "a" }) -- close to "b" alias, distance 1
+		if not ok then
+			error_msg = tostring(err or "")
+		end
+	end)
+	local output = error_msg .. print_output
+	assert_with_debug(output, "unknown command", "alias display - a", error_msg, print_output)
+	-- Should show alias with full name in brackets: "b (build) - build command"
+	assert_with_debug(output, "b %(build%) %- build command", "alias display - a", error_msg, print_output)
 end
 
 if not TEST then
