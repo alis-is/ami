@@ -22,6 +22,66 @@ local HELP_OPTION = {
 	description = "Prints this help message",
 }
 
+---Calculates Levenshtein distance between two strings
+---@param s1 string
+---@param s2 string
+---@return number distance
+local function levenshtein_distance(s1, s2)
+	local len1, len2 = #s1, #s2
+	if len1 == 0 then return len2 end
+	if len2 == 0 then return len1 end
+
+	local matrix = {}
+	for i = 0, len1 do
+		matrix[i] = {}
+		matrix[i][0] = i
+	end
+	for j = 0, len2 do
+		matrix[0][j] = j
+	end
+
+	for i = 1, len1 do
+		for j = 1, len2 do
+			local cost = s1:sub(i, i) == s2:sub(j, j) and 0 or 1
+			matrix[i][j] = math.min(
+				matrix[i - 1][j] + 1,     -- deletion
+				matrix[i][j - 1] + 1,     -- insertion
+				matrix[i - 1][j - 1] + cost -- substitution
+			)
+		end
+	end
+
+	return matrix[len1][len2]
+end
+
+---Finds the closest matching commands based on Levenshtein distance
+---@param unknown_command string
+---@param available_commands table<string, table>
+---@param max_suggestions number?
+---@return string[] suggestions
+local function find_closest_commands(unknown_command, available_commands, max_suggestions)
+	max_suggestions = max_suggestions or 3
+
+	local candidates = {}
+	for cmd_name, _ in pairs(available_commands) do
+		local distance = levenshtein_distance(unknown_command, cmd_name)
+		table.insert(candidates, { name = cmd_name, distance = distance })
+	end
+
+	-- Sort by distance (closest first)
+	table.sort(candidates, function(a, b)
+		return a.distance < b.distance
+	end)
+
+	-- Return top suggestions
+	local suggestions = {}
+	for i = 1, math.min(max_suggestions, #candidates) do
+		table.insert(suggestions, candidates[i].name)
+	end
+
+	return suggestions
+end
+
 local ami_cli = {}
 
 ---Parses value into required type if possible.
@@ -175,7 +235,16 @@ function ami_cli.parse_args(args, scheme, options)
 			-- default mode - we try to identify underlying command
 			cli_cmd = cli_cmd_map[arg.arg]
 			if type(cli_cmd) ~= "table" then
-				return nil, "unknown command - '" .. (arg.arg or "") .. "'"
+				local unknown_cmd = arg.arg or ""
+				local suggestions = find_closest_commands(unknown_cmd, cli_cmd_map, 3)
+				local error_msg = "unknown command - '" .. unknown_cmd .. "'"
+				if #suggestions > 0 then
+					error_msg = error_msg .. "\nDid you mean:"
+					for _, suggestion in ipairs(suggestions) do
+						error_msg = error_msg .. "\n  " .. suggestion
+					end
+				end
+				return nil, error_msg
 			end
 			last_index = i + 1
 			break
