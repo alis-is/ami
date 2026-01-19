@@ -714,6 +714,7 @@ end
 
 test["unknown command with suggestions"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 
 	local cli = {
 		title = "test cli",
@@ -798,10 +799,12 @@ test["unknown command with suggestions"] = function ()
 	assert_with_debug(output, "uninstall", "unknown command with suggestions - uninstal", error_msg, print_output)
 
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["unknown command suggestions - multiple close matches"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -860,6 +863,7 @@ test["unknown command suggestions - multiple close matches"] = function ()
 	end
 	test.assert(output:match"build" or output:match"built" or output:match"builder")
 	restore_os_exit()
+	restore_is_tty()
 end
 
 
@@ -980,6 +984,7 @@ end
 
 test["unknown command suggestions - verify closest match"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -1039,10 +1044,12 @@ test["unknown command suggestions - verify closest match"] = function ()
 	end
 	test.assert(has_suggestion)
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["unknown command suggestions - single character difference"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -1084,10 +1091,12 @@ test["unknown command suggestions - single character difference"] = function ()
 	assert_with_debug(output, "Did you mean: test %- test command%?", "single character difference - tes", error_msg,
 		print_output)
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["unknown command suggestions - alias display"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -1118,10 +1127,12 @@ test["unknown command suggestions - alias display"] = function ()
 	-- Should show alias with full name in brackets: "b (build) - build command"
 	assert_with_debug(output, "b %(build%) %- build command", "alias display - a", error_msg, print_output)
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["unknown option with suggestions"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -1168,10 +1179,12 @@ test["unknown option with suggestions"] = function ()
 	assert_with_debug(output, "debu", "unknown option with suggestions - debu", error_msg, print_output)
 	assert_with_debug(output, "debug", "unknown option with suggestions - debu", error_msg, print_output)
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["unknown option suggestions - alias display"] = function ()
 	mock_os_exit()
+	mock_is_tty()
 	local cli = {
 		title = "test cli",
 		description = "test cli description",
@@ -1197,6 +1210,7 @@ test["unknown option suggestions - alias display"] = function ()
 	-- Should show alias with full name in brackets: "v (verbose) - verbose output"
 	assert_with_debug(output, "v %(verbose%) %- verbose output", "option alias display - x", error_msg, print_output)
 	restore_os_exit()
+	restore_is_tty()
 end
 
 test["no suggestions in non-TTY mode"] = function ()
@@ -1205,6 +1219,7 @@ test["no suggestions in non-TTY mode"] = function ()
 	-- and suggestions should NOT be shown
 	local result = proc.spawn("eli", { "tests/assets/cli/test_non_tty_suggestions.lua" },
 		{ stdout = "pipe", stderr = "pipe", wait = true })
+	test.assert(result ~= nil)
 	local output = (result.stdout_stream:read"a" or "") .. (result.stderr_stream:read"a" or "")
 	-- Should contain the error message
 	test.assert(output:match"unknown command")

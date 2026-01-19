@@ -93,3 +93,15 @@ end
 function restore_os_exit()
     os.exit = _original_os_exit
 end
+
+local _is_tty = require"is_tty"
+local _original_is_stdout_tty = _is_tty.is_stdout_tty
+function mock_is_tty(status)
+    _is_tty.is_stdout_tty = function ()
+        return status == nil or status
+    end
+end
+
+function restore_is_tty()
+    _is_tty.is_stdout_tty = _original_is_stdout_tty
+end
