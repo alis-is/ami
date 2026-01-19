@@ -130,7 +130,18 @@ local function add_modify_and_show_test(test, name, tests)
 end
 
 local function add_fail_test(test, name, tests)
+    local _original_os_exit = os.exit
+    local function mock_os_exit()
+        os.exit = function (code)
+            error("exit:" .. tostring(code))
+        end
+    end
+    local function restore_os_exit() -- Restore original os.exit
+        os.exit = _original_os_exit
+    end
+
     test["expect fail: " .. name] = function ()
+        mock_os_exit()
         local test_dir = "tests/tmp/ami_test_fail"
         init_ami_test(test_dir, "tests/app/configs/ami_test_app@latest.hjson", { cleanupTestDir = true })
         os.chdir(default_cwd)
@@ -189,6 +200,7 @@ local function add_fail_test(test, name, tests)
             error_called = false
         end
         os.chdir(default_cwd)
+        restore_os_exit()
     end
 end
 
@@ -229,7 +241,7 @@ add_modify_and_show_test(test, "types", {
         set_path = "complex.config",
         value = "{ timeout: 500, retries: 3 }",
         compare_path = "complex.config.timeout",
-        expected_value = 500
+        expected_value = 500,
     },
     { mode = "set", set_path = "complex.config", value = "{ timeout: 500, retries: 3 }", compare_path = "complex.config.retries", expected_value = 3 },
     { mode = "set", set_path = "fixed_list", value = "[10, 20, 30]", compare_path = "fixed_list", expected_value = { 10, 20, 30 } },
@@ -361,7 +373,7 @@ add_fail_test(test, "syntax and logic errors", {
         mode = "set",
         set_path = "bad_config",
         value = "{ key: 'missing_quote",
-        expected_error = "failed to parse value"
+        expected_error = "failed to parse value",
     },
     -- Invalid Mode
     {
