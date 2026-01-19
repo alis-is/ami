@@ -27,85 +27,40 @@ local HELP_OPTION = {
 ---@param s2 string
 ---@return number distance
 local function levenshtein_distance(s1, s2)
-    local len1, len2 = #s1, #s2
-    if len1 == 0 then return len2 end
-    if len2 == 0 then return len1 end
+	local len1, len2 = #s1, #s2
+	if len1 == 0 then return len2 end
+	if len2 == 0 then return len1 end
 
-    -- iterate over the shorter string to minimize memory
-    if len1 > len2 then
-        s1, s2 = s2, s1
-        len1, len2 = len2, len1
-    end
+	-- iterate over the shorter string to minimize memory
+	if len1 > len2 then
+		s1, s2 = s2, s1
+		len1, len2 = len2, len1
+	end
 
-    local prev_row = {}
-    for j = 1, len2 do prev_row[j] = j end
+	local prev_row = {}
+	for j = 1, len2 do prev_row[j] = j end
 
-    local s1_bytes = { string.byte(s1, 1, -1) }
-    local s2_bytes = { string.byte(s2, 1, -1) }
+	local s1_bytes = { string.byte(s1, 1, -1) }
+	local s2_bytes = { string.byte(s2, 1, -1) }
 
-    for i = 1, len1 do
-        local char1 = s1_bytes[i]
-        local left = i - 1
-        local current_col_0 = i
+	for i = 1, len1 do
+		local char1 = s1_bytes[i]
+		local left = i - 1
+		local current_col_0 = i
 
-        for j = 1, len2 do
-            local cost = (char1 == s2_bytes[j]) and 0 or 1
-            local val = math.min(prev_row[j] + 1, current_col_0 + 1, left + cost)
-            left = prev_row[j]
-            prev_row[j] = val
-            current_col_0 = val
-        end
-    end
-
-    return prev_row[len2]
-end
-
----@class CommandSuggestion
----@field name string
----@field summary string?
----@field alias_of string?
-
----Finds closest matching commands (up to 3) within reasonable edit distance
----@param unknown_command string
----@param available_commands table<string, table>
----@return CommandSuggestion[] suggestions
-local function find_closest_commands(unknown_command, available_commands)
-	if next(available_commands) == nil then return {} end
-	if not unknown_command or unknown_command == "" then return {} end
-
-	-- threshold: ~40% of length, min 1, max 3
-	local max_distance = math.min(3, math.max(1, math.ceil(#unknown_command * 0.4)))
-	local candidates = {}
-
-	for cmd_name, cmd_data in pairs(available_commands) do
-		if type(cmd_name) == "string" then
-			local distance = levenshtein_distance(unknown_command, cmd_name)
-			if distance <= max_distance then
-				table.insert(candidates, {
-					name = cmd_name,
-					distance = distance,
-					summary = cmd_data.summary or cmd_data.description,
-					alias_of = cmd_data.__alias_full_name,
-				})
-			end
+		for j = 1, len2 do
+			local cost = (char1 == s2_bytes[j]) and 0 or 1
+			local val = math.min(prev_row[j] + 1, current_col_0 + 1, left + cost)
+			left = prev_row[j]
+			prev_row[j] = val
+			current_col_0 = val
 		end
 	end
 
-	table.sort(candidates, function(a, b) return a.distance < b.distance end)
-
-	local suggestions = {}
-	for i = 1, math.min(3, #candidates) do
-		local c = candidates[i]
-		table.insert(suggestions, {
-			name = c.name,
-			summary = c.summary,
-			alias_of = c.alias_of,
-		})
-	end
-	return suggestions
+	return prev_row[len2]
 end
 
-local ami_cli = {}
+
 
 ---Parses value into required type if possible.
 ---@param value string
@@ -175,6 +130,54 @@ local function is_array_of_tables(value)
 	return true
 end
 
+---@class Suggestion
+---@field name string
+---@field summary string?
+---@field alias_of string?
+
+local ami_cli = {}
+
+---Finds closest matching entries (up to 3) within reasonable edit distance
+---Works for both commands and options
+---@param unknown_name string
+---@param available table<string, table>
+---@return Suggestion[] suggestions
+function ami_cli.find_similar(unknown_name, available)
+	if next(available) == nil then return {} end
+	if not unknown_name or unknown_name == "" then return {} end
+
+	-- threshold: ~40% of length, min 1, max 3
+	local max_distance = math.min(3, math.max(1, math.ceil(#unknown_name * 0.4)))
+	local candidates = {}
+
+	for name, data in pairs(available) do
+		if type(name) == "string" then
+			local distance = levenshtein_distance(unknown_name, name)
+			if distance <= max_distance then
+				table.insert(candidates, {
+					name = name,
+					distance = distance,
+					summary = data.summary or data.description,
+					alias_of = data.__alias_full_name,
+				})
+			end
+		end
+	end
+
+	table.sort(candidates, function (a, b) return a.distance < b.distance end)
+
+	local suggestions = {}
+	for i = 1, math.min(3, #candidates) do
+		local c = candidates[i]
+		table.insert(suggestions, {
+			name = c.name,
+			summary = c.summary,
+			alias_of = c.alias_of,
+		})
+	end
+	return suggestions
+end
+
 --[[
     Generates optionList, parameterValues, command from args.
     @param {string{}} args
@@ -190,12 +193,18 @@ end
 ---@field command AmiCli|nil
 ---@field remaining_args CliArg[]
 
+---@class ParseArgsResultMetadata
+---@field invalid_command_or_option_name string?
+---@field available_commands table<string, table>?
+---@field available_options table<string, table>?
+
 ---Parses arguments in respect to cli scheme
 ---@param args string[]|CliArg[]
 ---@param scheme AmiCli
 ---@param options AmiParseArgsOptions
 ---@return ParseArgsResult? result
 ---@return string? error_message
+---@return ParseArgsResultMetadata metadata
 function ami_cli.parse_args(args, scheme, options)
 	if not is_array_of_tables(args) then
 		args = cli.parse_args(args)
@@ -241,10 +250,11 @@ function ami_cli.parse_args(args, scheme, options)
 		if arg.type == "option" then
 			local cli_option_def = cli_options_map[arg.id]
 			if not cli_option_def then
-				return nil, "unknown option - '" .. arg.arg
+				return nil, "unknown option",
+				   { invalid_command_or_option_name = arg.id, available_options = cli_options_map }
 			end
 			local arg_value, err, success = parse_value(tostring(arg.value), cli_option_def.type)
-			if not success then return nil, "option: '" .. (arg.arg or "") .. "' -" .. err end
+			if not success then return nil, "option: '" .. (arg.arg or "") .. "' -" .. err, {} end
 
 			cli_options_list[cli_option_def.id] = arg_value
 		elseif options.stop_on_non_option then
@@ -260,29 +270,8 @@ function ami_cli.parse_args(args, scheme, options)
 			cli_cmd = cli_cmd_map[arg.arg]
 			if type(cli_cmd) ~= "table" then
 				local unknown_cmd = arg.arg or ""
-				local suggestions = find_closest_commands(unknown_cmd, cli_cmd_map)
-				local error_msg = "unknown command - '" .. unknown_cmd .. "'"
-				if #suggestions > 0 then
-					local function format_suggestion(s)
-						local parts = { s.name }
-						if s.alias_of then
-							table.insert(parts, " (" .. s.alias_of .. ")")
-						end
-						if s.summary then
-							table.insert(parts, " - " .. s.summary)
-						end
-						return table.concat(parts)
-					end
-					if #suggestions == 1 then
-						error_msg = error_msg .. "\nDid you mean: " .. format_suggestion(suggestions[1]) .. "?"
-					else
-						error_msg = error_msg .. "\nDid you mean:"
-						for _, suggestion in ipairs(suggestions) do
-							error_msg = error_msg .. "\n  " .. format_suggestion(suggestion)
-						end
-					end
-				end
-				return nil, error_msg
+				return nil, "unknown command",
+				   { invalid_command_or_option_name = unknown_cmd, available_commands = cli_cmd_map }
 			end
 			last_index = i + 1
 			break
@@ -298,7 +287,7 @@ function ami_cli.parse_args(args, scheme, options)
 		options = cli_options_list,
 		command = cli_cmd,
 		remaining_args = cli_remaining_args,
-	}
+	}, nil, {}
 end
 
 ---Validates args against cli definition
@@ -514,12 +503,18 @@ function ami_cli.print_help(ami, options)
 	if type(footer) == "string" then print(footer) end
 end
 
+---@class CliProcessResultMetadata
+---@field executed boolean
+---@field invalid_command_or_option_name string?
+---@field available_commands table<string, table>?
+---@field available_options table<string, table>?
+
 ---Processes args passed to cli and executes appropriate operation
 ---@param ami ExecutableAmiCli
 ---@param args string[]?
 ---@return any result
 ---@return string? error_message
----@return boolean executed
+---@return CliProcessResultMetadata metadata
 function ami_cli.process(ami, args)
 	assert(type(ami) == "table", "invalid cli scheme provided, expected table, got: " .. type(ami))
 	local parsed_args = cli.parse_args(args)
@@ -534,21 +529,21 @@ function ami_cli.process(ami, args)
 	end
 
 	if type(action) ~= "table" and type(action) ~= "function" and type(action) ~= "string" then
-		return nil, "action not specified for the cli " .. cli_id, false
+		return nil, "action not specified for the cli " .. cli_id, { executed = false }
 	end
 
 	if ami.type == "external" then
 		if type(action) ~= "string" then
-			return nil, "action for external cli has to be string specifying path to external cli", false
+			return nil, "action for external cli has to be string specifying path to external cli", { executed = false }
 		end
 		local exit_code, err, executed = exec.external_action(action, parsed_args, ami)
 		if not executed then
-			return nil, err or "unknown", executed
+			return nil, err or "unknown", { executed = executed, invalid_command_or_option_name = nil }
 		end
 		if not ami.should_return then
 			os.exit(exit_code)
 		end
-		return exit_code, nil, executed
+		return exit_code, nil, { executed = true }
 	end
 
 	if ami.type == "raw" then
@@ -560,23 +555,28 @@ function ami_cli.process(ami, args)
 		---@diagnostic disable-next-line: param-type-mismatch
 		local result, err, executed = exec.native_action(action, raw_args, ami)
 		if not executed then
-			return nil, err or "unknown", executed
+			return nil, err or "unknown", { executed = executed, invalid_command_or_option_name = nil }
 		end
-		return result, nil, executed
+		return result, nil, { executed = true }
 	end
 
-	local parsed_args_result, err = ami_cli.parse_args(parsed_args, ami,
+	local parsed_args_result, err, parse_metadata = ami_cli.parse_args(parsed_args, ami,
 		{ is_namespace = ami.type == "namespace", stop_on_non_option = ami.stop_on_non_option })
 	if not parsed_args_result then
-		return nil, err or "unknown", false
+		return nil, err or "unknown", {
+			executed = false,
+			invalid_command_or_option_name = parse_metadata and parse_metadata.invalid_command_or_option_name,
+			available_commands = parse_metadata and parse_metadata.available_commands,
+			available_options = parse_metadata and parse_metadata.available_options,
+		}
 	end
 	local option_list, command, remaining_args =
-		parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
+	   parsed_args_result.options, parsed_args_result.command, parsed_args_result.remaining_args
 	local executable_command = command
 
 	local valid, err = validate(option_list, executable_command, ami)
 	if not valid then
-		return nil, err or "unknown", false
+		return nil, err or "unknown", { executed = false, invalid_command_or_option_name = nil }
 	end
 
 	if type(executable_command) == "table" then
@@ -587,11 +587,15 @@ function ami_cli.process(ami, args)
 
 	if not ami.custom_help and option_list.help then
 		ami_cli.print_help(ami)
-		return nil, nil, true
+		return nil, nil, { executed = true, invalid_command_or_option_name = nil }
 	end
-	--- we validate within native_action
-	---@diagnostic disable-next-line: param-type-mismatch
-	return exec.native_action(action, { option_list, executable_command, remaining_args, ami }, ami)
+
+	local result, err, executed = exec.native_action(action, { option_list, executable_command, remaining_args, ami },
+		ami)
+	if not executed then
+		return nil, err or "unknown", { executed = executed, invalid_command_or_option_name = nil }
+	end
+	return result, nil, { executed = true }
 end
 
 return ami_cli
