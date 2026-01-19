@@ -436,21 +436,6 @@ test["process cli (namespace & stop_on_non_option)"] = function ()
 	test.assert(ok)
 end
 
-local function collect_printout(_fn)
-	local old_print = print
-	local result = ""
-	print = function (...)
-		local args = table.pack(...)
-		for i = 1, #args do
-			result = result .. args[i]
-		end
-		result = result .. "\n"
-	end
-	local ok, error = pcall(_fn)
-	print = old_print
-	return ok, result
-end
-
 local function assert_with_debug(output, pattern, test_name, error_msg, print_output)
 	if not output:match(pattern) then
 		print("Test '" .. (test_name or "unknown") .. "' failed - pattern not found:")
@@ -492,7 +477,7 @@ test["show cli help"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, {})
 		   end
@@ -537,7 +522,7 @@ test["show cli help (include_options_in_usage = false)"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, { include_options_in_usage = false })
 		   end
@@ -575,7 +560,7 @@ test["show cli help (print_usage = false)"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, { print_usage = false })
 		   end
@@ -615,7 +600,7 @@ test["show cli help (hidden options & cmd)"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, {})
 		   end
@@ -654,13 +639,13 @@ test["show cli help (footer)"] = function ()
 
 	local footer = "test footer"
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, { footer = "test footer" })
 		   end
 	   )
 
-	test.assert(ok and result:match(footer .. "\n$"))
+	test.assert(ok and result:match(footer .. "$"))
 end
 
 test["show cli help (custom help message)"] = function ()
@@ -671,12 +656,12 @@ test["show cli help (custom help message)"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, {})
 		   end
 	   )
-	test.assert(ok and cli.help_message .. "\n" == result)
+	test.assert(ok and cli.help_message == result)
 end
 
 test["show cli help (namespace)"] = function ()
@@ -713,7 +698,7 @@ test["show cli help (namespace)"] = function ()
 	}
 
 	local ok, result =
-	   collect_printout(
+	   collect_output(
 		   function ()
 			   am.print_help(cli, {})
 		   end
@@ -725,17 +710,6 @@ test["show cli help (namespace)"] = function ()
 	test.assert(result:match"%-t%|%-%-test")
 	test.assert(result:match"%[%-f%] %[%-t%]" and result:match"Usage:")
 	test.assert(result:match"%[args%.%.%.%]" and result:match"Usage:")
-end
-
--- Helper to mock os.exit for suggestion tests (since am.execute now calls os.exit instead of throwing)
-local _original_os_exit = os.exit
-local function mock_os_exit()
-	os.exit = function (code)
-		error("exit:" .. tostring(code))
-	end
-end
-local function restore_os_exit() -- Restore original os.exit
-	os.exit = _original_os_exit
 end
 
 test["unknown command with suggestions"] = function ()
@@ -767,7 +741,7 @@ test["unknown command with suggestions"] = function ()
 
 	-- Test typo: "buil" should suggest "build" (distance 1, within threshold)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "buil" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -782,7 +756,7 @@ test["unknown command with suggestions"] = function ()
 
 	-- Test typo: "tets" should suggest "test" (distance 1, within threshold)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "tets" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -797,7 +771,7 @@ test["unknown command with suggestions"] = function ()
 
 	-- Test typo: "instal" should suggest "install" (distance 1, within threshold)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "instal" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -811,7 +785,7 @@ test["unknown command with suggestions"] = function ()
 
 	-- Test typo: "uninstal" should suggest "uninstall" (distance 1, within threshold)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "uninstal" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -854,7 +828,7 @@ test["unknown command suggestions - multiple close matches"] = function ()
 
 	-- Test that multiple suggestions are provided (up to 3)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "buil" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -900,7 +874,7 @@ test["unknown command without suggestions"] = function ()
 
 	-- Test with no commands available
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "xyz" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -926,7 +900,7 @@ test["unknown command without suggestions"] = function ()
 		},
 	}
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "completelydifferentcommand" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -952,7 +926,7 @@ test["unknown command without suggestions"] = function ()
 		},
 	}
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "abcd" }) -- distance 4 from "test", threshold is 2
 		if not ok then
 			error_msg = tostring(err or "")
@@ -986,7 +960,7 @@ test["unknown command suggestions - empty command"] = function ()
 
 	-- Test with empty string command
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1032,7 +1006,7 @@ test["unknown command suggestions - verify closest match"] = function ()
 
 	-- "rat" should suggest up to 3 of "cat", "bat", "hat", "mat" (all distance 1)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "rat" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1087,7 +1061,7 @@ test["unknown command suggestions - single character difference"] = function ()
 
 	-- Single character typo should definitely suggest the correct command
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "buil" }) -- missing 'd', distance 1
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1099,7 +1073,7 @@ test["unknown command suggestions - single character difference"] = function ()
 		print_output)
 
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "tes" }) -- missing 't', distance 1
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1133,7 +1107,7 @@ test["unknown command suggestions - alias display"] = function ()
 
 	-- Typo close to an alias should show the alias and its full command name in brackets
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "a" }) -- close to "b" alias, distance 1
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1170,7 +1144,7 @@ test["unknown option with suggestions"] = function ()
 
 	-- Test typo: "verbos" should suggest "verbose" (distance 1)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "--verbos" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1183,7 +1157,7 @@ test["unknown option with suggestions"] = function ()
 
 	-- Test typo: "debu" should suggest "debug" (distance 1)
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "--debu" })
 		if not ok then
 			error_msg = tostring(err or "")
@@ -1212,7 +1186,7 @@ test["unknown option suggestions - alias display"] = function ()
 
 	-- Typo close to an alias should show the alias and its full option name in brackets
 	local error_msg = ""
-	local _, print_output = collect_printout(function ()
+	local _, print_output = collect_output(function ()
 		local ok, err = pcall(am.execute, cli, { "-x" }) -- close to "v" alias, distance 1
 		if not ok then
 			error_msg = tostring(err or "")
