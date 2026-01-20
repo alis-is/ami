@@ -215,10 +215,14 @@ end
 ---@param file string?
 ---@param path string[]
 ---@param value any
+---@param output_format "json"|"hjson"?
 ---@return boolean?, string?
-function util.modify_file(mode, file, path, value)
+function util.modify_file(mode, file, path, value, output_format)
 	if type(mode) ~= "string" then
 		mode = "auto"
+	end
+	if type(output_format) ~= "string" then
+		output_format = "hjson"
 	end
 	if type(file) ~= "string" then
 		file, _ = find_default_modify_file()
@@ -226,7 +230,15 @@ function util.modify_file(mode, file, path, value)
 	end
 
 	local raw_content, err = fs.read_file(file --[[@as string ]])
-    if not raw_content then return nil, err or "failed to read configuration file" end
+    if not raw_content then
+		if table.includes({ "auto", "set" }, mode) then
+			raw_content = "{}"
+		elseif table.includes({ "add" }, mode) then
+			raw_content = "[]"
+		else
+			return nil, err or "failed to read configuration file"
+		end
+	 end
 	local content, err = hjson.parse(raw_content --[[@as string ]])
     if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
 

@@ -168,24 +168,24 @@ local function new(options)
                 },
                 set = {
                     description = "Sets value at path",
-                    type = "boolean",
-                    hidden = true
+                    type = "boolean"
                 },
                 unset = {
                     description = "Unsets value at path",
-                    type = "boolean",
-                    hidden = true
+                    type = "boolean"
                 },
                 add = {
                     description = "Adds value to list or dictionary",
-                    type = "boolean",
-                    hidden = true
+                    type = "boolean"
                 },
                 remove = {
                     description = "Removes value from list or dictionary",
-                    type = "boolean",
-                    hidden = true
+                    type = "boolean"
                 },
+                ["json-output"] = {
+                    description = "Outputs value as JSON (not HJSON)",
+                    type = "boolean"
+                }
             },
             action = function (options, _, args)
                 ami_assert(#args > 1 or (#args == 1 and options.unset), "invalid arguments to modify command - needs path and value or --unset and path", EXIT_MODIFY_ERROR)

@@ -283,7 +283,8 @@ end
 ---@param file string?
 ---@param path string
 ---@param value any
-function am.modify_file(mode, file, path, value)
+---@param output_format "json"|"hjson"?
+function am.modify_file(mode, file, path, value, output_format)
 	-- split path by dot
 	local path_parts = {}
 	for part in string.gmatch(path, "[^%.]+") do
@@ -297,7 +298,7 @@ function am.modify_file(mode, file, path, value)
 		value = parsed_value
 	end
 
-	local ok, err = ami_util.modify_file(mode, file, path_parts, value)
+	local ok, err = ami_util.modify_file(mode, file, path_parts, value, output_format)
 	ami_assert(ok, "failed to modify configuration: " .. tostring(err), EXIT_MODIFY_ERROR)
 	log_success"Requested modification applied."
 end
