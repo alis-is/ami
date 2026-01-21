@@ -164,6 +164,7 @@ local function new(options)
             options = {
                 file = {
                     index = 1,
+                    aliases = {"f"},
                     description = "Path to configuration file to modify (Defaults to app.h/json)"
                 },
                 set = {
@@ -183,7 +184,8 @@ local function new(options)
                     type = "boolean"
                 },
                 format = {
-                    description = "Output format for the configuration file (hjson or json)",
+                    aliases = {"t"},
+                    description = "Content type of file we are modifying (hjson or json)",
                     type = "string"
                 }
             },
@@ -198,12 +200,7 @@ local function new(options)
                     mode = table.keys(options_without_file)[1]
                 end
 
-                local format = options.format
-                if type(format) == "string" then
-                    ami_assert(format == "hjson" or format == "json", "format must be either 'hjson' or 'json'", EXIT_MODIFY_ERROR)
-                end
-
-                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, format)
+                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, options.format)
             end
 		},
         show = {

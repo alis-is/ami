@@ -223,6 +223,11 @@ function util.modify_file(mode, file, path, value, output_format)
 	end
 	if type(output_format) ~= "string" then
 		output_format = "hjson"
+	else
+		-- Validate format
+		if output_format ~= "hjson" and output_format ~= "json" then
+			return nil, "format must be either 'hjson' or 'json'"
+		end
 	end
 	if type(file) ~= "string" then
 		file, _ = find_default_modify_file()
