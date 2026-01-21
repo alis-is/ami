@@ -283,8 +283,12 @@ end
 ---@param file string?
 ---@param path string
 ---@param value any
----@param output_format "json"|"hjson"?
-function am.modify_file(mode, file, path, value, output_format)
+---@param content_type "json"|"hjson"?
+function am.modify_file(mode, file, path, value, content_type)
+	if type(content_type) ~= "string" then
+		content_type = "hjson"
+	end
+
 	-- split path by dot
 	local path_parts = {}
 	for part in string.gmatch(path, "[^%.]+") do
@@ -292,13 +296,13 @@ function am.modify_file(mode, file, path, value, output_format)
 	end
 
 	-- try parse value as json/hjson
-	if type(value) == "string" then
+	if table.includes({ "json", "hjson" }, content_type) and type(value) == "string" then
 		local parsed_value, err = hjson.parse(value)
 		ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
 		value = parsed_value
 	end
 
-	local ok, err = ami_util.modify_file(mode, file, path_parts, value, output_format)
+	local ok, err = ami_util.modify_file(mode, file, path_parts, value, content_type)
 	ami_assert(ok, "failed to modify configuration: " .. tostring(err), EXIT_MODIFY_ERROR)
 	log_success"Requested modification applied."
 end
