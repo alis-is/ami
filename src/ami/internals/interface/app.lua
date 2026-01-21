@@ -189,9 +189,9 @@ local function new(options)
                     description = "Forces file to be treated as JSON",
                     type = "boolean",
                 },
-                ["type"] = {
-                    aliases = { "t" },
-                    description = "Content type of the file (json or hjson, defaults to hjson)",
+                hjson = {
+                    description = "Forces file to be treated as HJSON (default)",
+                    type = "boolean",
                 },
             },
             action = function (options, _, args)
@@ -201,7 +201,7 @@ local function new(options)
                    (not options.unset and not options.add and not options.remove) -- default to set
 
                 local modify_options = table.filter(options, function (key, v)
-                    return v and not table.includes({ "file", "json", "type" }, key)
+                    return v and not table.includes({ "file", "json", "hjson" }, key)
                 end)
                 ami_assert(#table.keys(modify_options) <= 1, "only one modification mode can be specified",
                     EXIT_MODIFY_ERROR)
@@ -210,13 +210,11 @@ local function new(options)
                     mode = table.keys(modify_options)[1]
                 end
 
+                ami_assert(not (options.json and options.hjson),
+                    "only one format flag (--json or --hjson) can be specified", EXIT_MODIFY_ERROR)
                 local content_type = "hjson"
                 if options.json then
                     content_type = "json"
-                elseif options.type then
-                    ami_assert(table.includes({ "json", "hjson" }, options.type),
-                        "type must be either 'hjson' or 'json'", EXIT_MODIFY_ERROR)
-                    content_type = options.type
                 end
 
                 am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, content_type)
