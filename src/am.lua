@@ -285,6 +285,10 @@ end
 ---@param value any
 ---@param content_type "json"|"hjson"?
 function am.modify_file(mode, file, path, value, content_type)
+	if type(content_type) ~= "string" then
+		content_type = "hjson"
+	end
+
 	-- split path by dot
 	local path_parts = {}
 	for part in string.gmatch(path, "[^%.]+") do
@@ -292,7 +296,7 @@ function am.modify_file(mode, file, path, value, content_type)
 	end
 
 	-- try parse value as json/hjson
-	if type(value) == "string" then
+	if table.includes({ "json", "hjson" }, content_type) and type(value) == "string" then
 		local parsed_value, err = hjson.parse(value)
 		ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
 		value = parsed_value

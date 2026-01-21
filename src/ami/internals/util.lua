@@ -224,9 +224,8 @@ function util.modify_file(mode, file, path, value, content_type)
 	if type(content_type) ~= "string" then
 		content_type = "hjson"
 	else
-		-- Validate format
-		if content_type ~= "hjson" and content_type ~= "json" then
-			return nil, "type must be either 'hjson' or 'json'"
+		if not table.includes({ "hjson", "json" }, content_type) then
+			return nil, "content type must be either 'hjson' or 'json'"
 		end
 	end
 	if type(file) ~= "string" then
@@ -264,7 +263,12 @@ function util.modify_file(mode, file, path, value, content_type)
 	end
 	if not result then return nil, "failed to set new value in configuration" end
 
-	local marshal_fn = content_type == "json" and hjson.stringify_to_json or hjson.stringify
+	local marshallers = {
+		hjson = hjson.stringify,
+		json = hjson.stringify_to_json
+	}
+
+	local marshal_fn = marshallers[content_type]
 	local new_raw_content, err = marshal_fn(result, { indent = "\t", sort_keys = true })
 	if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
 	local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])

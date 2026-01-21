@@ -43,7 +43,7 @@ local function new(options)
             index = 0,
             description = "ami 'info' sub command",
             summary = implementation_status .. " Prints runtime info and status of the app",
-            action = violation_fallback
+            action = violation_fallback,
         },
         setup = {
             index = 1,
@@ -52,24 +52,24 @@ local function new(options)
             options = {
                 environment = {
                     index = 0,
-                    aliases = {"env"},
-                    description = "Creates application environment"
+                    aliases = { "env" },
+                    description = "Creates application environment",
                 },
                 app = {
                     index = 1,
-                    description = "Generates app folder structure and files"
+                    description = "Generates app folder structure and files",
                 },
                 configure = {
                     index = 2,
-                    description = "Configures application and renders templates"
+                    description = "Configures application and renders templates",
                 },
                 ["no-validate"] = {
                     index = 3,
-                    description = "Disables platform and configuration validation"
-                }
+                    description = "Disables platform and configuration validation",
+                },
             },
             -- (options, command, args, cli)
-            action = function(options)
+            action = function (options)
                 local no_options = #table.keys(options) == 0
 
                 if no_options or options.environment then
@@ -84,9 +84,9 @@ local function new(options)
                 end
 
                 if (no_options or options.configure) and not am.app.__are_templates_generated() then
-					am.app.render()
+                    am.app.render()
                 end
-            end
+            end,
         },
         validate = {
             index = 2,
@@ -95,42 +95,42 @@ local function new(options)
             options = {
                 platform = {
                     index = 1,
-                    description = "Validates application platform"
+                    description = "Validates application platform",
                 },
                 configuration = {
                     index = 2,
-                    description = "Validates application configuration"
-                }
+                    description = "Validates application configuration",
+                },
             },
-            action = violation_fallback
+            action = violation_fallback,
         },
         start = {
             index = 3,
-            aliases = {"s"},
+            aliases = { "s" },
             description = "ami 'start' sub command ",
             summary = implementation_status .. " Starts the app",
             -- (options, command, args, cli)
-            action = violation_fallback
+            action = violation_fallback,
         },
         stop = {
             index = 4,
             description = "ami 'stop' sub command",
             summary = implementation_status .. " Stops the app",
             -- (options, command, args, cli)
-            action = violation_fallback
+            action = violation_fallback,
         },
         update = {
             index = 5,
             description = "ami 'update' command",
             summary = "Updates the app or returns setup required",
             -- (options, command, args, cli)
-            action = function()
+            action = function ()
                 local available, id, ver = am.app.is_update_available()
                 if available then
                     ami_error("Found new version " .. ver .. " of " .. id .. ", please run setup...", EXIT_SETUP_REQUIRED)
                 end
-                log_info("Application is up to date.")
-            end
+                log_info"Application is up to date."
+            end,
         },
         remove = {
             index = 6,
@@ -138,24 +138,26 @@ local function new(options)
             summary = "Remove the app or parts based on options",
             options = {
                 all = {
-                    description = "Removes entire application keeping only app.hjson"
+                    description = "Removes entire application keeping only app.hjson",
                 },
-				force = {
-					description = "Forces removal of application",
-					hidden = true,
-				}
+                force = {
+                    description = "Forces removal of application",
+                    hidden = true,
+                },
             },
             -- (options, command, args, cli)
-            action = function(options)
-				ami_assert(am.__has_app_specific_interface or options.force, "you are trying to remove app, but app specific removal routine is not available. Use '--force' to force removal", EXIT_APP_REMOVE_ERROR)
-				if options.all then
+            action = function (options)
+                ami_assert(am.__has_app_specific_interface or options.force,
+                    "you are trying to remove app, but app specific removal routine is not available. Use '--force' to force removal",
+                    EXIT_APP_REMOVE_ERROR)
+                if options.all then
                     am.app.remove()
-                    log_success("Application removed.")
+                    log_success"Application removed."
                 else
                     am.app.remove_data()
-                    log_success("Application data removed.")
+                    log_success"Application data removed."
                 end
-            end
+            end,
         },
         modify = {
             description = "ami 'modify' sub command",
@@ -164,45 +166,62 @@ local function new(options)
             options = {
                 file = {
                     index = 1,
-                    aliases = {"f"},
-                    description = "Path to configuration file to modify (Defaults to app.h/json)"
+                    aliases = { "f" },
+                    description = "Path to configuration file to modify (Defaults to app.h/json)",
                 },
                 set = {
                     description = "Sets value at path",
-                    type = "boolean"
+                    type = "boolean",
                 },
                 unset = {
                     description = "Unsets value at path",
-                    type = "boolean"
+                    type = "boolean",
                 },
                 add = {
                     description = "Adds value to list or dictionary",
-                    type = "boolean"
+                    type = "boolean",
                 },
                 remove = {
                     description = "Removes value from list or dictionary",
-                    type = "boolean"
+                    type = "boolean",
                 },
-                type = {
-                    aliases = {"t"},
-                    description = "Content type of file we are modifying (hjson or json)",
-                    type = "string"
-                }
+                json = {
+                    description = "Forces file to be treated as JSON",
+                    type = "boolean",
+                },
+                ["type"] = {
+                    aliases = { "t" },
+                    description = "Content type of the file (json or hjson, defaults to hjson)",
+                },
             },
             action = function (options, _, args)
-                ami_assert(#args > 1 or (#args == 1 and options.unset), "invalid arguments to modify command - needs path and value or --unset and path", EXIT_MODIFY_ERROR)
-                options.set = options.set or (not options.unset and not options.add and not options.remove) -- default to set
+                ami_assert(#args > 1 or (#args == 1 and options.unset),
+                    "invalid arguments to modify command - needs path and value or --unset and path", EXIT_MODIFY_ERROR)
+                options.set = options.set or
+                   (not options.unset and not options.add and not options.remove) -- default to set
 
-                local options_without_file = table.filter(options, function(key, v) return key ~= "file" and key ~= "type" and v == true end)
-                ami_assert(#table.keys(options_without_file) <= 1, "only one modification mode can be specified", EXIT_MODIFY_ERROR)
+                local modify_options = table.filter(options, function (key, v)
+                    return v and not table.includes({ "file", "json", "type" }, key)
+                end)
+                ami_assert(#table.keys(modify_options) <= 1, "only one modification mode can be specified",
+                    EXIT_MODIFY_ERROR)
                 local mode = "auto"
-                if #table.keys(options_without_file) == 1 then
-                    mode = table.keys(options_without_file)[1]
+                if #table.keys(modify_options) == 1 then
+                    mode = table.keys(modify_options)[1]
                 end
 
-                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, options.type)
-            end
-		},
+                local content_type = "hjson"
+                if options.json then
+                    content_type = "json"
+                elseif options.type then
+                    ami_assert(table.includes({ "json", "hjson" }, options.type),
+                        "type must be either 'hjson' or 'json'", EXIT_MODIFY_ERROR)
+                    content_type = options.type
+                end
+
+                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, content_type)
+            end,
+        },
         show = {
             description = "ami 'show' sub command",
             summary = "Shows value from app configuration file",
@@ -210,19 +229,19 @@ local function new(options)
             options = {
                 file = {
                     index = 1,
-                    description = "Path to configuration file to show from (Defaults to app.h/json)"
-                }
+                    description = "Path to configuration file to show from (Defaults to app.h/json)",
+                },
             },
             action = function (options, _, args)
                 am.show_file(options.file, type(args) == "table" and #args > 0 and args[1].value or nil)
-            end
+            end,
         },
         about = {
             index = 7,
             description = "ami 'about' sub command",
             summary = implementation_status .. " Prints informations about app",
             -- (options, command, args, cli)
-            action = violation_fallback
+            action = violation_fallback,
         },
         pack = {
             description = "ami 'pack' sub command",
@@ -230,20 +249,20 @@ local function new(options)
             options = {
                 output = {
                     index = 1,
-                    aliases = {"o"},
-                    description = "Output path for the archive"
+                    aliases = { "o" },
+                    description = "Output path for the archive",
                 },
                 light = {
                     index = 2,
-                    description = "If used the archive will not include application data"
-                }
+                    description = "If used the archive will not include application data",
+                },
             },
             action = function (options)
-                am.app.pack({
+                am.app.pack{
                     destination = options.output,
-                    mode = options.light and "light" or "full"
-                })
-            end
+                    mode = options.light and "light" or "full",
+                }
+            end,
         },
         unpack = {
             description = "ami 'unpack' sub command",
@@ -252,19 +271,19 @@ local function new(options)
             options = {
                 source = {
                     index = 1,
-                    description = "Path to the archive"
-                }
+                    description = "Path to the archive",
+                },
             },
             action = function (options)
                 options.__rerun = table.get(options, "__rerun", true)
                 am.app.unpack(options)
-                log_success("application unpacked")
-            end
-        }
+                log_success"application unpacked"
+            end,
+        },
     }
-    return base 
+    return base
 end
 
 return {
-    new = new
+    new = new,
 }
