@@ -285,6 +285,7 @@ end
 ---@param value any
 ---@param type "json"|"hjson"?
 function am.modify_file(mode, file, path, value, type)
+	local _type = _G.type  -- Save the built-in type function
 	-- split path by dot
 	local path_parts = {}
 	for part in string.gmatch(path, "[^%.]+") do
@@ -292,7 +293,7 @@ function am.modify_file(mode, file, path, value, type)
 	end
 
 	-- try parse value as json/hjson
-	if type(value) == "string" then
+	if _type(value) == "string" then
 		local parsed_value, err = hjson.parse(value)
 		ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
 		value = parsed_value
