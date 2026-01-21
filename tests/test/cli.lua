@@ -1217,7 +1217,7 @@ test["no suggestions in non-TTY mode"] = function ()
 	-- Run a subprocess that tries an unknown command
 	-- Since stdout is piped, is_stdout_tty() will return false
 	-- and suggestions should NOT be shown
-	local result = proc.spawn("eli", { "tests/assets/cli/test_non_tty_suggestions.lua" },
+	local result = proc.spawn(arg[-1], { "tests/assets/cli/test_non_tty_suggestions.lua" },
 		{ stdout = "pipe", stderr = "pipe", wait = true })
 	test.assert(result ~= nil)
 	local output = (result.stdout_stream:read"a" or "") .. (result.stderr_stream:read"a" or "")
