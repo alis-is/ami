@@ -215,67 +215,64 @@ end
 ---@param file string?
 ---@param path string[]
 ---@param value any
----@param type "json"|"hjson"?
+---@param content_type "json"|"hjson"?
 ---@return boolean?, string?
-do
-	local typeof = type
-	function util.modify_file(mode, file, path, value, type)
-		if typeof(mode) ~= "string" then
-			mode = "auto"
-		end
-		if typeof(type) ~= "string" then
-			type = "hjson"
-		else
-			-- Validate format
-			if type ~= "hjson" and type ~= "json" then
-				return nil, "type must be either 'hjson' or 'json'"
-			end
-		end
-		if typeof(file) ~= "string" then
-			file, _ = find_default_modify_file()
-			if typeof(file) ~= "string" then return nil, "no valid configuration file found to modify" end
-		end
-
-		local raw_content, err = fs.read_file(file --[[@as string ]])
-		if not raw_content then
-			if table.includes({ "auto", "set" }, mode) then
-				raw_content = "{}"
-			elseif table.includes({ "add" }, mode) then
-				raw_content = "[]"
-			else
-				return nil, err or "failed to read configuration file"
-			end
-		end
-		local content, err = hjson.parse(raw_content --[[@as string ]])
-		if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
-
-		if not modify_handlers[mode] then return nil, "invalid modify mode: " .. tostring(mode) end
-
-		local default = value
-		if table.includes({"add", "remove"}, mode) then
-			default = {}
-		end
-		local current_value = table.get(content, path, default)
-
-		local new_value, err = modify_handlers[mode](current_value, value)
-		if not new_value and err then return nil, "modification failed: " .. tostring(err) end
-
-		local result, err = table.set(content, path, new_value)
-		if err == "cannot set nested value on a non-table object" then
-			return nil, "cannot set nested value on a non-table value at path: " .. table.concat(path, ".")
-		end
-		if not result then return nil, "failed to set new value in configuration" end
-
-		local marshal_fn = type == "json" and hjson.stringify_to_json or hjson.stringify
-		local new_raw_content, err = marshal_fn(result, { indent = "\t", sort_keys = true })
-		if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
-		local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])
-		if not ok then return nil, "failed to write modified configuration to file '" .. tostring(file) .. ".new': " .. tostring(err) end
-		-- replace original file
-		local ok, err = os.rename(file .. ".new" --[[@as string ]], file --[[@as string ]])
-		if not ok then return nil, "failed to replace original configuration file '" .. tostring(file) .. "': " .. tostring(err) end
-		return true
+function util.modify_file(mode, file, path, value, content_type)
+	if type(mode) ~= "string" then
+		mode = "auto"
 	end
+	if type(content_type) ~= "string" then
+		content_type = "hjson"
+	else
+		-- Validate format
+		if content_type ~= "hjson" and content_type ~= "json" then
+			return nil, "type must be either 'hjson' or 'json'"
+		end
+	end
+	if type(file) ~= "string" then
+		file, _ = find_default_modify_file()
+		if type(file) ~= "string" then return nil, "no valid configuration file found to modify" end
+	end
+
+	local raw_content, err = fs.read_file(file --[[@as string ]])
+	if not raw_content then
+		if table.includes({ "auto", "set" }, mode) then
+			raw_content = "{}"
+		elseif table.includes({ "add" }, mode) then
+			raw_content = "[]"
+		else
+			return nil, err or "failed to read configuration file"
+		end
+	end
+	local content, err = hjson.parse(raw_content --[[@as string ]])
+	if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
+
+	if not modify_handlers[mode] then return nil, "invalid modify mode: " .. tostring(mode) end
+
+	local default = value
+	if table.includes({"add", "remove"}, mode) then
+		default = {}
+	end
+	local current_value = table.get(content, path, default)
+
+	local new_value, err = modify_handlers[mode](current_value, value)
+	if not new_value and err then return nil, "modification failed: " .. tostring(err) end
+
+	local result, err = table.set(content, path, new_value)
+	if err == "cannot set nested value on a non-table object" then
+		return nil, "cannot set nested value on a non-table value at path: " .. table.concat(path, ".")
+	end
+	if not result then return nil, "failed to set new value in configuration" end
+
+	local marshal_fn = content_type == "json" and hjson.stringify_to_json or hjson.stringify
+	local new_raw_content, err = marshal_fn(result, { indent = "\t", sort_keys = true })
+	if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
+	local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])
+	if not ok then return nil, "failed to write modified configuration to file '" .. tostring(file) .. ".new': " .. tostring(err) end
+	-- replace original file
+	local ok, err = os.rename(file .. ".new" --[[@as string ]], file --[[@as string ]])
+	if not ok then return nil, "failed to replace original configuration file '" .. tostring(file) .. "': " .. tostring(err) end
+	return true
 end
 
 ---checks configurations

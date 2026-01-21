@@ -399,7 +399,7 @@ test["type option: json and hjson output"] = function()
     test.assert(ok, "Failed to modify with type=json: " .. tostring(err))
     
     -- Check that the file is in JSON format (no comments, strict JSON)
-    local json_content = fs.read_file(json_file)
+    local json_content = fs.read_file(path.combine(test_dir, "test.json"))
     test.assert(json_content ~= nil, "Failed to read json file")
     -- JSON format should not have comments and should use quotes for keys
     test.assert(json_content:find('"test"') ~= nil, "JSON output should have quoted keys")
@@ -413,7 +413,7 @@ test["type option: json and hjson output"] = function()
     test.assert(ok, "Failed to modify with type=hjson: " .. tostring(err))
     
     -- Check that the file is in HJSON format
-    local hjson_content = fs.read_file(hjson_file)
+    local hjson_content = fs.read_file(path.combine(test_dir, "test.hjson"))
     test.assert(hjson_content ~= nil, "Failed to read hjson file")
     
     -- Test with invalid type

@@ -283,27 +283,24 @@ end
 ---@param file string?
 ---@param path string
 ---@param value any
----@param type "json"|"hjson"?
-do
-	local typeof = type
-	function am.modify_file(mode, file, path, value, type)
-		-- split path by dot
-		local path_parts = {}
-		for part in string.gmatch(path, "[^%.]+") do
-			table.insert(path_parts, part)
-		end
-
-		-- try parse value as json/hjson
-		if typeof(value) == "string" then
-			local parsed_value, err = hjson.parse(value)
-			ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
-			value = parsed_value
-		end
-
-		local ok, err = ami_util.modify_file(mode, file, path_parts, value, type)
-		ami_assert(ok, "failed to modify configuration: " .. tostring(err), EXIT_MODIFY_ERROR)
-		log_success"Requested modification applied."
+---@param content_type "json"|"hjson"?
+function am.modify_file(mode, file, path, value, content_type)
+	-- split path by dot
+	local path_parts = {}
+	for part in string.gmatch(path, "[^%.]+") do
+		table.insert(path_parts, part)
 	end
+
+	-- try parse value as json/hjson
+	if type(value) == "string" then
+		local parsed_value, err = hjson.parse(value)
+		ami_assert(err == nil, "failed to parse value: " .. tostring(err), EXIT_MODIFY_ERROR)
+		value = parsed_value
+	end
+
+	local ok, err = ami_util.modify_file(mode, file, path_parts, value, content_type)
+	ami_assert(ok, "failed to modify configuration: " .. tostring(err), EXIT_MODIFY_ERROR)
+	log_success"Requested modification applied."
 end
 
 ---#DES am.get_value_from_file()
