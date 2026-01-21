@@ -259,7 +259,8 @@ function util.modify_file(mode, file, path, value, output_format)
 	end
     if not result then return nil, "failed to set new value in configuration" end
 
-	local new_raw_content, err = hjson.stringify(result, { indent = "\t", sort_keys = true })
+	local marshal_fn = output_format == "json" and hjson.stringify_to_json or hjson.stringify
+	local new_raw_content, err = marshal_fn(result, { indent = "\t", sort_keys = true })
     if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
 	local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])
     if not ok then return nil, "failed to write modified configuration to file '" .. tostring(file) .. ".new': " .. tostring(err) end
