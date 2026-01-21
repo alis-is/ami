@@ -245,7 +245,7 @@ do
 			else
 				return nil, err or "failed to read configuration file"
 			end
-		 end
+		end
 		local content, err = hjson.parse(raw_content --[[@as string ]])
 		if not content then return nil, "failed to parse configuration file '" .. tostring(file) .. "': " .. tostring(err) end
 
