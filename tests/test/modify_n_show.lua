@@ -384,19 +384,19 @@ add_fail_test(test, "syntax and logic errors", {
     },
 })
 
--- Test format option
-test["format option: json and hjson output"] = function()
+-- Test type option
+test["type option: json and hjson output"] = function()
     local test_dir = "tests/tmp/ami_test_format"
     fs.mkdirp(test_dir)
     fs.remove(test_dir, { recurse = true, content_only = true })
 
-    -- Test with JSON format
+    -- Test with JSON type
     local json_file = path.combine(test_dir, "test.json")
     fs.write_file(json_file, "{}")
     
-    local args_json = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test.json", "--format=json", "test.key", "value123" }
+    local args_json = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test.json", "--type=json", "test.key", "value123" }
     local ok, err = pcall(ami, table.unpack(args_json))
-    test.assert(ok, "Failed to modify with format=json: " .. tostring(err))
+    test.assert(ok, "Failed to modify with type=json: " .. tostring(err))
     
     -- Check that the file is in JSON format (no comments, strict JSON)
     local json_content = fs.read_file(json_file)
@@ -404,26 +404,26 @@ test["format option: json and hjson output"] = function()
     -- JSON format should not have comments and should use quotes for keys
     test.assert(json_content:find('"test"') ~= nil, "JSON output should have quoted keys")
     
-    -- Test with HJSON format (default)
+    -- Test with HJSON type (default)
     local hjson_file = path.combine(test_dir, "test.hjson")
     fs.write_file(hjson_file, "{}")
     
-    local args_hjson = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test.hjson", "--format=hjson", "test.key", "value456" }
+    local args_hjson = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test.hjson", "--type=hjson", "test.key", "value456" }
     local ok, err = pcall(ami, table.unpack(args_hjson))
-    test.assert(ok, "Failed to modify with format=hjson: " .. tostring(err))
+    test.assert(ok, "Failed to modify with type=hjson: " .. tostring(err))
     
     -- Check that the file is in HJSON format
     local hjson_content = fs.read_file(hjson_file)
     test.assert(hjson_content ~= nil, "Failed to read hjson file")
     
-    -- Test with invalid format
+    -- Test with invalid type
     local invalid_file = path.combine(test_dir, "test_invalid.hjson")
     fs.write_file(invalid_file, "{}")
     
-    local args_invalid = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test_invalid.hjson", "--format=xml", "test.key", "value789" }
+    local args_invalid = { "--log-level=error", "--path=" .. test_dir, "modify", "--file=test_invalid.hjson", "--type=xml", "test.key", "value789" }
     local ok, err = pcall(ami, table.unpack(args_invalid))
-    test.assert(not ok, "Should fail with invalid format")
-    test.assert(tostring(err):find("format must be either 'hjson' or 'json'") ~= nil, "Error message should mention valid formats")
+    test.assert(not ok, "Should fail with invalid type")
+    test.assert(tostring(err):find("type must be either 'hjson' or 'json'") ~= nil, "Error message should mention valid types")
     
     os.chdir(default_cwd)
 end

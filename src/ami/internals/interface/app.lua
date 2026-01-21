@@ -183,7 +183,7 @@ local function new(options)
                     description = "Removes value from list or dictionary",
                     type = "boolean"
                 },
-                format = {
+                type = {
                     aliases = {"t"},
                     description = "Content type of file we are modifying (hjson or json)",
                     type = "string"
@@ -193,14 +193,14 @@ local function new(options)
                 ami_assert(#args > 1 or (#args == 1 and options.unset), "invalid arguments to modify command - needs path and value or --unset and path", EXIT_MODIFY_ERROR)
                 options.set = options.set or (not options.unset and not options.add and not options.remove) -- default to set
 
-                local options_without_file = table.filter(options, function(key, v) return key ~= "file" and key ~= "format" and v == true end)
+                local options_without_file = table.filter(options, function(key, v) return key ~= "file" and key ~= "type" and v == true end)
                 ami_assert(#table.keys(options_without_file) <= 1, "only one modification mode can be specified", EXIT_MODIFY_ERROR)
                 local mode = "auto"
                 if #table.keys(options_without_file) == 1 then
                     mode = table.keys(options_without_file)[1]
                 end
 
-                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, options.format)
+                am.modify_file(mode, options.file, args[1].value, #args > 1 and args[2].value or nil, options.type)
             end
 		},
         show = {

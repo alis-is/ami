@@ -215,23 +215,24 @@ end
 ---@param file string?
 ---@param path string[]
 ---@param value any
----@param output_format "json"|"hjson"?
+---@param type "json"|"hjson"?
 ---@return boolean?, string?
-function util.modify_file(mode, file, path, value, output_format)
-	if type(mode) ~= "string" then
+function util.modify_file(mode, file, path, value, type)
+	local _type = _G.type  -- Save the built-in type function
+	if _type(mode) ~= "string" then
 		mode = "auto"
 	end
-	if type(output_format) ~= "string" then
-		output_format = "hjson"
+	if _type(type) ~= "string" then
+		type = "hjson"
 	else
 		-- Validate format
-		if output_format ~= "hjson" and output_format ~= "json" then
-			return nil, "format must be either 'hjson' or 'json'"
+		if type ~= "hjson" and type ~= "json" then
+			return nil, "type must be either 'hjson' or 'json'"
 		end
 	end
-	if type(file) ~= "string" then
+	if _type(file) ~= "string" then
 		file, _ = find_default_modify_file()
-        if type(file) ~= "string" then return nil, "no valid configuration file found to modify" end
+        if _type(file) ~= "string" then return nil, "no valid configuration file found to modify" end
 	end
 
 	local raw_content, err = fs.read_file(file --[[@as string ]])
@@ -264,7 +265,7 @@ function util.modify_file(mode, file, path, value, output_format)
 	end
     if not result then return nil, "failed to set new value in configuration" end
 
-	local marshal_fn = output_format == "json" and hjson.stringify_to_json or hjson.stringify
+	local marshal_fn = type == "json" and hjson.stringify_to_json or hjson.stringify
 	local new_raw_content, err = marshal_fn(result, { indent = "\t", sort_keys = true })
     if not new_raw_content then return nil, "failed to serialize modified configuration: " .. tostring(err) end
 	local ok, err = fs.write_file(file .. ".new" --[[@as string ]], new_raw_content --[[@as string ]])
