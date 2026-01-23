@@ -35,7 +35,10 @@ if parsed_options.path then
 	if os.EOS then
 		package.path = package.path .. ";" .. (os.cwd() or ".") .. "/?.lua"
 		local ok, err = os.chdir(tostring(parsed_options.path))
-		assert(ok, err)
+		if not ok and parsed_options["is-app-installed"] then
+			return os.exit(EXIT_NOT_INSTALLED)
+		end
+		ami_assert(ok, "failed to change directory to '" .. parsed_options.path .. "': " .. tostring(err), EXIT_SETUP_REQUIRED)
 	else
 		log_error("Option 'path' provided, but chdir not supported.")
 		log_info("HINT: Run ami without path parameter from path you supplied to 'path' option.")
