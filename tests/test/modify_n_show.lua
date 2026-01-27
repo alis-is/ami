@@ -167,8 +167,16 @@ local function add_fail_test(test, name, tests)
                 end
             end
 
-            local args = { "--log-level=error", "--path=" .. test_dir, "modify", set_path, value, "--file=" .. file }
-            if mode then table.insert(args, 4, "--" .. mode) end
+            local command = test_option.command or "modify"
+            local args = { "--log-level=error", "--path=" .. test_dir, command }
+            if command == "modify" then
+                if mode then table.insert(args, "--" .. mode) end
+                table.insert(args, set_path)
+                table.insert(args, value)
+            elseif command == "show" then
+                if set_path then table.insert(args, set_path) end
+            end
+            table.insert(args, "--file=" .. file)
 
             -- Capture print output
             local original_print = print
@@ -192,6 +200,11 @@ local function add_fail_test(test, name, tests)
 
             if expected_error then
                 local combined_err = tostring(err or "") .. output
+                if combined_err:find(expected_error, nil, true) == nil then
+                    print("DEBUG: Args:", table.concat(args, " "))
+                    print("DEBUG: Err:", err)
+                    print("DEBUG: Output:", output)
+                end
                 test.assert(combined_err:find(expected_error, nil, true) ~= nil,
                     "Error message mismatch.\nExpected: '" .. expected_error .. "'\nActual: " .. combined_err)
             end
@@ -383,6 +396,33 @@ add_fail_test(test, "syntax and logic errors", {
         expected_error = "unknown option",
     },
 })
+
+test["direct validation: invalid file argument"] = function ()
+    local test_dir = "tests/tmp/ami_test_direct"
+    init_ami_test(test_dir, "tests/app/configs/ami_test_app@latest.hjson", { cleanupTestDir = true })
+
+    -- Test modify_file validation
+    local ok, err = pcall(am.modify_file, "set", "", "test", "val")
+    test.assert(not ok, "modify_file should fail with empty string file")
+    test.assert(tostring(err):find("file must be a non-empty string", 1, true),
+        "error message mismatch (modify empty): " .. tostring(err))
+
+    local ok, err = pcall(am.modify_file, "set", "   ", "test", "val")
+    test.assert(not ok, "modify_file should fail with whitespace file")
+    test.assert(tostring(err):find("file must be a non-empty string", 1, true),
+        "error message mismatch (modify whitespace): " .. tostring(err))
+
+    -- Test show_file validation
+    local ok, err = pcall(am.show_file, "", "test")
+    test.assert(not ok, "show_file should fail with empty string file")
+    test.assert(tostring(err):find("file must be a non-empty string", 1, true),
+        "error message mismatch (show empty): " .. tostring(err))
+
+    local ok, err = pcall(am.show_file, "   ", "test")
+    test.assert(not ok, "show_file should fail with whitespace file")
+    test.assert(tostring(err):find("file must be a non-empty string", 1, true),
+        "error message mismatch (show whitespace): " .. tostring(err))
+end
 
 -- Test format flags
 test["format flags: json and hjson output"] = function ()

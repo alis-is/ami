@@ -285,6 +285,9 @@ end
 ---@param value any
 ---@param content_type "json"|"hjson"?
 function am.modify_file(mode, file, path, value, content_type)
+	if file ~= nil then
+		ami_assert(type(file) == "string" and file:match("%S"), "file must be a non-empty string", EXIT_MODIFY_ERROR)
+	end
 	if type(content_type) ~= "string" then
 		content_type = "hjson"
 	end
@@ -330,6 +333,9 @@ end
 ---@param file string?
 ---@param path string?
 function am.show_file(file, path)
+	if file ~= nil then
+		ami_assert(type(file) == "string" and file:match("%S"), "file must be a non-empty string", EXIT_SHOW_ERROR)
+	end 
 	local value = am.get_value_from_file(file, path)
 	local is_tty = require"is_tty".is_stdout_tty()
 	if is_tty then
