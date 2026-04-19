@@ -392,6 +392,18 @@ function am.app.get_type()
 	return result
 end
 
+---#DES am.app.get_type_id
+---
+---Returns raw app type id
+---@return string?
+function am.app.get_type_id()
+	local app_type = am.app.get_type()
+	if type(app_type) ~= "string" then
+		return app_type
+	end
+	return string.match(app_type, "^([^@%[]+)") or app_type
+end
+
 ---#DES am.app.remove_data
 ---
 ---Removes content of app data directory
@@ -469,7 +481,8 @@ function am.app.is_installed()
 	if not version_tree_json then return false end
 	local version_tree, _ = hjson.parse(version_tree_json)
 	if not version_tree then return false end
-	return am.app.get_type() == version_tree.id
+
+	return am.app.get_type_id() == version_tree.id
 end
 
 -- packing

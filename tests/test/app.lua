@@ -244,7 +244,6 @@ test["is app installed"] = function()
 	local ok = fs.copy_file("tests/app/configs/simple_test_app.json", path.combine(test_dir, "app.json"))
 	test.assert(ok)
 	os.chdir(test_dir)
-
 	test.assert(am.app.is_installed() == false)
 	local ok = pcall(am.app.prepare)
 	test.assert(ok)
@@ -268,6 +267,26 @@ test["get app version"] = function()
 	test.assert(ok and version == "0.2.0")
 
 	os.chdir(default_cwd)
+end
+
+test["get app type id"] = function()
+	am.app.__set({
+		type = {
+			id = "test.app",
+			version = "1.0.0",
+			repository = "https://example.com/repository.git",
+		},
+	})
+
+	test.assert(am.app.get_type() == "test.app@1.0.0[https://example.com/repository.git]")
+	test.assert(am.app.get_type_id() == "test.app")
+
+	am.app.__get().type = "plain.test.app"
+	test.assert(am.app.get_type_id() == "plain.test.app")
+
+	am.app.__get().type = "legacy.test.app@2.3.4[https://example.com/legacy.git]"
+	test.assert(am.app.get_type_id() == "legacy.test.app")
+	am.app.__set_loaded(false)
 end
 
 test["remove app data"] = function()
