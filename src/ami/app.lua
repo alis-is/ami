@@ -469,9 +469,7 @@ function am.app.is_installed()
 	if not version_tree_json then return false end
 	local version_tree, _ = hjson.parse(version_tree_json)
 	if not version_tree then return false end
-
-	local version = am.app.get{ "type", "version" }
-	return am.app.get{ "type", "id" } == version_tree.id and (version == "latest" or version == version_tree.version)
+	return am.app.get_type() == version_tree.id
 end
 
 -- packing
