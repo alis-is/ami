@@ -174,7 +174,7 @@ function am.__parse_base_args(args, options)
 		options = { stop_on_non_option = true }
 	end
 	local ami, err = interface.new"base"
-	assert(ami, "failed to create base interface: " .. tostring(err), EXIT_INVALID_INTERFACE)
+	ami_assert(ami, "failed to create base interface: " .. tostring(err), EXIT_INVALID_INTERFACE)
 
 	return am.parse_args(ami, args, options)
 end

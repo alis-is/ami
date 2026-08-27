@@ -210,6 +210,40 @@ test["load app details missing config (dev env)"] = function()
 	test.assert(deverror_code == EXIT_INVALID_CONFIGURATION and string.find(devLog, "dev", 0, true))
 end
 
+test["load app invalid syntax (should fail with parse error)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/app_details/8")
+	local error_code, error_message = 0, ""
+	local original_ami_error_fn = ami_error
+	ami_error = function(msg, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+		error_message = tostring(msg)
+	end
+	pcall(am.app.load_configuration)
+	os.chdir(default_cwd)
+	ami_error = original_ami_error_fn
+	am.app.__set_loaded(false)
+	test.assert(error_code == EXIT_INVALID_CONFIGURATION)
+	test.assert(not string.find(error_message, "- nil", 0, true))
+end
+
+test["load app broken by variable substitution (should fail with substitution error)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/app_details/9")
+	local error_code, error_message = 0, ""
+	local original_ami_error_fn = ami_error
+	ami_error = function(msg, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+		error_message = tostring(msg)
+	end
+	pcall(am.app.load_configuration)
+	os.chdir(default_cwd)
+	ami_error = original_ami_error_fn
+	am.app.__set_loaded(false)
+	test.assert(error_code == EXIT_INVALID_CONFIGURATION)
+	test.assert(string.find(error_message, "variable substitution", 0, true))
+end
+
 test["load app model"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/app_details/2")

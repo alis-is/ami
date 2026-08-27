@@ -1,0 +1,6 @@
+{
+	"id": "test1",
+	"type": "test.app",
+	"variables": { "secret": "some\"thing" },
+	"configuration": { "token": "<secret>" }
+}

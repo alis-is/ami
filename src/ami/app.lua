@@ -112,36 +112,39 @@ local function load_configuration_content(path)
 		return config_content
 	end
 
-	local env_ok, env_config
-	local default_config, _ = find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
+	local env_config, env_err
+	local default_config, default_err = find_and_load_configuration(am.options.APP_CONFIGURATION_CANDIDATES)
 	if am.options.ENVIRONMENT then
 		local candidates = table.map(am.options.APP_CONFIGURATION_ENVIRONMENT_CANDIDATES, function (v)
 			local result = string.interpolate(v, { environment = am.options.ENVIRONMENT })
 			return result
 		end)
-		env_config, _ = find_and_load_configuration(candidates)
-		if not env_ok then log_warn("failed to load environment configuration (" .. am.options.ENVIRONMENT .. ") - " .. tostring(env_config)) end
+		env_config, env_err = find_and_load_configuration(candidates)
+		if not env_config then log_warn("failed to load environment configuration (" .. am.options.ENVIRONMENT .. ") - " .. tostring(env_err)) end
 	end
 
-	ami_assert(default_config or env_config, "failed to load app.h/json - " .. tostring(default_config),
+	ami_assert(default_config or env_config, "failed to load app.h/json - " .. tostring(default_err or env_err),
 		EXIT_INVALID_CONFIGURATION)
-	if not default_config then log_warn("failed to load default configuration - " .. tostring(default_config)) end
+	if not default_config then log_warn("failed to load default configuration - " .. tostring(default_err)) end
 	return hjson.stringify_to_json(
 		util.merge_tables(default_config --[[@as table]] or {}, env_config --[[@as table]] or {}, true), { indent = false })
 end
 
 local function load_configuration(path)
 	local config_content, err = load_configuration_content(path)
-	assert(config_content, "failed to load app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
-	local app, err = hjson.parse(config_content)
-	ami_assert(app, "failed to parse app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
+	ami_assert(config_content, "failed to load app.h/json - " .. tostring(err), EXIT_INVALID_CONFIGURATION)
+	local app, parse_err = hjson.parse(config_content)
+	ami_assert(type(app) == "table", "failed to parse app.h/json - " .. tostring(parse_err), EXIT_INVALID_CONFIGURATION)
 
 	__set(app)
 	local variables = am.app.get("variables", {})
 	local options = am.app.get("options", {})
 	variables = util.merge_tables(variables, { ROOT_DIR = os.EOS and os.cwd() or "." }, true)
 	config_content = am.util.replace_variables(config_content, variables, options)
-	local app, _ = hjson.parse(config_content)
+	app, parse_err = hjson.parse(config_content)
+	ami_assert(type(app) == "table",
+		"failed to parse app.h/json after variable substitution - " .. tostring(parse_err),
+		EXIT_INVALID_CONFIGURATION)
 	__set(app)
 end
 
