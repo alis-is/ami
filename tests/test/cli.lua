@@ -1217,10 +1217,12 @@ test["no suggestions in non-TTY mode"] = function ()
 	-- Run a subprocess that tries an unknown command
 	-- Since stdout is piped, is_stdout_tty() will return false
 	-- and suggestions should NOT be shown
-	local result = proc.spawn(arg[-1], { "tests/assets/cli/test_non_tty_suggestions.lua" },
-		{ stdout = "pipe", stderr = "pipe", wait = true })
-	test.assert(result ~= nil)
+	local result, err = proc.spawn(INTERPRETER, { "tests/assets/cli/test_non_tty_suggestions.lua" },
+		{ stdio = "pipe", wait = true })
+	assert(result, err)
 	local output = (result.stdout_stream:read"a" or "") .. (result.stderr_stream:read"a" or "")
+	assert(result.exit_code == EXIT_CLI_CMD_UNKNOWN,
+		("expected unknown-command exit %d, got %s\n%s"):format(EXIT_CLI_CMD_UNKNOWN, tostring(result.exit_code), output))
 	-- Should contain the error message
 	test.assert(output:match"unknown command")
 	test.assert(output:match"buil")

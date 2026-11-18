@@ -23,4 +23,4 @@ local cli = {
 }
 
 -- Try to execute with a typo - "buil" instead of "build"
-pcall(am.execute, cli, { "buil" })
+am.execute(cli, { "buil" })
