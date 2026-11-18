@@ -579,7 +579,7 @@ function am.app.pack(options)
 	local destination_path = options.destination or "app.zip"
 	log_info("packing app into archive '" .. destination_path .. "'...")
 
-	zip.compress(os.cwd() or ".", destination_path, {
+	local ok, err = zip.compress(os.cwd() or ".", destination_path, {
 		recurse = true,
 		filter = function (p)
 			p = normalize_separators(p)
@@ -599,6 +599,7 @@ function am.app.pack(options)
 		end,
 		content_only = true,
 	})
+	ami_assert(ok, "failed to pack app: " .. tostring(err), EXIT_APP_IO_ERROR)
 	-- add __ami_packed_metadata.json
 	local archive = zip.open_archive(destination_path)
 	zip.add_to_archive(archive, PACKER_METADATA_FILE, "string", hjson.stringify_to_json{
@@ -642,11 +643,12 @@ function am.app.unpack(options)
 		EXIT_INVALID_AMI_ARCHIVE)
 
 	-- extract
-	zip.extract(source, os.cwd() or ".", {
+	local ok, err = zip.extract(source, os.cwd() or ".", {
 		filter = function (p)
 			return not path_matches(p, { PACKER_METADATA_FILE }, "plain")
 		end,
 	})
+	ami_assert(ok, "failed to unpack app: " .. tostring(err), EXIT_APP_IO_ERROR)
 
 	if options.__rerun then
 		if not options.__do_not_reload_interface then

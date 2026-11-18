@@ -851,6 +851,52 @@ test["unpack app"] = function()
 	os.chdir(default_cwd)
 end
 
+test["pack and unpack app permissions"] = function()
+	if package.config:sub(1, 1) == "\\" then return end
+
+	local test_dir = os.tmpname()
+	assert(os.remove(test_dir))
+	assert(fs.mkdir(test_dir))
+	local source_dir = path.combine(test_dir, "source")
+	local destination_dir = path.combine(test_dir, "destination")
+	local archive = path.combine(test_dir, "app.zip")
+
+	local ok, err = pcall(function()
+		assert(fs.mkdirp(path.combine(source_dir, "private")))
+		assert(fs.mkdir(destination_dir))
+		assert(os.chdir(source_dir))
+		assert(fs.write_file("app.hjson", "{}"))
+		assert(fs.write_file("test.sh", "#!/bin/sh\nexit 0\n"))
+		assert(fs.write_file("private/note.txt", "private note"))
+		local permissions = {
+			["test.sh"] = "rwxr-x---",
+			private = "r-x------",
+			["private/note.txt"] = "rw-------",
+		}
+		for filename, mode in pairs(permissions) do
+			assert(fs.chmod(filename, mode))
+		end
+
+		am.app.pack({ mode = "full", destination = archive })
+		assert(os.chdir(destination_dir))
+		am.app.unpack({ source = archive })
+
+		for filename, mode in pairs(permissions) do
+			test.equal(fs.file_info(filename).permissions, mode)
+		end
+		test.equal(fs.read_file("private/note.txt"), "private note")
+	end)
+	assert(os.chdir(default_cwd))
+	for _, dir in ipairs({ source_dir, destination_dir }) do
+		local private_dir = path.combine(dir, "private")
+		if fs.dir_exists(private_dir) then
+			assert(fs.chmod(private_dir, "rwx------"))
+		end
+	end
+	assert(fs.remove(test_dir, { recurse = true }))
+	assert(ok, err)
+end
+
 if not TEST then
 	test.summary()
 end
