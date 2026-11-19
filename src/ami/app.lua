@@ -502,6 +502,7 @@ local PACKER_METADATA_FILE = "__ami_packed_metadata.json"
 ---@field path_filtering_mode "whitelist" | "blacklist" | nil
 ---@field path_matching_mode PathMatchingMode | nil
 ---@field destination string | nil
+---@field filter (fun(path: string): boolean) | nil applied after path filtering, return true to pack the path
 
 local function normalize_separators(p)
 	-- check if windows
@@ -569,6 +570,9 @@ function am.app.pack(options)
 	local path_matching_mode = options.path_matching_mode or "glob"
 	ami_assert(table.includes({ "plain", "glob", "lua-pattern" }, path_matching_mode),
 		"invalid path matching mode - " .. tostring(path_matching_mode), EXIT_CLI_ARG_VALIDATION_ERROR)
+	local custom_filter = options.filter
+	ami_assert(custom_filter == nil or type(custom_filter) == "function",
+		"invalid filter - expected function, got " .. type(custom_filter), EXIT_CLI_ARG_VALIDATION_ERROR)
 
 	local paths = options.paths or DEFAULT_PATHS[mode][path_filtering_mode]
 
@@ -588,14 +592,12 @@ function am.app.pack(options)
 				return true
 			end
 
-			if path_filtering_mode == "whitelist" then
-				return path_matches(p, paths, path_matching_mode)
+			local matched = path_matches(p, paths, path_matching_mode)
+			local included = (path_filtering_mode == "whitelist" and matched) or (path_filtering_mode == "blacklist" and not matched)
+			if included and custom_filter then
+				return custom_filter(p) == true
 			end
-
-			if path_filtering_mode == "blacklist" then
-				return not path_matches(p, paths, path_matching_mode)
-			end
-			return false
+			return included
 		end,
 		content_only = true,
 	})

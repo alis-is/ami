@@ -702,6 +702,74 @@ test["pack app (blacklist)"] = function()
 	os.chdir(default_cwd)
 end
 
+test["pack app (custom filter)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+	end
+
+	local filtered_paths = {}
+	am.app.pack({
+		mode = "full",
+		destination = destination,
+		path_filtering_mode = "blacklist",
+		paths = { "bin/**" },
+		filter = function (p)
+			table.insert(filtered_paths, p)
+			-- app.hjson is required and must be packed even though rejected here
+			return not p:match"^data" and p ~= "app.hjson"
+		end,
+	})
+	test.assert(error_code == 0)
+	-- blacklisted and required paths never reach the custom filter
+	test.assert(not table.includes(filtered_paths, "bin/test.sh") and not table.includes(filtered_paths, "app.hjson"))
+	test.assert(table.includes(filtered_paths, "data/database.txt"))
+
+	local packed_paths = {}
+	zip.extract(destination, "/tmp", {
+		filter = function (path)
+			table.insert(packed_paths, path)
+			return false
+		end
+	})
+	os.remove(destination)
+	table.sort(packed_paths)
+	test.assert(util.equals(packed_paths, { "__ami_packed_metadata.json", "ami.lua", "app.hjson", "bin/" }, true))
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
+test["pack app (invalid filter)"] = function()
+	am.options.APP_CONFIGURATION_PATH = "app.json"
+	os.chdir("tests/app/full/1")
+
+	local destination = "/tmp/app.zip"
+	os.remove(destination)
+
+	local error_code = 0
+	local original_ami_error_fn = ami_error
+	ami_error = function(_, exitCode)
+		error_code = error_code ~= 0 and error_code or exitCode or AMI_CONTEXT_FAIL_EXIT_CODE or EXIT_UNKNOWN_ERROR
+		error("stop")
+	end
+
+	---@diagnostic disable-next-line: assign-type-mismatch
+	pcall(am.app.pack, { mode = "full", destination = destination, filter = "data/**" })
+	test.assert(error_code == EXIT_CLI_ARG_VALIDATION_ERROR)
+	test.assert(not fs.exists(destination))
+
+	ami_error = original_ami_error_fn
+	os.chdir(default_cwd)
+end
+
 test["pack app (glob)"] = function()
 	am.options.APP_CONFIGURATION_PATH = "app.json"
 	os.chdir("tests/app/full/1")
